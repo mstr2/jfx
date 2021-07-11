@@ -163,6 +163,10 @@ public abstract class BooleanPropertyBase extends BooleanProperty {
     public void bind(final ObservableValue<? extends Boolean> source) {
         Objects.requireNonNull(source, "Cannot bind to null");
 
+        if (ExpressionHelper.isBoundBidirectional(helper)) {
+            throw new RuntimeException("Cannot bind a property that is bidirectionally bound");
+        }
+
         final ObservableBooleanValue newObservable = (source instanceof ObservableBooleanValue) ?
                 (ObservableBooleanValue) source : new ValueWrapper(source);
 

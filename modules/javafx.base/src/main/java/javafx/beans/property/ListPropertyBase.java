@@ -25,6 +25,8 @@
 
 package javafx.beans.property;
 
+import com.sun.javafx.binding.BidirectionalContentBinding;
+import com.sun.javafx.binding.ContentBinding;
 import com.sun.javafx.binding.ListExpressionHelper;
 import java.lang.ref.WeakReference;
 import java.util.Objects;
@@ -287,6 +289,34 @@ public abstract class ListPropertyBase<E> extends ListProperty<E> {
             observable.removeListener(listener);
             observable = null;
         }
+    }
+
+    @Override
+    public void bindContent(ObservableList<E> list) {
+        if (ListExpressionHelper.containsListChangeListenerMarker(helper, ContentBinding.class)) {
+            throw new RuntimeException(
+                "Cannot establish a bidirectional content binding because " +
+                " a unidirectional content binding is already established.");
+        }
+
+        if (ListExpressionHelper.containsListChangeListenerMarker(helper, BidirectionalContentBinding.class)) {
+            throw new RuntimeException(
+                "Cannot establish a unidirectional content binding because " +
+                " a bidirectional content binding is already established.");
+        }
+
+        super.bindContent(list);
+    }
+
+    @Override
+    public void bindContentBidirectional(ObservableList<E> list) {
+        if (ListExpressionHelper.containsListChangeListenerMarker(helper, ContentBinding.class)) {
+            throw new RuntimeException(
+                "Cannot establish a bidirectional content binding because " +
+                " a unidirectional content binding is already established.");
+        }
+
+        super.bindContentBidirectional(list);
     }
 
     /**

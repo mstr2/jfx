@@ -862,4 +862,20 @@ public class ListPropertyBaseTest {
             return name;
         }
     }
+
+    @Test
+    public void testContentBoundListPropertyThrowsExceptionWhenModified() {
+        var target = new SimpleListProperty<String>(FXCollections.observableArrayList());
+        var source = new SimpleListProperty<>(FXCollections.observableArrayList("foo", "bar"));
+        target.bindContent(source);
+        try {
+            source.add("qux");
+            target.remove(0);
+            source.add("quux");
+            source.remove(0);
+            target.add("bar");
+        } catch (RuntimeException ex) {
+            System.err.println(ex);
+        }
+    }
 }

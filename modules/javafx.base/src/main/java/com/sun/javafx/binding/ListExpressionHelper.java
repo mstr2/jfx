@@ -35,7 +35,6 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static javafx.collections.ListChangeListener.Change;
 
@@ -98,6 +97,10 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
         return (helper == null)? null : helper.removeListener(listener);
     }
 
+    public static <E> boolean containsListChangeListenerMarker(ListExpressionHelper<E> helper, Class<?> type) {
+        return helper != null && helper.containsListChangeListenerMarker(type);
+    }
+
     public static <E> void fireValueChangedEvent(ListExpressionHelper<E> helper) {
         if (helper != null) {
             helper.fireValueChangedEvent();
@@ -127,6 +130,8 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
 
     protected abstract ListExpressionHelper<E> addListener(ListChangeListener<? super E> listener);
     protected abstract ListExpressionHelper<E> removeListener(ListChangeListener<? super E> listener);
+
+    protected abstract boolean containsListChangeListenerMarker(Class<?> type);
 
     protected abstract void fireValueChangedEvent();
     protected abstract void fireValueChangedEvent(Change<? extends E> change);
@@ -171,6 +176,11 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
         @Override
         protected ListExpressionHelper<E> removeListener(ListChangeListener<? super E> listener) {
             return this;
+        }
+
+        @Override
+        protected boolean containsListChangeListenerMarker(Class<?> type) {
+            return false;
         }
 
         @Override
@@ -223,6 +233,11 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
         @Override
         protected ListExpressionHelper<E> removeListener(ListChangeListener<? super E> listener) {
             return this;
+        }
+
+        @Override
+        protected boolean containsListChangeListenerMarker(Class<?> type) {
+            return false;
         }
 
         @Override
@@ -279,6 +294,11 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
         @Override
         protected ListExpressionHelper<E> removeListener(ListChangeListener<? super E> listener) {
             return (listener.equals(this.listener))? null : this;
+        }
+
+        @Override
+        protected boolean containsListChangeListenerMarker(Class<?> type) {
+            return type.isInstance(listener);
         }
 
         @Override
@@ -540,6 +560,19 @@ public abstract class ListExpressionHelper<E> extends ExpressionHelperBase {
                 }
             }
             return this;
+        }
+
+        @Override
+        protected boolean containsListChangeListenerMarker(Class<?> type) {
+            if (listChangeListeners != null) {
+                for (ListChangeListener<?> listener : listChangeListeners) {
+                    if (type.isInstance(listener)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         @Override

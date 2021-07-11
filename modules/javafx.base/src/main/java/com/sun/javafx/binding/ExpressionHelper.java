@@ -75,6 +75,10 @@ public abstract class ExpressionHelper<T> extends ExpressionHelperBase {
         return (helper == null)? null : helper.removeListener(listener);
     }
 
+    public static <T> boolean isBoundBidirectional(ExpressionHelper<T> helper) {
+        return helper != null && helper.isBoundBidirectional();
+    }
+
     public static <T> void fireValueChangedEvent(ExpressionHelper<T> helper) {
         if (helper != null) {
             helper.fireValueChangedEvent();
@@ -96,6 +100,7 @@ public abstract class ExpressionHelper<T> extends ExpressionHelperBase {
     protected abstract ExpressionHelper<T> addListener(ChangeListener<? super T> listener);
     protected abstract ExpressionHelper<T> removeListener(ChangeListener<? super T> listener);
 
+    protected abstract boolean isBoundBidirectional();
     protected abstract void fireValueChangedEvent();
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +133,11 @@ public abstract class ExpressionHelper<T> extends ExpressionHelperBase {
         @Override
         protected ExpressionHelper<T> removeListener(ChangeListener<? super T> listener) {
             return this;
+        }
+
+        @Override
+        protected boolean isBoundBidirectional() {
+            return listener instanceof BidirectionalBindingEndpoint;
         }
 
         @Override
@@ -169,6 +179,11 @@ public abstract class ExpressionHelper<T> extends ExpressionHelperBase {
         @Override
         protected ExpressionHelper<T> removeListener(ChangeListener<? super T> listener) {
             return (listener.equals(this.listener))? null : this;
+        }
+
+        @Override
+        protected boolean isBoundBidirectional() {
+            return listener instanceof BidirectionalBindingEndpoint;
         }
 
         @Override
@@ -332,6 +347,27 @@ public abstract class ExpressionHelper<T> extends ExpressionHelperBase {
                 }
             }
             return this;
+        }
+
+        @Override
+        protected boolean isBoundBidirectional() {
+            if (invalidationListeners != null) {
+                for (InvalidationListener listener : invalidationListeners) {
+                    if (listener instanceof BidirectionalBindingEndpoint) {
+                        return true;
+                    }
+                }
+            }
+
+            if (changeListeners != null) {
+                for (ChangeListener<?> listener : changeListeners) {
+                    if (listener instanceof BidirectionalBindingEndpoint) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         @Override

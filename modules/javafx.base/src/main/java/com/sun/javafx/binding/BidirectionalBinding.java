@@ -37,13 +37,17 @@ import java.text.Format;
 import java.text.ParseException;
 import java.util.Objects;
 
-public abstract class BidirectionalBinding implements InvalidationListener, WeakListener {
+public abstract class BidirectionalBinding implements InvalidationListener, WeakListener, BidirectionalBindingEndpoint {
 
     private static void checkParameters(Object property1, Object property2) {
         Objects.requireNonNull(property1, "Both properties must be specified.");
         Objects.requireNonNull(property2, "Both properties must be specified.");
         if (property1 == property2) {
             throw new IllegalArgumentException("Cannot bind property to itself");
+        }
+        if (property1 instanceof Property<?> && ((Property<?>)property1).isBound() ||
+                property2 instanceof Property<?> && ((Property<?>)property2).isBound()) {
+            throw new IllegalArgumentException("Cannot establish a bidirectional binding for a bound property");
         }
     }
 
