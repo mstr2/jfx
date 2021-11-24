@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,10 +42,9 @@ import javafx.scene.Node;
  * <p>
  * In addition, an extending class needs to set the duration of a single cycle
  * with {@link Animation#setCycleDuration(javafx.util.Duration)}. This duration
- * is usually set by the user via a duration property (as in
- * {@link FadeTransition#durationProperty() duration}) for example. But it can also be calculated
- * by the extending class as is done in {@link ParallelTransition} and
- * {@link FadeTransition}.
+ * is usually set by the user via a property. For ease of use, the {@link TimedTransition}
+ * base class is provided, which implements a duration property.
+ * But it can also be calculated by the extending class as is done in {@link ParallelTransition}.
  * <p>
  * Below is a simple example. It creates a small animation that updates the
  * {@code text} property of a {@link javafx.scene.text.Text} node. It starts

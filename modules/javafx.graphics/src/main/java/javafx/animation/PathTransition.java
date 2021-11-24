@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,12 @@
 package javafx.animation;
 
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
 import javafx.scene.shape.Shape;
 import javafx.util.Duration;
 
-import com.sun.javafx.geom.Path2D;
 import com.sun.javafx.geom.PathIterator;
-import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.scene.NodeHelper;
 import com.sun.javafx.scene.shape.ShapeHelper;
 import java.util.ArrayList;
@@ -88,7 +85,7 @@ import java.util.ArrayList;
  *
  * @since JavaFX 2.0
  */
-public final class PathTransition extends Transition {
+public final class PathTransition extends TimedTransition {
 
     /**
      * The target node of this {@code PathTransition}.
@@ -123,68 +120,6 @@ public final class PathTransition extends Transition {
     }
 
     private Node cachedNode;
-
-    /**
-     * The duration of this {@code Transition}.
-     * <p>
-     * It is not possible to change the {@code duration} of a running
-     * {@code PathTransition}. If the value of {@code duration} is changed for a
-     * running {@code PathTransition}, the animation has to be stopped and
-     * started again to pick up the new value.
-     * <p>
-     * Note: While the unit of {@code duration} is a millisecond, the
-     * granularity depends on the underlying operating system and will in
-     * general be larger. For example animations on desktop systems usually run
-     * with a maximum of 60fps which gives a granularity of ~17 ms.
-     *
-     * Setting duration to value lower than {@link Duration#ZERO} will result
-     * in {@link IllegalArgumentException}.
-     *
-     * @defaultValue 400ms
-     */
-    private ObjectProperty<Duration> duration;
-    private static final Duration DEFAULT_DURATION = Duration.millis(400);
-
-    public final void setDuration(Duration value) {
-        if ((duration != null) || (!DEFAULT_DURATION.equals(value))) {
-            durationProperty().set(value);
-        }
-    }
-
-    public final Duration getDuration() {
-        return (duration == null)? DEFAULT_DURATION : duration.get();
-    }
-
-    public final ObjectProperty<Duration> durationProperty() {
-        if (duration == null) {
-            duration = new ObjectPropertyBase<Duration>(DEFAULT_DURATION) {
-
-                @Override
-                public void invalidated() {
-                    try {
-                        setCycleDuration(getDuration());
-                    } catch (IllegalArgumentException e) {
-                        if (isBound()) {
-                            unbind();
-                        }
-                        set(getCycleDuration());
-                        throw e;
-                    }
-                }
-
-                @Override
-                public Object getBean() {
-                    return PathTransition.this;
-                }
-
-                @Override
-                public String getName() {
-                    return "duration";
-                }
-            };
-        }
-        return duration;
-    }
 
     /**
      * The shape on which outline the node should be animated.
@@ -272,17 +207,16 @@ public final class PathTransition extends Transition {
      * The constructor of {@code PathTransition}.
      *
      * @param duration
-     *            The {@link #durationProperty() duration} of this {@code PathTransition}
+     *            The {@link TimedTransition#durationProperty() duration} of this {@code PathTransition}
      * @param path
      *            The {@link #pathProperty() path} of this {@code PathTransition}
      * @param node
      *            The {@link #nodeProperty() node} of this {@code PathTransition}
      */
     public PathTransition(Duration duration, Shape path, Node node) {
-        setDuration(duration);
+        super(duration);
         setPath(path);
         setNode(node);
-        setCycleDuration(duration);
     }
 
     /**
@@ -301,7 +235,6 @@ public final class PathTransition extends Transition {
      * The constructor of {@code PathTransition}.
      */
     public PathTransition() {
-        this(DEFAULT_DURATION, null, null);
     }
 
     /**

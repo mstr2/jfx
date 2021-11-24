@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package javafx.animation;
 
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Point3D;
@@ -81,7 +80,7 @@ import javafx.util.Duration;
  *
  * @since JavaFX 2.0
  */
-public final class RotateTransition extends Transition {
+public final class RotateTransition extends TimedTransition {
 
     private static final double EPSILON = 1e-12;
 
@@ -117,68 +116,6 @@ public final class RotateTransition extends Transition {
     }
 
     private Node cachedNode;
-
-    /**
-     * The duration of this {@code RotateTransition}.
-     * <p>
-     * It is not possible to change the {@code duration} of a running
-     * {@code RotateTransition}. If the value of {@code duration} is changed for
-     * a running {@code RotateTransition}, the animation has to be stopped and
-     * started again to pick up the new value.
-     * <p>
-     * Note: While the unit of {@code duration} is a millisecond, the
-     * granularity depends on the underlying operating system and will in
-     * general be larger. For example animations on desktop systems usually run
-     * with a maximum of 60fps which gives a granularity of ~17 ms.
-     *
-     * Setting duration to value lower than {@link Duration#ZERO} will result
-     * in {@link IllegalArgumentException}.
-     *
-     * @defaultValue 400ms
-     */
-    private ObjectProperty<Duration> duration;
-    private static final Duration DEFAULT_DURATION = Duration.millis(400);
-
-    public final void setDuration(Duration value) {
-        if ((duration != null) || (!DEFAULT_DURATION.equals(value))) {
-            durationProperty().set(value);
-        }
-    }
-
-    public final Duration getDuration() {
-        return (duration == null)? DEFAULT_DURATION : duration.get();
-    }
-
-    public final ObjectProperty<Duration> durationProperty() {
-        if (duration == null) {
-            duration = new ObjectPropertyBase<Duration>(DEFAULT_DURATION) {
-
-                @Override
-                public void invalidated() {
-                    try {
-                        setCycleDuration(getDuration());
-                    } catch (IllegalArgumentException e) {
-                        if (isBound()) {
-                            unbind();
-                        }
-                        set(getCycleDuration());
-                        throw e;
-                    }
-                }
-
-                @Override
-                public Object getBean() {
-                    return RotateTransition.this;
-                }
-
-                @Override
-                public String getName() {
-                    return "duration";
-                }
-            };
-        }
-        return duration;
-    }
 
     /**
      * Specifies the axis of rotation for this {@code RotateTransition}. Use
@@ -310,9 +247,8 @@ public final class RotateTransition extends Transition {
      *            The {@code node} which will be rotated
      */
     public RotateTransition(Duration duration, Node node) {
-        setDuration(duration);
+        super(duration);
         setNode(node);
-        setCycleDuration(duration);
     }
 
     /**
@@ -322,7 +258,7 @@ public final class RotateTransition extends Transition {
      *            The duration of the {@code RotateTransition}
      */
     public RotateTransition(Duration duration) {
-        this(duration, null);
+        super(duration);
     }
 
     /**
@@ -330,7 +266,6 @@ public final class RotateTransition extends Transition {
      *
      */
     public RotateTransition() {
-        this(DEFAULT_DURATION, null);
     }
 
     /**
