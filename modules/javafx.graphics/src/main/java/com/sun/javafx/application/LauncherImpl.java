@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -759,7 +759,6 @@ public class LauncherImpl {
                         final Stage primaryStage = new Stage();
                         StageHelper.setPrimary(primaryStage, true);
                         currentPreloader.start(primaryStage);
-                        PlatformImpl.ensureDefaultTheme();
                     } catch (Throwable t) {
                         System.err.println("Exception in Preloader start method");
                         pStartError = t;
@@ -838,7 +837,6 @@ public class LauncherImpl {
                         final Stage primaryStage = new Stage();
                         StageHelper.setPrimary(primaryStage, true);
                         theApp.start(primaryStage);
-                        PlatformImpl.ensureDefaultTheme();
                     } catch (Throwable t) {
                         System.err.println("Exception in Application start method");
                         startError = t;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,12 +87,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.stream.Collectors;
 
 /**
  * Contains the stylesheet state for a single scene. This includes both the
@@ -1252,27 +1250,26 @@ final public class StyleManager {
 
     /**
      * Set a bunch of user agent stylesheets all at once. The order of the stylesheets in the list
-     * is the order of their styles in the cascade.
+     * is the order of their styles in the cascade. Passing null, an empty list, or a list full of empty
+     * strings does nothing.
      *
      * @param urls The list of stylesheet URLs as Strings.
      */
     public void setUserAgentStylesheets(List<String> urls) {
-        if (urls == null) {
-            urls = List.of();
-        } else {
-            urls = urls.stream()
-                       .filter(Objects::nonNull)
-                       .map(String::trim)
-                       .filter(s -> !s.isEmpty())
-                       .collect(Collectors.toList());
-        }
+
+        if (urls == null || urls.size() == 0) return;
 
         synchronized (styleLock) {
             // Avoid resetting user agent stylesheets if they haven't changed.
             if (urls.size() == platformUserAgentStylesheetContainers.size()) {
                 boolean isSame = true;
                 for (int n=0, nMax=urls.size(); n < nMax && isSame; n++) {
-                    final String fname = urls.get(n);
+
+                    final String url = urls.get(n);
+                    final String fname = (url != null) ? url.trim() : null;
+
+                    if (fname == null || fname.isEmpty()) break;
+
                     StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
                     isSame = fname.equals(container.fname);
                     if (isSame) {
@@ -1289,10 +1286,21 @@ final public class StyleManager {
                 if (isSame) return;
             }
 
-            platformUserAgentStylesheetContainers.clear();
+            boolean modified = false;
 
             for (int n=0, nMax=urls.size(); n < nMax; n++) {
-                final String fname = urls.get(n);
+
+                final String url = urls.get(n);
+                final String fname = (url != null) ? url.trim() : null;
+
+                if (fname == null || fname.isEmpty()) continue;
+
+                if (!modified) {
+                    // we have at least one non null or non-empty url
+                    platformUserAgentStylesheetContainers.clear();
+                    modified = true;
+                }
+
                 if (n==0) {
                     _setDefaultUserAgentStylesheet(fname);
                 } else {
@@ -1300,7 +1308,9 @@ final public class StyleManager {
                 }
             }
 
-            userAgentStylesheetsChanged();
+            if (modified) {
+                userAgentStylesheetsChanged();
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -817,6 +817,11 @@ public class Scene implements EventTarget {
             // This is fine, the window is not visible. initPeer() will
             // be called again later, when the window is being shown.
             return;
+        }
+
+        final boolean isTransparentWindowsSupported = Platform.isSupported(ConditionalFeature.TRANSPARENT_WINDOW);
+        if (!isTransparentWindowsSupported) {
+            PlatformImpl.addNoTransparencyStylesheetToScene(this);
         }
 
         PerformanceTracker.logEvent("Scene.initPeer started");
