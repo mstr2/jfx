@@ -25,15 +25,21 @@
 
 package com.sun.javafx.application;
 
+import com.sun.javafx.util.Utils;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectPropertyBase;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.MapChangeListener;
 import javafx.scene.paint.Color;
+import javafx.stage.Appearance;
 import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -44,13 +50,66 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
     private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new CopyOnWriteArrayList<>();
 
-    public Map<String, Object> getModifiableMap() {
-        return modifiableMap;
+    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.BLACK,
+        new String[] {
+            "Windows.UIColor.Background",
+            "macOS.NSColor.textBackgroundColor",
+            "GTK.theme_bg_color"
+        });
+
+    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.WHITE,
+        new String[] {
+            "Windows.UIColor.Foreground",
+            "macOS.NSColor.textColor",
+            "GTK.theme_fg_color"
+        });
+
+    private final ColorProperty accentColor = new ColorProperty("accentColor", Color.rgb(21, 126, 251),
+        new String[] {
+            "Windows.UIColor.Accent",
+            "macOS.NSColor.controlAccentColor"
+            // GTK: no accent color
+        });
+
+    private final ColorProperty[] colorProperties = new ColorProperty[] {
+        backgroundColor, foregroundColor, accentColor
+    };
+
+    private final ReadOnlyObjectWrapper<Appearance> appearance =
+        new ReadOnlyObjectWrapper<>(this, "appearance") {
+            {
+                InvalidationListener listener = observable -> update();
+                backgroundColor.addListener(listener);
+                foregroundColor.addListener(listener);
+                update();
+            }
+
+            private void update() {
+                Color background = backgroundColor.get();
+                Color foreground = foregroundColor.get();
+                boolean isDark = Utils.calculateBrightness(background) < Utils.calculateBrightness(foreground);
+                set(isDark ? Appearance.DARK : Appearance.LIGHT);
+            }
+        };
+
+    @Override
+    public ReadOnlyObjectProperty<Appearance> appearanceProperty() {
+        return appearance.getReadOnlyProperty();
     }
 
     @Override
-    public Set<Entry<String, Object>> entrySet() {
-        return unmodifiableEntrySet;
+    public ReadOnlyObjectProperty<Color> backgroundColorProperty() {
+        return backgroundColor;
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Color> foregroundColorProperty() {
+        return foregroundColor;
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Color> accentColorProperty() {
+        return accentColor;
     }
 
     @Override
@@ -83,6 +142,15 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
         return null;
     }
 
+    public Map<String, Object> getModifiableMap() {
+        return modifiableMap;
+    }
+
+    @Override
+    public Set<Entry<String, Object>> entrySet() {
+        return unmodifiableEntrySet;
+    }
+
     @Override
     public void addListener(InvalidationListener listener) {
         invalidationListeners.add(listener);
@@ -104,6 +172,18 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     }
 
     void firePreferencesChanged(Map<String, Object> changed) {
+        for (Map.Entry<String, Object> entry : changed.entrySet()) {
+            if (entry.getValue() instanceof Color color) {
+                for (ColorProperty property : colorProperties) {
+                    property.trySet(entry.getKey(), color);
+                }
+            }
+        }
+
+        for (ColorProperty property : colorProperties) {
+            property.fireValueChangedEvent();
+        }
+
         for (InvalidationListener listener : invalidationListeners) {
             try {
                 listener.invalidated(this);
@@ -129,6 +209,52 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
                 } catch (Exception e) {
                     Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
                 }
+            }
+        }
+    }
+
+    private final class ColorProperty extends ReadOnlyObjectPropertyBase<Color> {
+        final String name;
+        final String[] platformKeys;
+        Color currentValue;
+        Color newValue;
+
+        ColorProperty(String name, Color initialValue, String[] platformKeys) {
+            this.name = name;
+            this.currentValue = initialValue;
+            this.newValue = initialValue;
+            this.platformKeys = platformKeys;
+        }
+
+        @Override
+        public Object getBean() {
+            return PlatformPreferencesImpl.this;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public Color get() {
+            return currentValue;
+        }
+
+        public void trySet(String key, Color value) {
+            for (String platformKey : platformKeys) {
+                if (Objects.equals(platformKey, key)) {
+                    this.newValue = value;
+                    return;
+                }
+            }
+        }
+
+        @Override
+        public void fireValueChangedEvent() {
+            if (!Objects.equals(currentValue, newValue)) {
+                currentValue = newValue;
+                super.fireValueChangedEvent();
             }
         }
     }

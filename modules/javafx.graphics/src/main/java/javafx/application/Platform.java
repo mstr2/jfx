@@ -30,9 +30,11 @@ import com.sun.javafx.tk.Toolkit;
 import java.util.Optional;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.collections.ObservableMap;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
+import javafx.stage.Appearance;
 
 /**
  * Application platform support class.
@@ -422,6 +424,16 @@ public final class Platform {
     /**
      * Gets all {@link Preferences preferences} of the current platform.
      *
+     * @implNote In many cases, multiple platform preferences can change at the same time.
+     *           For example, switching from light to dark mode changes various foreground elements to light
+     *           colors, and various background elements to dark colors.
+     *           <p>
+     *           The {@code Preferences} implementation returned from this method fires a single invalidation
+     *           event for such bulk changes. If a listener performs potentially heavy work, such as recreating
+     *           and applying CSS themes, it might be beneficial to use {@link javafx.beans.InvalidationListener}
+     *           instead of {@link javafx.collections.MapChangeListener} to prevent the listener from firing
+     *           multiple times in bulk change scenarios.
+     *
      * @return a {@code Preferences} instance
      * @since 21
      */
@@ -544,6 +556,72 @@ public final class Platform {
      * @since 21
      */
     public interface Preferences extends ObservableMap<String, Object> {
+        /**
+         * The platform appearance, which specifies whether applications should use a
+         * light or dark color scheme.
+         *
+         * @return the {@code appearance} property
+         */
+        ReadOnlyObjectProperty<Appearance> appearanceProperty();
+
+        /**
+         * Gets the platform appearance, which specifies whether applications should
+         * use a light or dark color scheme.
+         *
+         * @return the platform appearance
+         */
+        default Appearance getAppearance() {
+            return appearanceProperty().get();
+        }
+
+        /**
+         * The color used for background regions.
+         *
+         * @return the {@code backgroundColor} property
+         */
+        ReadOnlyObjectProperty<Color> backgroundColorProperty();
+
+        /**
+         * Gets the color used for background regions.
+         *
+         * @return the background color
+         */
+        default Color getBackgroundColor() {
+            return backgroundColorProperty().get();
+        }
+
+        /**
+         * The color used for foreground elements like text.
+         *
+         * @return the {@code foregroundColor} property
+         */
+        ReadOnlyObjectProperty<Color> foregroundColorProperty();
+
+        /**
+         * Gets the color used for foreground elements like text.
+         *
+         * @return the foreground color
+         */
+        default Color getForegroundColor() {
+            return foregroundColorProperty().get();
+        }
+
+        /**
+         * The accent color.
+         *
+         * @return the {@code accentColor} property
+         */
+        ReadOnlyObjectProperty<Color> accentColorProperty();
+
+        /**
+         * Gets the accent color.
+         *
+         * @return the accent color
+         */
+        default Color getAccentColor() {
+            return accentColorProperty().get();
+        }
+
         /**
          * Returns the {@link String} instance to which the specified key is mapped.
          *
