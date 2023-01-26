@@ -41,11 +41,9 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -1064,32 +1062,12 @@ public class PlatformImpl {
      */
     public static void updatePreferences(Map<String, Object> preferences) {
         if (preferences == null) {
-            return;
+            preferences = Map.of();
         }
 
         if (isFxApplicationThread()) {
-            Map<String, Object> changed = new HashMap<>();
-            for (Map.Entry<String, Object> entry : preferences.entrySet()) {
-                Object existingValue = platformPreferences.getModifiableMap().get(entry.getKey());
-                Object newValue = entry.getValue();
-                boolean equals = false;
-
-                if (existingValue instanceof Object[] && newValue instanceof Object[]) {
-                    equals = Arrays.equals((Object[]) existingValue, (Object[]) newValue);
-                } else if (!(existingValue instanceof Object[]) && !(newValue instanceof Object[])) {
-                    equals = Objects.equals(existingValue, entry.getValue());
-                }
-
-                if (!equals) {
-                    changed.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            if (!changed.isEmpty()) {
-                checkHighContrastThemeChanged(changed);
-                platformPreferences.getModifiableMap().putAll(changed);
-                platformPreferences.firePreferencesChanged(changed);
-            }
+            checkHighContrastThemeChanged(preferences);
+            platformPreferences.update(preferences);
         } else {
             // Make a defensive copy in case the caller of this method decides to re-use or
             // modify its preferences map after the method returns.
@@ -1099,9 +1077,9 @@ public class PlatformImpl {
     }
 
     // This method will be removed when StyleThemes are added.
-    private static void checkHighContrastThemeChanged(Map<String, Object> changed) {
-        if (changed.get("Windows.SPI.HighContrastOn") == Boolean.TRUE) {
-            setAccessibilityTheme(changed.get("Windows.SPI.HighContrastColorScheme") instanceof String s ? s : null);
+    private static void checkHighContrastThemeChanged(Map<String, Object> preferences) {
+        if (preferences.get("Windows.SPI.HighContrastOn") == Boolean.TRUE) {
+            setAccessibilityTheme(preferences.get("Windows.SPI.HighContrastColorScheme") instanceof String s ? s : null);
         } else {
             setAccessibilityTheme(null);
         }

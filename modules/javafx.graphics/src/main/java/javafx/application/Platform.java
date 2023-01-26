@@ -584,7 +584,7 @@ public final class Platform {
          *     <li>{@code macOS.NSColor.textBackgroundColor}
          *     <li>{@code GTK.theme_bg_color}
          * </ul>
-         * If the platform does not report a background color, this property defaults to {@code Color.BLACK}.
+         * If the platform does not report a background color, this property defaults to {@code Color.WHITE}.
          *
          * @return the {@code backgroundColor} property
          */
@@ -607,7 +607,7 @@ public final class Platform {
          *     <li>{@code macOS.NSColor.textColor}
          *     <li>{@code GTK.theme_fg_color}
          * </ul>
-         * If the platform does not report a foreground color, this property defaults to {@code Color.WHITE}.
+         * If the platform does not report a foreground color, this property defaults to {@code Color.BLACK}.
          *
          * @return the {@code foregroundColor} property
          */

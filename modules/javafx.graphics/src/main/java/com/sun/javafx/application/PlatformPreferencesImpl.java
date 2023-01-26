@@ -35,6 +35,7 @@ import javafx.collections.MapChangeListener;
 import javafx.scene.paint.Color;
 import javafx.stage.Appearance;
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,14 +51,14 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
     private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new CopyOnWriteArrayList<>();
 
-    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.BLACK,
+    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.WHITE,
         new String[] {
             "Windows.UIColor.Background",
             "macOS.NSColor.textBackgroundColor",
             "GTK.theme_bg_color"
         });
 
-    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.WHITE,
+    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.BLACK,
         new String[] {
             "Windows.UIColor.Foreground",
             "macOS.NSColor.textColor",
@@ -142,10 +143,6 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
         return null;
     }
 
-    public Map<String, Object> getModifiableMap() {
-        return modifiableMap;
-    }
-
     @Override
     public Set<Entry<String, Object>> entrySet() {
         return unmodifiableEntrySet;
@@ -171,9 +168,25 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
         changeListeners.remove(listener);
     }
 
-    void firePreferencesChanged(Map<String, Object> changed) {
-        for (Map.Entry<String, Object> entry : changed.entrySet()) {
-            if (entry.getValue() instanceof Color color) {
+    /**
+     * Updates this map of preferences with a set of new or changed preferences.
+     * The new preferences may include all available preferences, or only the new/changed preferences.
+     * The implementation delays firing notifications until all preferences have been applied to ensure
+     * that observers will never observe this map in an inconsistent state.
+     * InvalidationListeners are only notified once, even if several preferences have changed.
+     */
+    public void update(Map<String, Object> preferences) {
+        Map<String, ChangedValue> changed = getChangedPreferences(preferences);
+        if (changed.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
+            modifiableMap.put(entry.getKey(), entry.getValue().newValue);
+        }
+
+        for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
+            if (entry.getValue().newValue instanceof Color color) {
                 for (ColorProperty property : colorProperties) {
                     property.trySet(entry.getKey(), color);
                 }
@@ -192,26 +205,50 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
             }
         }
 
-        for (Map.Entry<String, Object> entry : changed.entrySet()) {
-            boolean keyExists = modifiableMap.containsKey(entry.getKey());
-            Object oldValue = keyExists ? modifiableMap.get(entry.getKey()) : null;
-            MapChangeListener.Change<String, Object> change = new MapChangeListener.Change<>(this) {
-                @Override public boolean wasAdded() { return true; }
-                @Override public boolean wasRemoved() { return keyExists; }
-                @Override public String getKey() { return entry.getKey(); }
-                @Override public Object getValueAdded() { return entry.getValue(); }
-                @Override public Object getValueRemoved() { return oldValue; }
-            };
+        if (changeListeners.size() > 0) {
+            for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
+                MapChangeListener.Change<String, Object> change = new MapChangeListener.Change<>(this) {
+                    @Override public boolean wasAdded() { return true; }
+                    @Override public boolean wasRemoved() { return entry.getValue().oldValue != null; }
+                    @Override public String getKey() { return entry.getKey(); }
+                    @Override public Object getValueAdded() { return entry.getValue().newValue; }
+                    @Override public Object getValueRemoved() { return entry.getValue().oldValue; }
+                };
 
-            for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
-                try {
-                    listener.onChanged(change);
-                } catch (Exception e) {
-                    Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
+                for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
+                    try {
+                        listener.onChanged(change);
+                    } catch (Exception e) {
+                        Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
+                    }
                 }
             }
         }
     }
+
+    private Map<String, ChangedValue> getChangedPreferences(Map<String, Object> preferences) {
+        Map<String, ChangedValue> changed = new HashMap<>();
+
+        for (Map.Entry<String, Object> entry : preferences.entrySet()) {
+            Object existingValue = modifiableMap.get(entry.getKey());
+            Object newValue = entry.getValue();
+            boolean equals = false;
+
+            if (existingValue instanceof Object[] && newValue instanceof Object[]) {
+                equals = Arrays.equals((Object[]) existingValue, (Object[]) newValue);
+            } else if (!(existingValue instanceof Object[]) && !(newValue instanceof Object[])) {
+                equals = Objects.equals(existingValue, newValue);
+            }
+
+            if (!equals) {
+                changed.put(entry.getKey(), new ChangedValue(existingValue, newValue));
+            }
+        }
+
+        return changed;
+    }
+
+    private record ChangedValue(Object oldValue, Object newValue) {}
 
     private final class ColorProperty extends ReadOnlyObjectPropertyBase<Color> {
         final String name;
