@@ -557,16 +557,18 @@ public final class Platform {
      */
     public interface Preferences extends ObservableMap<String, Object> {
         /**
-         * The platform appearance, which specifies whether applications should use a
-         * light or dark color scheme.
+         * The platform appearance, which specifies whether applications should use a light
+         * or dark color scheme. The value of this property is derived from the perceptual
+         * brightness of {@link #backgroundColorProperty() backgroundColor} in relation to
+         * {@link #foregroundColorProperty() foregroundColor} and defaults to {@link Appearance#LIGHT}
+         * if the platform does not report color preferences.
          *
          * @return the {@code appearance} property
          */
         ReadOnlyObjectProperty<Appearance> appearanceProperty();
 
         /**
-         * Gets the platform appearance, which specifies whether applications should
-         * use a light or dark color scheme.
+         * Gets the value of the {@link #appearanceProperty() appearance} property.
          *
          * @return the platform appearance
          */
@@ -575,14 +577,21 @@ public final class Platform {
         }
 
         /**
-         * The color used for background regions.
+         * The color used for background regions. The value of this property corresponds
+         * to the reported color value for the following keys:
+         * <ul>
+         *     <li>{@code Windows.UIColor.Background}
+         *     <li>{@code macOS.NSColor.textBackgroundColor}
+         *     <li>{@code GTK.theme_bg_color}
+         * </ul>
+         * If the platform does not report a background color, this property defaults to {@code Color.BLACK}.
          *
          * @return the {@code backgroundColor} property
          */
         ReadOnlyObjectProperty<Color> backgroundColorProperty();
 
         /**
-         * Gets the color used for background regions.
+         * Gets the value of the {@link #backgroundColorProperty() backgroundColor} property.
          *
          * @return the background color
          */
@@ -591,14 +600,21 @@ public final class Platform {
         }
 
         /**
-         * The color used for foreground elements like text.
+         * The color used for foreground elements like text. The value of this property
+         * corresponds to the reported color value for the following keys:
+         * <ul>
+         *     <li>{@code Windows.UIColor.Foreground}
+         *     <li>{@code macOS.NSColor.textColor}
+         *     <li>{@code GTK.theme_fg_color}
+         * </ul>
+         * If the platform does not report a foreground color, this property defaults to {@code Color.WHITE}.
          *
          * @return the {@code foregroundColor} property
          */
         ReadOnlyObjectProperty<Color> foregroundColorProperty();
 
         /**
-         * Gets the color used for foreground elements like text.
+         * Gets the value of the {@link #foregroundColorProperty() foregroundColor} property.
          *
          * @return the foreground color
          */
@@ -607,14 +623,20 @@ public final class Platform {
         }
 
         /**
-         * The accent color.
+         * The accent color. The value of this property corresponds to the reported color
+         * value for the following keys:
+         * <ul>
+         *     <li>{@code Windows.UIColor.Accent}
+         *     <li>{@code macOS.NSColor.controlAccentColor}
+         * </ul>
+         * If the platform does not report an accent color, this property defaults to {@code #157EFB}.
          *
          * @return the {@code accentColor} property
          */
         ReadOnlyObjectProperty<Color> accentColorProperty();
 
         /**
-         * Gets the accent color.
+         * Gets the value of the {@link #accentColorProperty() accentColor} property.
          *
          * @return the accent color
          */
