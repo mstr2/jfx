@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -114,33 +115,28 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     }
 
     @Override
-    public String getString(String key) {
-        Object value = modifiableMap.get(key);
-        if (value instanceof String s) {
-            return s;
-        }
-
-        return null;
+    public Optional<Integer> getInteger(String key) {
+        return modifiableMap.get(key) instanceof Integer i ? Optional.of(i) : Optional.empty();
     }
 
     @Override
-    public Boolean getBoolean(String key) {
-        Object value = modifiableMap.get(key);
-        if (value instanceof Boolean b) {
-            return b;
-        }
-
-        return null;
+    public Optional<Double> getDouble(String key) {
+        return modifiableMap.get(key) instanceof Double d ? Optional.of(d) : Optional.empty();
     }
 
     @Override
-    public Color getColor(String key) {
-        Object value = modifiableMap.get(key);
-        if (value instanceof Color c) {
-            return c;
-        }
+    public Optional<Boolean> getBoolean(String key) {
+        return modifiableMap.get(key) instanceof Boolean b ? Optional.of(b) : Optional.empty();
+    }
 
-        return null;
+    @Override
+    public Optional<String> getString(String key) {
+        return modifiableMap.get(key) instanceof String s ? Optional.of(s) : Optional.empty();
+    }
+
+    @Override
+    public Optional<Color> getColor(String key) {
+        return modifiableMap.get(key) instanceof Color c ? Optional.of(c) : Optional.empty();
     }
 
     @Override

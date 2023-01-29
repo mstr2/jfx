@@ -35,6 +35,7 @@ import javafx.stage.Appearance;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static test.javafx.collections.MockMapObserver.Tuple.tup;
@@ -51,38 +52,40 @@ public class PlatformPreferencesImplTest {
     }
 
     @Test
-    public void testUnknownKeyReturnsNullValue() {
+    public void testUnknownKeyReturnsEmptyValue() {
         var prefs = new PlatformPreferencesImpl();
-        assertNull(prefs.getColor("does_not_exist"));
-        assertNull(prefs.getBoolean("does_not_exist"));
-        assertNull(prefs.getString("does_not_exist"));
+        assertEquals(Optional.empty(), prefs.getInteger("does_not_exist"));
+        assertEquals(Optional.empty(), prefs.getDouble("does_not_exist"));
+        assertEquals(Optional.empty(), prefs.getBoolean("does_not_exist"));
+        assertEquals(Optional.empty(), prefs.getString("does_not_exist"));
+        assertEquals(Optional.empty(), prefs.getColor("does_not_exist"));
     }
 
     @Test
-    public void testColorFallback() {
+    public void testOptionalKeys() {
         var prefs = new PlatformPreferencesImpl();
-        Color fallback = prefs.getColor("does_not_exist", Color.RED);
-        assertEquals(Color.RED, fallback);
-    }
+        prefs.update(Map.of(
+            "integer", 5,
+            "double", 7.5,
+            "boolean", true,
+            "string", "foo",
+            "color", Color.RED));
 
-    @Test
-    public void testBooleanFallback() {
-        var prefs = new PlatformPreferencesImpl();
-        boolean fallback = prefs.getBoolean("does_not_exist", true);
-        assertEquals(true, fallback);
-    }
-
-    @Test
-    public void testStringFallback() {
-        var prefs = new PlatformPreferencesImpl();
-        String fallback = prefs.getString("does_not_exist", "foo");
-        assertEquals("foo", fallback);
+        assertEquals(5, prefs.getInteger("integer").get());
+        assertEquals(7.5, prefs.getDouble("double").get(), 0.001);
+        assertEquals(true, prefs.getBoolean("boolean").get());
+        assertEquals("foo", prefs.getString("string").get());
+        assertEquals(Color.RED, prefs.getColor("color").get());
     }
 
     @Test
     public void testUpdatePreferencesWithNewContent() {
         var prefs = new PlatformPreferencesImpl();
-        var content = Map.of("red", Color.RED, "blue", Color.BLUE, "str", "foo", "bool", true);
+        var content = Map.of(
+            "red", Color.RED,
+            "blue", Color.BLUE,
+            "str", "foo",
+            "bool", true);
         prefs.update(content);
         assertEquals(content, prefs);
     }
@@ -90,7 +93,11 @@ public class PlatformPreferencesImplTest {
     @Test
     public void testUpdatePreferencesWithSameContent() {
         var prefs = new PlatformPreferencesImpl();
-        var content = Map.of("red", Color.RED, "blue", Color.BLUE, "str", "foo", "bool", true);
+        var content = Map.of(
+            "red", Color.RED,
+            "blue", Color.BLUE,
+            "str", "foo",
+            "bool", true);
         prefs.update(content);
         prefs.update(content);
         assertEquals(content, prefs);
@@ -106,8 +113,8 @@ public class PlatformPreferencesImplTest {
         prefs.update(Map.of("Windows.UIColor.Foreground", Color.WHITE, "Windows.UIColor.Background", Color.BLACK));
         assertEquals(Appearance.DARK, prefs.getAppearance());
 
-        prefs.update(Map.of("Windows.UIColor.Foreground", Color.LIGHTGRAY, "Windows.UIColor.Background", Color.DARKGRAY));
-        assertEquals(Appearance.DARK, prefs.getAppearance());
+        prefs.update(Map.of("Windows.UIColor.Foreground", Color.DARKGRAY, "Windows.UIColor.Background", Color.LIGHTGRAY));
+        assertEquals(Appearance.LIGHT, prefs.getAppearance());
 
         prefs.update(Map.of("Windows.UIColor.Foreground", Color.RED, "Windows.UIColor.Background", Color.BLUE));
         assertEquals(Appearance.DARK, prefs.getAppearance());

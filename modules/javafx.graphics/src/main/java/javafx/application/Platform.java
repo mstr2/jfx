@@ -445,13 +445,11 @@ public final class Platform {
      * Contains UI preferences of the current platform.
      * <p>
      * {@code Preferences} extends {@link ObservableMap} to expose platform preferences as key-value pairs.
-     * For convenience, {@link #getString}, {@link #getBoolean} and {@link #getColor} are provided as typed
-     * alternatives to the untyped {@link #get} method.
+     * For convenience, {@link #getInteger}, {@link #getDouble}, {@link #getBoolean}, {@link #getString} and
+     * {@link #getColor} are provided as typed alternatives to the untyped {@link #get} method.
      * <p>
-     * The preferences that are reported by the platform may be dependent on the operating system version.
-     * Applications should always test whether a preference is available, or use the {@link #getString(String, String)},
-     * {@link #getBoolean(String, boolean)} or {@link #getColor(String, Color)} overloads that accept a fallback
-     * value if the preference is not available.
+     * The preferences that are reported by the platform may be dependent on the operating system version,
+     * so applications should not assume that a particular preference is always available.
      * <p>
      * The following list contains all preferences that are potentially available on the specified platforms:
      *
@@ -645,72 +643,53 @@ public final class Platform {
         }
 
         /**
-         * Returns the {@link String} instance to which the specified key is mapped.
+         * Returns the {@link Integer} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code String} instance to which the {@code key} is mapped, or
-         *         {@code null} if the key is not mapped to a {@code String} instance
-         */
-        String getString(String key);
-
-        /**
-         * Returns the {@link String} instance to which the specified key is mapped,
-         * or a fallback value if the key is not mapped to a {@code String} instance.
-         *
-         * @param key the key
-         * @return the {@code String} instance to which the {@code key} is mapped, or
-         *         {@code fallbackValue} if the key is not mapped to a {@code String}
+         * @return the {@code Integer} instance to which the {@code key} is mapped, or
+         *         {@code Optional.empty()} if the key is not mapped to an {@code Integer}
          *         instance
          */
-        default String getString(String key, String fallbackValue) {
-            String value = getString(key);
-            return value != null ? value : fallbackValue;
-        }
+        Optional<Integer> getInteger(String key);
+
+        /**
+         * Returns the {@link Double} instance to which the specified key is mapped.
+         *
+         * @param key the key
+         * @return the {@code Double} instance to which the {@code key} is mapped, or
+         *         {@code Optional.empty()} if the key is not mapped to a {@code Double}
+         *         instance
+         */
+        Optional<Double> getDouble(String key);
 
         /**
          * Returns the {@link Boolean} instance to which the specified key is mapped.
          *
          * @param key the key
          * @return the {@code Boolean} instance to which the {@code key} is mapped, or
-         *         {@code null} if the key is not mapped to a {@code Boolean} instance
+         *         {@code Optional.empty()} if the key is not mapped to a {@code Boolean}
+         *         instance
          */
-        Boolean getBoolean(String key);
+        Optional<Boolean> getBoolean(String key);
 
         /**
-         * Returns the {@code boolean} value to which the specified key is mapped,
-         * or a fallback value if the key is not mapped to a {@code boolean} value.
+         * Returns the {@link String} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code boolean} value to which the {@code key} is mapped, or
-         *         {@code fallbackValue} if the key is not mapped to a {@code boolean}
-         *         value
+         * @return the {@code String} instance to which the {@code key} is mapped, or
+         *         {@code Optional.empty()} if the key is not mapped to a {@code String}
+         *         instance
          */
-        default boolean getBoolean(String key, boolean fallbackValue) {
-            Boolean value = getBoolean(key);
-            return value != null ? value : fallbackValue;
-        }
+        Optional<String> getString(String key);
 
         /**
          * Returns the {@link Color} instance to which the specified key is mapped.
          *
          * @param key the key
          * @return the {@code Color} instance to which the {@code key} is mapped, or
-         *         {@code null} if the key is not mapped to a {@code Color} instance
-         */
-        Color getColor(String key);
-
-        /**
-         * Returns the {@link Color} instance to which the specified key is mapped,
-         * or a fallback value if the key is not mapped to a {@code Color} instance.
-         *
-         * @param key the key
-         * @return the {@code Color} instance to which the {@code key} is mapped, or
-         *         {@code fallbackValue} if the key is not mapped to a {@code Color}
+         *         {@code Optional.empty()} if the key is not mapped to a {@code Color}
          *         instance
          */
-        default Color getColor(String key, Color fallbackValue) {
-            Color value = getColor(key);
-            return value != null ? value : fallbackValue;
-        }
+        Optional<Color> getColor(String key);
     }
 }
