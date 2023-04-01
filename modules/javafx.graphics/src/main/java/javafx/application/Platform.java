@@ -395,6 +395,22 @@ public final class Platform {
         return Toolkit.getToolkit().isNestedLoopRunning();
     }
 
+    /**
+     * Indicates whether a nested event loop can be started from the current thread in the current state.
+     * A nested event loop can be started from an event handler or from a {@code Runnable} passed to
+     * {@link #runLater(Runnable)}.
+     * This method must be called on the JavaFX Application thread.
+     *
+     * @return {@code true} if a nested event loop can be started, and {@code false} otherwise.
+     *
+     * @throws IllegalStateException if this method is called on a thread other than the JavaFX Application Thread.
+     *
+     * @since 21
+     */
+    public static boolean canStartNestedEventLoop() {
+        return Toolkit.getToolkit().canStartNestedEventLoop();
+    }
+
     private static ReadOnlyBooleanWrapper accessibilityActiveProperty;
 
     public static boolean isAccessibilityActive() {

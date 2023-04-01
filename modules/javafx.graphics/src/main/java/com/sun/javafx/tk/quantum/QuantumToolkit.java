@@ -623,6 +623,8 @@ public final class QuantumToolkit extends Toolkit {
     }
 
     @Override public boolean canStartNestedEventLoop() {
+        checkFxUserThread();
+
         return inPulse == 0;
     }
 
