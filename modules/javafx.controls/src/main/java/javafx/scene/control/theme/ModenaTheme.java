@@ -94,8 +94,8 @@ public class ModenaTheme extends ThemeBase {
 
         if (themeName == null) {
             Platform.Preferences preferences = Platform.getPreferences();
-            if (preferences.getBoolean("Windows.SPI.HighContrastOn", false)) {
-                themeName = preferences.getString("Windows.SPI.HighContrastColorScheme");
+            if (preferences.getBoolean("Windows.SPI.HighContrastOn").orElse(false)) {
+                themeName = preferences.getString("Windows.SPI.HighContrastColorScheme").orElse(null);
             }
         }
 
