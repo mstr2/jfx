@@ -438,7 +438,7 @@ public final class Platform {
     }
 
     /**
-     * Gets all {@link Preferences preferences} of the current platform.
+     * Gets the {@link Preferences} of the current platform.
      *
      * @implNote In many cases, multiple platform preferences can change at the same time.
      *           For example, switching from light to dark mode changes various foreground elements to light
@@ -586,9 +586,7 @@ public final class Platform {
          *
          * @return the platform appearance
          */
-        default Appearance getAppearance() {
-            return appearanceProperty().get();
-        }
+        Appearance getAppearance();
 
         /**
          * The color used for background regions. The value of this property corresponds
@@ -609,9 +607,7 @@ public final class Platform {
          *
          * @return the background color
          */
-        default Color getBackgroundColor() {
-            return backgroundColorProperty().get();
-        }
+        Color getBackgroundColor();
 
         /**
          * The color used for foreground elements like text. The value of this property
@@ -632,9 +628,7 @@ public final class Platform {
          *
          * @return the foreground color
          */
-        default Color getForegroundColor() {
-            return foregroundColorProperty().get();
-        }
+        Color getForegroundColor();
 
         /**
          * The accent color. The value of this property corresponds to the reported color
@@ -654,9 +648,7 @@ public final class Platform {
          *
          * @return the accent color
          */
-        default Color getAccentColor() {
-            return accentColorProperty().get();
-        }
+        Color getAccentColor();
 
         /**
          * Returns the {@link Integer} instance to which the specified key is mapped.

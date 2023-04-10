@@ -48,26 +48,30 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class PlatformPreferencesImpl extends AbstractMap<String, Object> implements Platform.Preferences {
 
+    private static final Color DEFAULT_BACKGROUND_COLOR = Color.WHITE;
+    private static final Color DEFAULT_FOREGROUND_COLOR = Color.BLACK;
+    private static final Color DEFAULT_ACCENT_COLOR = Color.rgb(21, 126, 251);
+
     private final Map<String, Object> modifiableMap = new HashMap<>();
     private final Set<Entry<String, Object>> unmodifiableEntrySet = Collections.unmodifiableSet(modifiableMap.entrySet());
     private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
     private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new CopyOnWriteArrayList<>();
 
-    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.WHITE,
+    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", DEFAULT_BACKGROUND_COLOR,
         new String[] {
             "Windows.UIColor.Background",
             "macOS.NSColor.textBackgroundColor",
             "GTK.theme_bg_color"
         });
 
-    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.BLACK,
+    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", DEFAULT_FOREGROUND_COLOR,
         new String[] {
             "Windows.UIColor.Foreground",
             "macOS.NSColor.textColor",
             "GTK.theme_fg_color"
         });
 
-    private final ColorProperty accentColor = new ColorProperty("accentColor", Color.rgb(21, 126, 251),
+    private final ColorProperty accentColor = new ColorProperty("accentColor", DEFAULT_ACCENT_COLOR,
         new String[] {
             "Windows.UIColor.Accent",
             "macOS.NSColor.controlAccentColor"
@@ -101,8 +105,18 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     }
 
     @Override
+    public Appearance getAppearance() {
+        return appearance.get();
+    }
+
+    @Override
     public ReadOnlyObjectProperty<Color> backgroundColorProperty() {
         return backgroundColor;
+    }
+
+    @Override
+    public Color getBackgroundColor() {
+        return backgroundColor.get();
     }
 
     @Override
@@ -111,8 +125,18 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
     }
 
     @Override
+    public Color getForegroundColor() {
+        return foregroundColor.get();
+    }
+
+    @Override
     public ReadOnlyObjectProperty<Color> accentColorProperty() {
         return accentColor;
+    }
+
+    @Override
+    public Color getAccentColor() {
+        return accentColor.get();
     }
 
     @Override
