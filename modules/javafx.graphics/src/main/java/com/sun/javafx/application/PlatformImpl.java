@@ -1071,7 +1071,7 @@ public class PlatformImpl {
         } else {
             // Make a defensive copy in case the caller of this method decides to re-use or
             // modify its preferences map after the method returns.
-            Map<String, Object> preferencesCopy = new HashMap<>(preferences);
+            Map<String, Object> preferencesCopy = Map.copyOf(preferences);
             runLater(() -> updatePreferences(preferencesCopy));
         }
     }

@@ -25,6 +25,7 @@
 
 package com.sun.javafx.application;
 
+import com.sun.javafx.binding.MapExpressionHelper;
 import com.sun.javafx.util.Utils;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
@@ -202,14 +203,10 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
         }
 
         if (changeListeners.size() > 0) {
+            var change = new MapExpressionHelper.SimpleChange<>(this);
+
             for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
-                MapChangeListener.Change<String, Object> change = new MapChangeListener.Change<>(this) {
-                    @Override public boolean wasAdded() { return true; }
-                    @Override public boolean wasRemoved() { return entry.getValue().oldValue != null; }
-                    @Override public String getKey() { return entry.getKey(); }
-                    @Override public Object getValueAdded() { return entry.getValue().newValue; }
-                    @Override public Object getValueRemoved() { return entry.getValue().oldValue; }
-                };
+                change.setPut(entry.getKey(), entry.getValue().oldValue, entry.getValue().newValue);
 
                 for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
                     try {
