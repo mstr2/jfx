@@ -440,17 +440,7 @@ public final class Platform {
     /**
      * Gets the {@link Preferences} of the current platform.
      *
-     * @implNote In many cases, multiple platform preferences can change at the same time.
-     *           For example, switching from light to dark mode changes various foreground elements to light
-     *           colors, and various background elements to dark colors.
-     *           <p>
-     *           The {@code Preferences} implementation returned from this method fires a single invalidation
-     *           event for such bulk changes. If a listener performs potentially heavy work, such as recreating
-     *           and applying CSS themes, it might be beneficial to use {@link javafx.beans.InvalidationListener}
-     *           instead of {@link javafx.collections.MapChangeListener} to prevent the listener from firing
-     *           multiple times in bulk change scenarios.
-     *
-     * @return a {@code Preferences} instance
+     * @return the {@code Preferences} instance
      * @since 21
      */
     public static Preferences getPreferences() {
@@ -461,8 +451,9 @@ public final class Platform {
      * Contains UI preferences of the current platform.
      * <p>
      * {@code Preferences} extends {@link ObservableMap} to expose platform preferences as key-value pairs.
-     * For convenience, {@link #getInteger}, {@link #getDouble}, {@link #getBoolean}, {@link #getString} and
-     * {@link #getColor} are provided as typed alternatives to the untyped {@link #get} method.
+     * For convenience, {@link #getInteger}, {@link #getDouble}, {@link #getBoolean}, {@link #getString},
+     * {@link #getColor}, and {@link #getValue} are provided as typed alternatives to the untyped {@link #get}
+     * method.
      * <p>
      * The preferences that are reported by the platform may be dependent on the operating system version,
      * so applications should not assume that a particular preference is always available.
@@ -567,6 +558,16 @@ public final class Platform {
      *     </tbody>
      * </table>
      *
+     * @implNote In many cases, multiple platform preferences can change at the same time.
+     *           For example, switching from light to dark mode changes various foreground elements to light
+     *           colors, and various background elements to dark colors.
+     *           <p>
+     *           The {@code Preferences} implementation returned from this method fires a single invalidation
+     *           event for such bulk changes. If a listener performs potentially heavy work, such as recreating
+     *           and applying CSS themes, it might be beneficial to use {@link javafx.beans.InvalidationListener}
+     *           instead of {@link javafx.collections.MapChangeListener} to prevent the listener from firing
+     *           multiple times in bulk change scenarios.
+     *
      * @since 21
      */
     public interface Preferences extends ObservableMap<String, Object> {
@@ -587,6 +588,21 @@ public final class Platform {
          * @return the platform appearance
          */
         Appearance getAppearance();
+
+        /**
+         * Overrides the value of the {@link #appearanceProperty() appearance} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code appearance} property to the platform-provided value.
+         * <p>
+         * Calling this method does not update the {@code appearance} property instantaneously;
+         * instead, the property is only updated after calling {@link #commit()}, or after the
+         * occurrence of an operating system event that causes the {@code appearance} property
+         * to be recomputed.
+         *
+         * @param appearance the platform appearance override, or {@code null} to clear the override
+         */
+        void setAppearance(Appearance appearance);
 
         /**
          * The color used for background regions. The value of this property corresponds
@@ -610,6 +626,24 @@ public final class Platform {
         Color getBackgroundColor();
 
         /**
+         * Overrides the value of the {@link #backgroundColorProperty() backgroundColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code backgroundColor} property to the platform-provided value.
+         * <p>
+         * Overriding this property will not override the platform-specific key-value mappings
+         * from which the property value is derived.
+         * <p>
+         * Calling this method does not update the {@code backgroundColor} property instantaneously;
+         * instead, the property is only updated after calling {@link #commit()}, or after the
+         * occurrence of an operating system event that causes the {@code backgroundColor} property
+         * to be recomputed.
+         *
+         * @param color the background color override, or {@code null} to clear the override
+         */
+        void setBackgroundColor(Color color);
+
+        /**
          * The color used for foreground elements like text. The value of this property
          * corresponds to the reported color value for the following keys:
          * <ul>
@@ -629,6 +663,24 @@ public final class Platform {
          * @return the foreground color
          */
         Color getForegroundColor();
+
+        /**
+         * Overrides the value of the {@link #foregroundColorProperty() foregroundColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code foregroundColor} property to the platform-provided value.
+         * <p>
+         * Overriding this property will not override the platform-specific key-value mappings
+         * from which the property value is derived.
+         * <p>
+         * Calling this method does not update the {@code foregroundColor} property instantaneously;
+         * instead, the property is only updated after calling {@link #commit()}, or after the
+         * occurrence of an operating system event that causes the {@code foregroundColor} property
+         * to be recomputed.
+         *
+         * @param color the foreground color override, or {@code null} to clear the override
+         */
+        void setForegroundColor(Color color);
 
         /**
          * The accent color. The value of this property corresponds to the reported color
@@ -651,12 +703,31 @@ public final class Platform {
         Color getAccentColor();
 
         /**
+         * Overrides the value of the {@link #accentColorProperty() accentColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code accentColor} property to the platform-provided value.
+         * <p>
+         * Overriding this property will not override the platform-specific key-value mappings
+         * from which the property value is derived.
+         * <p>
+         * Calling this method does not update the {@code accentColor} property instantaneously;
+         * instead, the property is only updated after calling {@link #commit()}, or after the
+         * occurrence of an operating system event that causes the {@code accentColor} property
+         * to be recomputed.
+         *
+         * @param color the accent color override, or {@code null} to clear the override
+         */
+        void setAccentColor(Color color);
+
+        /**
          * Returns the {@link Integer} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code Integer} instance to which the {@code key} is mapped, or
-         *         {@code Optional.empty()} if the key is not mapped to an {@code Integer}
-         *         instance
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code Integer} instance
+         * @return the {@code Integer} instance to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
          */
         Optional<Integer> getInteger(String key);
 
@@ -664,9 +735,10 @@ public final class Platform {
          * Returns the {@link Double} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code Double} instance to which the {@code key} is mapped, or
-         *         {@code Optional.empty()} if the key is not mapped to a {@code Double}
-         *         instance
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code Double} instance
+         * @return the {@code Double} instance to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
          */
         Optional<Double> getDouble(String key);
 
@@ -674,9 +746,10 @@ public final class Platform {
          * Returns the {@link Boolean} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code Boolean} instance to which the {@code key} is mapped, or
-         *         {@code Optional.empty()} if the key is not mapped to a {@code Boolean}
-         *         instance
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code Boolean} instance
+         * @return the {@code Boolean} instance to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
          */
         Optional<Boolean> getBoolean(String key);
 
@@ -684,9 +757,10 @@ public final class Platform {
          * Returns the {@link String} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code String} instance to which the {@code key} is mapped, or
-         *         {@code Optional.empty()} if the key is not mapped to a {@code String}
-         *         instance
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code String} instance
+         * @return the {@code String} instance to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
          */
         Optional<String> getString(String key);
 
@@ -694,10 +768,66 @@ public final class Platform {
          * Returns the {@link Color} instance to which the specified key is mapped.
          *
          * @param key the key
-         * @return the {@code Color} instance to which the {@code key} is mapped, or
-         *         {@code Optional.empty()} if the key is not mapped to a {@code Color}
-         *         instance
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code Color} instance
+         * @return the {@code Color} instance to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
          */
         Optional<Color> getColor(String key);
+
+        /**
+         * Returns the value to which the specified key is mapped.
+         *
+         * @param <T> the type of the value
+         * @param key the key
+         * @param type the type of the value
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if the key is not mapped to a {@code type} instance
+         * @return the value to which the key is mapped, or {@code Optional.empty()}
+         *         if no mapping exists for the specified key
+         */
+        <T> Optional<T> getValue(String key, Class<T> type);
+
+        /**
+         * Maps the value to the specified key.
+         * <p>
+         * If a platform-provided mapping for the key already exists, calling this method overrides
+         * the value that is mapped to the key. If a platform-provided mapping for the key doesn't
+         * exist, this method creates a new mapping.
+         * <p>
+         * Specifying a {@code null} value clears the override, which restores the value mapped to
+         * the key to the platform-provided value. If the platform does not provide a mapping for
+         * the specified key, the mapping is effectively removed.
+         * <p>
+         * Calling this method does not update the mapping instantaneously; instead, the mapping
+         * is only updated after calling {@link #commit()}, or after the occurrence of an operating
+         * system event that causes the mapped value to be recomputed.
+         *
+         * @param key the key
+         * @param value the value override, or {@code null} to clear the override
+         * @throws NullPointerException if {@code key} is null
+         * @throws IllegalArgumentException if a platform-provided mapping for the key exists, and
+         *                                  the specified value is an instance of a different class
+         *                                  than the platform-provided value
+         * @return the previous value associated with {@code key}
+         */
+        @Override
+        Object put(String key, Object value);
+
+        /**
+         * The preferences map does not support the remove operation.
+         * <p>
+         * Use {@link #put(String, Object)} to override mappings with user-provided values instead.
+         *
+         * @throws UnsupportedOperationException the method is not supported
+         */
+        @Override
+        Object remove(Object key);
+
+        /**
+         * Commits outstanding overridden preferences, which also causes the values of derived
+         * properties to be recomputed.
+         */
+        void commit();
     }
 }

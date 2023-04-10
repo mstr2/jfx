@@ -25,258 +25,65 @@
 
 package com.sun.javafx.application;
 
-import com.sun.javafx.binding.MapExpressionHelper;
 import com.sun.javafx.util.Utils;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectPropertyBase;
 import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.collections.MapChangeListener;
 import javafx.scene.paint.Color;
 import javafx.stage.Appearance;
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class PlatformPreferencesImpl extends AbstractMap<String, Object> implements Platform.Preferences {
+/**
+ * Contains the property-based API of the {@link Platform.Preferences} interface.
+ * The {@link Map} API is implemented in the {@link PlatformPreferencesMapImpl} class.
+ */
+public final class PlatformPreferencesImpl extends PlatformPreferencesMapImpl {
 
     private static final Color DEFAULT_BACKGROUND_COLOR = Color.WHITE;
     private static final Color DEFAULT_FOREGROUND_COLOR = Color.BLACK;
     private static final Color DEFAULT_ACCENT_COLOR = Color.rgb(21, 126, 251);
 
-    private final Map<String, Object> modifiableMap = new HashMap<>();
-    private final Set<Entry<String, Object>> unmodifiableEntrySet = Collections.unmodifiableSet(modifiableMap.entrySet());
-    private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
-    private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new CopyOnWriteArrayList<>();
-
-    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", DEFAULT_BACKGROUND_COLOR,
-        new String[] {
+    private final ColorProperty backgroundColor = new ColorProperty(
+        "backgroundColor", DEFAULT_BACKGROUND_COLOR, List.of(
             "Windows.UIColor.Background",
             "macOS.NSColor.textBackgroundColor",
             "GTK.theme_bg_color"
-        });
+        ));
 
-    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", DEFAULT_FOREGROUND_COLOR,
-        new String[] {
+    private final ColorProperty foregroundColor = new ColorProperty(
+        "foregroundColor", DEFAULT_FOREGROUND_COLOR, List.of(
             "Windows.UIColor.Foreground",
             "macOS.NSColor.textColor",
             "GTK.theme_fg_color"
-        });
+        ));
 
-    private final ColorProperty accentColor = new ColorProperty("accentColor", DEFAULT_ACCENT_COLOR,
-        new String[] {
+    private final ColorProperty accentColor = new ColorProperty(
+        "accentColor", DEFAULT_ACCENT_COLOR, List.of(
             "Windows.UIColor.Accent",
             "macOS.NSColor.controlAccentColor"
             // GTK: no accent color
-        });
+        ));
 
-    private final ColorProperty[] colorProperties = new ColorProperty[] {
-        backgroundColor, foregroundColor, accentColor
-    };
-
-    private final ReadOnlyObjectWrapper<Appearance> appearance =
-        new ReadOnlyObjectWrapper<>(this, "appearance") {
-            {
-                InvalidationListener listener = observable -> update();
-                backgroundColor.addListener(listener);
-                foregroundColor.addListener(listener);
-                update();
-            }
-
-            private void update() {
-                Color background = backgroundColor.get();
-                Color foreground = foregroundColor.get();
-                boolean isDark = Utils.calculateBrightness(background) < Utils.calculateBrightness(foreground);
-                set(isDark ? Appearance.DARK : Appearance.LIGHT);
-            }
-        };
-
-    @Override
-    public ReadOnlyObjectProperty<Appearance> appearanceProperty() {
-        return appearance.getReadOnlyProperty();
-    }
-
-    @Override
-    public Appearance getAppearance() {
-        return appearance.get();
-    }
-
-    @Override
-    public ReadOnlyObjectProperty<Color> backgroundColorProperty() {
-        return backgroundColor;
-    }
-
-    @Override
-    public Color getBackgroundColor() {
-        return backgroundColor.get();
-    }
-
-    @Override
-    public ReadOnlyObjectProperty<Color> foregroundColorProperty() {
-        return foregroundColor;
-    }
-
-    @Override
-    public Color getForegroundColor() {
-        return foregroundColor.get();
-    }
-
-    @Override
-    public ReadOnlyObjectProperty<Color> accentColorProperty() {
-        return accentColor;
-    }
-
-    @Override
-    public Color getAccentColor() {
-        return accentColor.get();
-    }
-
-    @Override
-    public Optional<Integer> getInteger(String key) {
-        return modifiableMap.get(key) instanceof Integer i ? Optional.of(i) : Optional.empty();
-    }
-
-    @Override
-    public Optional<Double> getDouble(String key) {
-        return modifiableMap.get(key) instanceof Double d ? Optional.of(d) : Optional.empty();
-    }
-
-    @Override
-    public Optional<Boolean> getBoolean(String key) {
-        return modifiableMap.get(key) instanceof Boolean b ? Optional.of(b) : Optional.empty();
-    }
-
-    @Override
-    public Optional<String> getString(String key) {
-        return modifiableMap.get(key) instanceof String s ? Optional.of(s) : Optional.empty();
-    }
-
-    @Override
-    public Optional<Color> getColor(String key) {
-        return modifiableMap.get(key) instanceof Color c ? Optional.of(c) : Optional.empty();
-    }
-
-    @Override
-    public Set<Entry<String, Object>> entrySet() {
-        return unmodifiableEntrySet;
-    }
-
-    @Override
-    public void addListener(InvalidationListener listener) {
-        invalidationListeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(InvalidationListener listener) {
-        invalidationListeners.remove(listener);
-    }
-
-    @Override
-    public void addListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.remove(listener);
-    }
-
-    /**
-     * Updates this map of preferences with a set of new or changed preferences.
-     * The new preferences may include all available preferences, or only the new/changed preferences.
-     * The implementation delays firing notifications until all preferences have been applied to ensure
-     * that observers will never observe this map in an inconsistent state.
-     * InvalidationListeners are only notified once, even if several preferences have changed.
-     */
-    public void update(Map<String, Object> preferences) {
-        Map<String, ChangedValue> changed = getChangedPreferences(preferences);
-        if (changed.isEmpty()) {
-            return;
-        }
-
-        for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
-            modifiableMap.put(entry.getKey(), entry.getValue().newValue);
-        }
-
-        for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
-            if (entry.getValue().newValue instanceof Color color) {
-                for (ColorProperty property : colorProperties) {
-                    property.trySet(entry.getKey(), color);
-                }
-            }
-        }
-
-        for (ColorProperty property : colorProperties) {
-            property.fireValueChangedEvent();
-        }
-
-        for (InvalidationListener listener : invalidationListeners) {
-            try {
-                listener.invalidated(this);
-            } catch (Exception e) {
-                Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
-            }
-        }
-
-        if (changeListeners.size() > 0) {
-            var change = new MapExpressionHelper.SimpleChange<>(this);
-
-            for (Map.Entry<String, ChangedValue> entry : changed.entrySet()) {
-                change.setPut(entry.getKey(), entry.getValue().oldValue, entry.getValue().newValue);
-
-                for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
-                    try {
-                        listener.onChanged(change);
-                    } catch (Exception e) {
-                        Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
-                    }
-                }
-            }
-        }
-    }
-
-    private Map<String, ChangedValue> getChangedPreferences(Map<String, Object> preferences) {
-        Map<String, ChangedValue> changed = new HashMap<>();
-
-        for (Map.Entry<String, Object> entry : preferences.entrySet()) {
-            Object existingValue = modifiableMap.get(entry.getKey());
-            Object newValue = entry.getValue();
-            boolean equals = false;
-
-            if (existingValue instanceof Object[] && newValue instanceof Object[]) {
-                equals = Arrays.equals((Object[]) existingValue, (Object[]) newValue);
-            } else if (!(existingValue instanceof Object[]) && !(newValue instanceof Object[])) {
-                equals = Objects.equals(existingValue, newValue);
-            }
-
-            if (!equals) {
-                changed.put(entry.getKey(), new ChangedValue(existingValue, newValue));
-            }
-        }
-
-        return changed;
-    }
-
-    private record ChangedValue(Object oldValue, Object newValue) {}
+    private final List<ColorProperty> allColors = List.of(backgroundColor, foregroundColor, accentColor);
 
     private final class ColorProperty extends ReadOnlyObjectPropertyBase<Color> {
-        final String name;
-        final String[] platformKeys;
-        Color currentValue;
-        Color newValue;
+        private final String name;
+        private final List<String> platformKeys;
+        private final Color defaultValue;
+        private Color overrideValue;
+        private Color effectiveValue;
+        private Color platformValue;
 
-        ColorProperty(String name, Color initialValue, String[] platformKeys) {
+        ColorProperty(String name, Color initialValue, List<String> platformKeys) {
             this.name = name;
-            this.currentValue = initialValue;
-            this.newValue = initialValue;
+            this.defaultValue = initialValue;
+            this.effectiveValue = initialValue;
+            this.platformValue = initialValue;
             this.platformKeys = platformKeys;
         }
 
@@ -292,25 +99,150 @@ public final class PlatformPreferencesImpl extends AbstractMap<String, Object> i
 
         @Override
         public Color get() {
-            return currentValue;
+            return effectiveValue;
         }
 
-        public void trySet(String key, Color value) {
-            for (String platformKey : platformKeys) {
-                if (Objects.equals(platformKey, key)) {
-                    this.newValue = value;
-                    return;
+        public boolean matchesKey(String key) {
+            return platformKeys.contains(key);
+        }
+
+        public void setValue(Color value) {
+            this.platformValue = value;
+        }
+
+        public void setValueOverride(Color value) {
+            this.overrideValue = value;
+        }
+
+        public void commit() {
+            Color newValue = Objects.requireNonNullElse(
+                overrideValue != null ? overrideValue : platformValue,
+                defaultValue);
+
+            if (!Objects.equals(effectiveValue, newValue)) {
+                effectiveValue = newValue;
+                fireValueChangedEvent();
+            }
+        }
+    }
+
+    private final AppearanceProperty appearance = new AppearanceProperty();
+
+    private class AppearanceProperty extends ReadOnlyObjectWrapper<Appearance> {
+        private Appearance appearanceOverride;
+
+        AppearanceProperty() {
+            super(PlatformPreferencesImpl.this, "appearance");
+            InvalidationListener listener = observable -> commit();
+            backgroundColor.addListener(listener);
+            foregroundColor.addListener(listener);
+        }
+
+        public void setValueOverride(Appearance appearance) {
+            appearanceOverride = appearance;
+        }
+
+        public void commit() {
+            if (appearanceOverride != null) {
+                set(appearanceOverride);
+            } else {
+                Color background = backgroundColor.get();
+                Color foreground = foregroundColor.get();
+                boolean isDark = Utils.calculateBrightness(background) < Utils.calculateBrightness(foreground);
+                set(isDark ? Appearance.DARK : Appearance.LIGHT);
+            }
+        }
+    }
+
+    public PlatformPreferencesImpl() {
+        commit();
+    }
+
+    @Override
+    public void commit() {
+        super.commit();
+        backgroundColor.commit();
+        foregroundColor.commit();
+        accentColor.commit();
+        appearance.commit();
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Appearance> appearanceProperty() {
+        return appearance.getReadOnlyProperty();
+    }
+
+    @Override
+    public Appearance getAppearance() {
+        return appearance.get();
+    }
+
+    @Override
+    public void setAppearance(Appearance value) {
+        appearance.setValueOverride(value);
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Color> backgroundColorProperty() {
+        return backgroundColor;
+    }
+
+    @Override
+    public Color getBackgroundColor() {
+        return backgroundColor.get();
+    }
+
+    @Override
+    public void setBackgroundColor(Color color) {
+        backgroundColor.setValueOverride(color);
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Color> foregroundColorProperty() {
+        return foregroundColor;
+    }
+
+    @Override
+    public Color getForegroundColor() {
+        return foregroundColor.get();
+    }
+
+    @Override
+    public void setForegroundColor(Color color) {
+        foregroundColor.setValueOverride(color);
+    }
+
+    @Override
+    public ReadOnlyObjectProperty<Color> accentColorProperty() {
+        return accentColor;
+    }
+
+    @Override
+    public Color getAccentColor() {
+        return accentColor.get();
+    }
+
+    @Override
+    public void setAccentColor(Color color) {
+        accentColor.setValueOverride(color);
+    }
+
+    @Override
+    protected void updateDerivedPreferences(Map<String, ChangedValue> changedPreferences) {
+        List<ColorProperty> changedColorProperties = new ArrayList<>();
+
+        for (Map.Entry<String, ChangedValue> entry : changedPreferences.entrySet()) {
+            if (entry.getValue().newValue() instanceof Color color) {
+                for (ColorProperty colorProperty : allColors) {
+                    if (colorProperty.matchesKey(entry.getKey())) {
+                        colorProperty.setValue(color);
+                        changedColorProperties.add(colorProperty);
+                    }
                 }
             }
         }
 
-        @Override
-        public void fireValueChangedEvent() {
-            if (!Objects.equals(currentValue, newValue)) {
-                currentValue = newValue;
-                super.fireValueChangedEvent();
-            }
-        }
+        changedColorProperties.forEach(ColorProperty::commit);
     }
 
 }
