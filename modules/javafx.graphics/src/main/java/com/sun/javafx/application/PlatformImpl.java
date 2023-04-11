@@ -827,6 +827,8 @@ public class PlatformImpl {
             if (clearBuiltinThemeUAConstant) {
                 platformUserAgentStylesheet.set(null);
             } else {
+                // We only use the user-agent stylesheet if it is not one of the built-in theme constants,
+                // since the built-in theme constants don't represent actual stylesheet files.
                 String userAgentStylesheet =
                     BuiltinTheme.fromName(platformUserAgentStylesheet.get()) == null ?
                     platformUserAgentStylesheet.get() : null;
@@ -840,52 +842,63 @@ public class PlatformImpl {
         return platformUserAgentStyleTheme;
     }
 
+    /**
+     * Since  the {@link #platformUserAgentStylesheet} and {@link #platformUserAgentStyleTheme}
+     * properties can be changed on any thread (but not concurrently), we need to make sure that
+     * we update the StyleManager on the JavaFX application thread.
+     */
     private static void platformUserAgentStyleThemeChanged(String userAgentStylesheet, StyleTheme theme) {
         if (!isFxApplicationThread()) {
-            final String userAgentStylesheetCopy = userAgentStylesheet;
-            final StyleTheme themeCopy = theme;
-            runLater(() -> platformUserAgentStyleThemeChanged(userAgentStylesheetCopy, themeCopy));
+            runLater(() -> platformUserAgentStyleThemeChanged(userAgentStylesheet, theme));
         } else {
             // If the javafx.userAgentStylesheetUrl system property is specified, we ignore the current theme
             // to maximize compatibility with earlier versions of JavaFX where setting a UA stylesheet replaces
             // the style theme entirely.
             String overrideStylesheetUrl = System.getProperty("javafx.userAgentStylesheetUrl");
-            if (overrideStylesheetUrl != null) {
-                userAgentStylesheet = overrideStylesheetUrl.trim();
+            String stylesheetUrl = overrideStylesheetUrl != null ? overrideStylesheetUrl.trim() : null;
+            StyleTheme newTheme;
+
+            if (stylesheetUrl != null) {
                 BuiltinTheme builtinTheme = BuiltinTheme.fromName(userAgentStylesheet);
-                if (builtinTheme != null) {
-                    theme = newThemeInstance(builtinTheme);
-                    userAgentStylesheet = null;
-                } else {
-                    theme = null;
-                }
-            } else if (userAgentStylesheet != null) {
-                userAgentStylesheet = userAgentStylesheet.trim();
+                newTheme = builtinTheme != null ? newThemeInstance(builtinTheme) : () -> List.of(stylesheetUrl);
+            } else if (userAgentStylesheet != null && !userAgentStylesheet.isBlank()) {
+                newTheme = () -> List.of(userAgentStylesheet.trim());
+            } else {
+                newTheme = theme;
             }
 
-            updateStyleManager(userAgentStylesheet, theme != null ? theme.getStylesheets() : null);
+            updateStyleManager(newTheme);
         }
     }
 
     private static List<String> themeStylesheets;
 
-    private static final ListChangeListener<String> themeStylesheetsChanged =
-        change -> {
-            Toolkit.getToolkit().checkFxUserThread();
-            updateStyleManager(platformUserAgentStylesheet.get(), themeStylesheets);
-        };
+    private static final ListChangeListener<String> themeStylesheetsChanged = change -> {
+        // We only use the user-agent stylesheet if it is not one of the built-in theme constants,
+        // since the built-in theme constants don't represent actual stylesheet files.
+        String userAgentStylesheet =
+            BuiltinTheme.fromName(platformUserAgentStylesheet.get()) == null ?
+            platformUserAgentStylesheet.get() : null;
+
+        platformUserAgentStyleThemeChanged(userAgentStylesheet, platformUserAgentStyleTheme.get());
+    };
 
     /**
-     * Updates the {@link StyleManager} with a new list of stylesheets that consist of the current
-     * user-agent stylesheet or the list of stylesheets contained in the current {@link StyleTheme}.
+     * Updates the {@link StyleManager} with a new {@link StyleTheme}.
      * <p>
-     * If {@code stylesheets} is an {@code ObservableList}, this method also registers a
-     * {@code ListChangeListener} to update the {@code StyleManager} when the list is changed.
+     * If {@link StyleTheme#getStylesheets()} returns an {@code ObservableList}, this method
+     * also registers a {@code ListChangeListener} to update the {@code StyleManager} when the
+     * list is changed.
      *
-     * @param userAgentStylesheet the user-agent stylesheet, or {@code null}
-     * @param stylesheets the stylesheets of the {@code StyleTheme}, or {@code null}
+     * @param theme the style theme, or {@code null}
      */
-    private static void updateStyleManager(String userAgentStylesheet, List<String> stylesheets) {
+    private static void updateStyleManager(StyleTheme theme) {
+        List<String> stylesheets = theme != null ? theme.getStylesheets() : List.of();
+        if (stylesheets == null) {
+            stylesheets = List.of();
+            Logging.getJavaFXLogger().warning(theme.getClass().getName() + ".getStylesheets() returned <null>");
+        }
+
         if (themeStylesheets != stylesheets) {
             if (themeStylesheets instanceof ObservableList<String> list) {
                 list.removeListener(themeStylesheetsChanged);
@@ -898,15 +911,7 @@ public class PlatformImpl {
             }
         }
 
-        boolean hasUserAgentStylesheet = userAgentStylesheet != null && !userAgentStylesheet.isEmpty();
-
-        if (hasUserAgentStylesheet) {
-            StyleManager.getInstance().setUserAgentStylesheets(List.of(userAgentStylesheet));
-        } else if (themeStylesheets != null) {
-            StyleManager.getInstance().setUserAgentStylesheets(themeStylesheets);
-        } else {
-            StyleManager.getInstance().setUserAgentStylesheets(List.of());
-        }
+        StyleManager.getInstance().setUserAgentStylesheets(stylesheets);
     }
 
     private static boolean isSupportedImpl(ConditionalFeature feature) {

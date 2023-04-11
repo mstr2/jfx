@@ -1257,22 +1257,18 @@ final public class StyleManager {
      * @param urls The list of stylesheet URLs as Strings.
      */
     public void setUserAgentStylesheets(List<String> urls) {
-        if (urls == null) {
-            urls = List.of();
-        } else {
-            urls = urls.stream()
-                       .filter(Objects::nonNull)
-                       .map(String::trim)
-                       .filter(s -> !s.isEmpty())
-                       .collect(Collectors.toList());
-        }
+        List<String> nonNullUrls = urls.stream()
+           .filter(Objects::nonNull)
+           .map(String::trim)
+           .filter(s -> !s.isEmpty())
+           .collect(Collectors.toList());
 
         synchronized (styleLock) {
             // Avoid resetting user agent stylesheets if they haven't changed.
-            if (urls.size() == platformUserAgentStylesheetContainers.size()) {
+            if (nonNullUrls.size() == platformUserAgentStylesheetContainers.size()) {
                 boolean isSame = true;
-                for (int n=0, nMax=urls.size(); n < nMax && isSame; n++) {
-                    final String fname = urls.get(n);
+                for (int n=0, nMax=nonNullUrls.size(); n < nMax && isSame; n++) {
+                    final String fname = nonNullUrls.get(n);
                     StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
                     isSame = fname.equals(container.fname);
                     if (isSame) {
@@ -1291,8 +1287,8 @@ final public class StyleManager {
 
             platformUserAgentStylesheetContainers.clear();
 
-            for (int n=0, nMax=urls.size(); n < nMax; n++) {
-                final String fname = urls.get(n);
+            for (int n=0, nMax=nonNullUrls.size(); n < nMax; n++) {
+                final String fname = nonNullUrls.get(n);
                 if (n==0) {
                     _setDefaultUserAgentStylesheet(fname);
                 } else {

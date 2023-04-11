@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.sun.javafx.application;
+package com.sun.javafx.scene.control;
 
 import java.util.function.Function;
 

@@ -26,8 +26,8 @@
 package javafx.scene.control.theme;
 
 import com.sun.javafx.PlatformUtil;
-import com.sun.javafx.application.HighContrastScheme;
 import com.sun.javafx.application.PlatformImpl;
+import com.sun.javafx.scene.control.HighContrastScheme;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
 import javafx.beans.value.WritableValue;
@@ -108,7 +108,7 @@ public class ModenaTheme extends ThemeBase {
             };
 
             if (stylesheet == null) {
-                ResourceBundle bundle = ResourceBundle.getBundle("com/sun/glass/ui/win/themes");
+                ResourceBundle bundle = ResourceBundle.getBundle("com/sun/javafx/scene/control/high-contrast-scheme-names");
                 String enumValue = HighContrastScheme.fromThemeName(bundle::getString, themeName);
 
                 stylesheet = enumValue != null ? switch (HighContrastScheme.valueOf(enumValue)) {
