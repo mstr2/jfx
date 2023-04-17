@@ -42,12 +42,23 @@ import static test.javafx.collections.MockMapObserver.Tuple.tup;
 public class PlatformPreferencesMapImplTest {
 
     @Test
-    public void testAddAndRemoveUserValue() {
+    void testMapIsImmutable() {
+        var prefs = new PlatformPreferencesImpl();
+        prefs.update(Map.of("integer", 5, "double", 7.5));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.put("key", "value"));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.remove("key"));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.clear());
+        assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().remove(prefs.entrySet().iterator().next()));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().clear());
+    }
+
+    @Test
+    void testAddAndRemoveUserValue() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of("integer", 5, "double", 7.5));
 
         // Override the "integer" mapping with a user value
-        assertEquals(5, prefs.put("integer", 10));
+        assertEquals(5, prefs.override("integer", 10));
         assertEquals(5, prefs.get("integer"));
 
         // The user value only takes effect after committing
@@ -55,7 +66,7 @@ public class PlatformPreferencesMapImplTest {
         assertEquals(10, prefs.get("integer"));
 
         // Clear the user value
-        assertEquals(10, prefs.put("integer", null));
+        assertEquals(10, prefs.override("integer", (Integer)null));
         assertEquals(10, prefs.get("integer"));
 
         // The platform value only takes effect after committing
@@ -64,14 +75,14 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testCannotOverrideValueWithDifferentType() {
+    void testCannotOverrideValueWithDifferentType() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of("integer", 5));
-        assertThrows(IllegalArgumentException.class, () -> prefs.put("integer", 3.141));
+        assertThrows(IllegalArgumentException.class, () -> prefs.override("integer", 3.141));
     }
 
     @Test
-    public void testUnknownKeyReturnsEmptyValue() {
+    void testUnknownKeyReturnsEmptyValue() {
         var prefs = new PlatformPreferencesImpl();
         assertEquals(Optional.empty(), prefs.getInteger("does_not_exist"));
         assertEquals(Optional.empty(), prefs.getDouble("does_not_exist"));
@@ -82,14 +93,14 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testGetValueWithWrongTypeFails() {
+    void testGetValueWithWrongTypeFails() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of("integer", 5));
         assertThrows(IllegalArgumentException.class, () -> prefs.getValue("integer", Double.class));
     }
 
     @Test
-    public void testOptionalKeys() {
+    void testOptionalKeys() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of(
             "integer", 5,
@@ -106,7 +117,7 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testUpdatePreferencesWithNewContent() {
+    void testUpdatePreferencesWithNewContent() {
         var prefs = new PlatformPreferencesImpl();
         var content = Map.of(
             "red", Color.RED,
@@ -118,7 +129,7 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testUpdatePreferencesWithSameContent() {
+    void testUpdatePreferencesWithSameContent() {
         var prefs = new PlatformPreferencesImpl();
         var content = Map.of(
             "red", Color.RED,
@@ -131,7 +142,7 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testPlatformPreferencesInvalidationListener() {
+    void testPlatformPreferencesInvalidationListener() {
         var prefs = new PlatformPreferencesImpl();
         int[] count = new int[1];
         InvalidationListener listener = observable -> count[0]++;
@@ -146,7 +157,7 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testPlatformPreferencesChangeListener() {
+    void testPlatformPreferencesChangeListener() {
         var prefs = new PlatformPreferencesImpl();
         var observer = new MockMapObserver<String, Object>();
         prefs.addListener(observer);
@@ -176,7 +187,7 @@ public class PlatformPreferencesMapImplTest {
     }
 
     @Test
-    public void testPreferenceUpdatesAreAtomicWhenObserved() {
+    void testPreferenceUpdatesAreAtomicWhenObserved() {
         var prefs = new PlatformPreferencesImpl();
         var trace = new ArrayList<Color[]>();
         Color[] expectedColors;

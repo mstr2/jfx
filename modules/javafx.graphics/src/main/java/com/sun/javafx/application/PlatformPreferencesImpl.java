@@ -40,7 +40,7 @@ import java.util.Objects;
 
 /**
  * Contains the property-based API of the {@link Platform.Preferences} interface.
- * The {@link Map} API is implemented in the {@link PlatformPreferencesMapImpl} class.
+ * The key-value API is implemented in the {@link PlatformPreferencesMapImpl} class.
  */
 public final class PlatformPreferencesImpl extends PlatformPreferencesMapImpl {
 

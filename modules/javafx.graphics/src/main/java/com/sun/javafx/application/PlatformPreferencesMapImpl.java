@@ -105,7 +105,8 @@ abstract class PlatformPreferencesMapImpl extends AbstractMap<String, Object> im
     }
 
     @Override
-    public Object put(String key, Object value) {
+    @SuppressWarnings("unchecked")
+    public <T> T override(String key, T value) {
         Objects.requireNonNull(key, "key cannot be null");
         ValueEntry entry = backingMap.get(key);
         Object existingValue = ValueEntry.getEffectiveValue(entry);
@@ -117,7 +118,7 @@ abstract class PlatformPreferencesMapImpl extends AbstractMap<String, Object> im
         }
 
         backingMap.put(key, ValueEntry.withUserValue(entry, value));
-        return existingValue;
+        return (T)existingValue;
     }
 
     @Override
@@ -360,24 +361,9 @@ abstract class PlatformPreferencesMapImpl extends AbstractMap<String, Object> im
 
                 @Override
                 public Entry<String, Object> next() {
-                    return new Entry<>() {
-                        final Entry<String, ValueEntry> entry = it.next();
-
-                        @Override
-                        public String getKey() {
-                            return entry.getKey();
-                        }
-
-                        @Override
-                        public Object getValue() {
-                            return ValueEntry.getEffectiveValue(entry.getValue());
-                        }
-
-                        @Override
-                        public Object setValue(Object value) {
-                            throw new UnsupportedOperationException();
-                        }
-                    };
+                    Entry<String, ValueEntry> entry = it.next();
+                    return new AbstractMap.SimpleImmutableEntry<>(
+                        entry.getKey(), ValueEntry.getEffectiveValue(entry.getValue()));
                 }
             };
         }

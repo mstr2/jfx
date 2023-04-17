@@ -789,7 +789,7 @@ public final class Platform {
         <T> Optional<T> getValue(String key, Class<T> type);
 
         /**
-         * Maps the value to the specified key.
+         * Overrides a key-value mapping.
          * <p>
          * If a platform-provided mapping for the key already exists, calling this method overrides
          * the value that is mapped to the key. If a platform-provided mapping for the key doesn't
@@ -804,25 +804,14 @@ public final class Platform {
          * system event that causes the mapped value to be recomputed.
          *
          * @param key the key
-         * @param value the value override, or {@code null} to clear the override
+         * @param value the new value, or {@code null} to clear the override
          * @throws NullPointerException if {@code key} is null
          * @throws IllegalArgumentException if a platform-provided mapping for the key exists, and
          *                                  the specified value is an instance of a different class
          *                                  than the platform-provided value
          * @return the previous value associated with {@code key}
          */
-        @Override
-        Object put(String key, Object value);
-
-        /**
-         * The preferences map does not support the remove operation.
-         * <p>
-         * Use {@link #put(String, Object)} to override mappings with user-provided values instead.
-         *
-         * @throws UnsupportedOperationException the method is not supported
-         */
-        @Override
-        Object remove(Object key);
+        <T> T override(String key, T value);
 
         /**
          * Commits outstanding overridden preferences, which also causes the values of derived
