@@ -46,7 +46,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Contains the {@link Map} implementation of the {@link Platform.Preferences} interface.
  * The property-based API is implemented in the {@link PlatformPreferencesImpl} class.
  */
-abstract class PlatformPreferencesMapImpl extends AbstractMap<String, Object> implements Platform.Preferences {
+abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> implements Platform.Preferences {
 
     private final Map<String, ValueEntry> backingMap = new HashMap<>() {
         @Override

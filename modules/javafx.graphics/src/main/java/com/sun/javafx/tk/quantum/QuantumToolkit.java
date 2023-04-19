@@ -359,6 +359,7 @@ public final class QuantumToolkit extends Toolkit {
             };
             pulseTimer = Application.GetApplication().createTimer(timerRunnable);
 
+            // Initialize the platform preferences
             PlatformImpl.updatePreferences(Application.GetApplication().getPlatformPreferences());
 
             Application.GetApplication().setEventHandler(new Application.EventHandler() {

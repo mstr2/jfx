@@ -40,9 +40,9 @@ import java.util.Objects;
 
 /**
  * Contains the property-based API of the {@link Platform.Preferences} interface.
- * The key-value API is implemented in the {@link PlatformPreferencesMapImpl} class.
+ * The key-value API is implemented in the {@link PlatformPreferencesBaseImpl} class.
  */
-public final class PlatformPreferencesImpl extends PlatformPreferencesMapImpl {
+public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
 
     private static final Color DEFAULT_BACKGROUND_COLOR = Color.WHITE;
     private static final Color DEFAULT_FOREGROUND_COLOR = Color.BLACK;

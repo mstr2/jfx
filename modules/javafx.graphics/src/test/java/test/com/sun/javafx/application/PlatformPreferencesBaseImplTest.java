@@ -39,7 +39,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static test.javafx.collections.MockMapObserver.Tuple.tup;
 
-public class PlatformPreferencesMapImplTest {
+public class PlatformPreferencesBaseImplTest {
 
     @Test
     void testMapIsImmutable() {
