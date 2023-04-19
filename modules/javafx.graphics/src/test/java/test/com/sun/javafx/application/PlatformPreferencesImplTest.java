@@ -48,16 +48,16 @@ public class PlatformPreferencesImplTest {
     void testAppearanceReflectsForegroundAndBackgroundColors() {
         var prefs = new PlatformPreferencesImpl();
 
-        prefs.update(Map.of("Windows.UIColor.Foreground", Color.BLACK, "Windows.UIColor.Background", Color.WHITE));
+        prefs.update(Map.of("javafx.foregroundColor", Color.BLACK, "javafx.backgroundColor", Color.WHITE));
         assertEquals(Appearance.LIGHT, prefs.getAppearance());
 
-        prefs.update(Map.of("Windows.UIColor.Foreground", Color.WHITE, "Windows.UIColor.Background", Color.BLACK));
+        prefs.update(Map.of("javafx.foregroundColor", Color.WHITE, "javafx.backgroundColor", Color.BLACK));
         assertEquals(Appearance.DARK, prefs.getAppearance());
 
-        prefs.update(Map.of("Windows.UIColor.Foreground", Color.DARKGRAY, "Windows.UIColor.Background", Color.LIGHTGRAY));
+        prefs.update(Map.of("javafx.foregroundColor", Color.DARKGRAY, "javafx.backgroundColor", Color.LIGHTGRAY));
         assertEquals(Appearance.LIGHT, prefs.getAppearance());
 
-        prefs.update(Map.of("Windows.UIColor.Foreground", Color.RED, "Windows.UIColor.Background", Color.BLUE));
+        prefs.update(Map.of("javafx.foregroundColor", Color.RED, "javafx.backgroundColor", Color.BLUE));
         assertEquals(Appearance.DARK, prefs.getAppearance());
     }
 

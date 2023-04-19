@@ -196,9 +196,9 @@ public class PlatformPreferencesBaseImplTest {
                 trace.add(new Color[] { prefs.getBackgroundColor(), prefs.getForegroundColor(), prefs.getAccentColor() }));
 
         prefs.update(Map.of(
-            "Windows.UIColor.Foreground", Color.RED,
-            "Windows.UIColor.Background", Color.BLUE,
-            "Windows.UIColor.Accent", Color.GREEN));
+            "javafx.foregroundColor", Color.RED,
+            "javafx.backgroundColor", Color.BLUE,
+            "javafx.accentColor", Color.GREEN));
         assertEquals(3, trace.size());
         expectedColors = new Color[] { Color.BLUE, Color.RED, Color.GREEN };
         assertArrayEquals(expectedColors, trace.get(0));
@@ -206,9 +206,9 @@ public class PlatformPreferencesBaseImplTest {
         assertArrayEquals(expectedColors, trace.get(2));
 
         prefs.update(Map.of(
-            "Windows.UIColor.Background", Color.YELLOW,
-            "Windows.UIColor.Foreground", Color.BLUE,
-            "Windows.UIColor.Accent", Color.PURPLE));
+            "javafx.backgroundColor", Color.YELLOW,
+            "javafx.foregroundColor", Color.BLUE,
+            "javafx.accentColor", Color.PURPLE));
         assertEquals(6, trace.size());
         expectedColors = new Color[] { Color.YELLOW, Color.BLUE, Color.PURPLE };
         assertArrayEquals(expectedColors, trace.get(3));
