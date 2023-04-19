@@ -463,6 +463,11 @@ public final class Platform {
      * <table>
      *     <caption></caption>
      *     <tbody>
+     *         <tr><th colspan="2" scope="colgroup">Platform-independent preferences</th></tr>
+     *         <tr><td>{@code javafx.backgroundColor}</td><td>{@link Color}</td></tr>
+     *         <tr><td>{@code javafx.foregroundColor}</td><td>{@link Color}</td></tr>
+     *         <tr><td>{@code javafx.accentColor}</td><td>{@link Color}</td></tr>
+     *         <tr></tr>
      *         <tr><th colspan="2" scope="colgroup">Windows</th></tr>
      *         <tr><td>{@code Windows.SPI.HighContrast}</td><td>{@link Boolean}</td></tr>
      *         <tr><td>{@code Windows.SPI.HighContrastColorScheme}</td><td>{@link String}</td></tr>
@@ -484,7 +489,6 @@ public final class Platform {
      *         <tr><td>{@code Windows.UIColor.AccentLight2}</td><td>{@link Color}</td></tr>
      *         <tr><td>{@code Windows.UIColor.AccentLight3}</td><td>{@link Color}</td></tr>
      *         <tr></tr>
-     *
      *         <tr><th colspan="2" scope="colgroup">macOS</th></tr>
      *         <tr><td>{@code macOS.NSColor.labelColor}</td><td>{@link Color}</td></tr>
      *         <tr><td>{@code macOS.NSColor.secondaryLabelColor}</td><td>{@link Color}</td></tr>
@@ -533,7 +537,6 @@ public final class Platform {
      *         <tr><td>{@code macOS.NSColor.systemTealColor}</td><td>{@link Color}</td></tr>
      *         <tr><td>{@code macOS.NSColor.systemYellowColor}</td><td>{@link Color}</td></tr>
      *         <tr></tr>
-     *
      *         <tr><th colspan="2" scope="colgroup">Linux</th></tr>
      *         <tr><td>{@code GTK.theme_name}</td><td>{@link String}</td></tr>
      *         <tr><td>{@code GTK.theme_fg_color}</td><td>{@link Color}</td></tr>
@@ -605,14 +608,9 @@ public final class Platform {
         void setAppearance(Appearance appearance);
 
         /**
-         * The color used for background regions. The value of this property corresponds
-         * to the reported color value for the following keys:
-         * <ul>
-         *     <li>{@code Windows.UIColor.Background}
-         *     <li>{@code macOS.NSColor.textBackgroundColor}
-         *     <li>{@code GTK.theme_bg_color}
-         * </ul>
-         * If the platform does not report a background color, this property defaults to {@code Color.WHITE}.
+         * The color used for background regions. The value of this property corresponds to the
+         * reported color value for the {@code javafx.backgroundColor} key. If the platform does
+         * not report a background color, this property defaults to {@code Color.WHITE}.
          *
          * @return the {@code backgroundColor} property
          */
@@ -631,8 +629,8 @@ public final class Platform {
          * Specifying {@code null} clears the override, which restores the value of the
          * {@code backgroundColor} property to the platform-provided value.
          * <p>
-         * Overriding this property will not override the platform-specific key-value mappings
-         * from which the property value is derived.
+         * Overriding this property will not override key-value mappings that represent the
+         * background color in the underlying map.
          * <p>
          * Calling this method does not update the {@code backgroundColor} property instantaneously;
          * instead, the property is only updated after calling {@link #commit()}, or after the
@@ -644,14 +642,9 @@ public final class Platform {
         void setBackgroundColor(Color color);
 
         /**
-         * The color used for foreground elements like text. The value of this property
-         * corresponds to the reported color value for the following keys:
-         * <ul>
-         *     <li>{@code Windows.UIColor.Foreground}
-         *     <li>{@code macOS.NSColor.textColor}
-         *     <li>{@code GTK.theme_fg_color}
-         * </ul>
-         * If the platform does not report a foreground color, this property defaults to {@code Color.BLACK}.
+         * The color used for foreground elements like text. The value of this property corresponds
+         * to the reported color value for the {@code javafx.foregroundColor} key. If the platform
+         * does not report a foreground color, this property defaults to {@code Color.BLACK}.
          *
          * @return the {@code foregroundColor} property
          */
@@ -670,8 +663,8 @@ public final class Platform {
          * Specifying {@code null} clears the override, which restores the value of the
          * {@code foregroundColor} property to the platform-provided value.
          * <p>
-         * Overriding this property will not override the platform-specific key-value mappings
-         * from which the property value is derived.
+         * Overriding this property will not override key-value mappings that represent the
+         * foreground color in the underlying map.
          * <p>
          * Calling this method does not update the {@code foregroundColor} property instantaneously;
          * instead, the property is only updated after calling {@link #commit()}, or after the
@@ -683,13 +676,9 @@ public final class Platform {
         void setForegroundColor(Color color);
 
         /**
-         * The accent color. The value of this property corresponds to the reported color
-         * value for the following keys:
-         * <ul>
-         *     <li>{@code Windows.UIColor.Accent}
-         *     <li>{@code macOS.NSColor.controlAccentColor}
-         * </ul>
-         * If the platform does not report an accent color, this property defaults to {@code #157EFB}.
+         * The accent color. The value of this property corresponds to the reported color value
+         * for the {@code javafx.accentColor} key. If the platform does not report an accent color,
+         * this property defaults to {@code #157EFB}.
          *
          * @return the {@code accentColor} property
          */
@@ -708,8 +697,8 @@ public final class Platform {
          * Specifying {@code null} clears the override, which restores the value of the
          * {@code accentColor} property to the platform-provided value.
          * <p>
-         * Overriding this property will not override the platform-specific key-value mappings
-         * from which the property value is derived.
+         * Overriding this property will not override key-value mappings that represent the
+         * accent color in the underlying map.
          * <p>
          * Calling this method does not update the {@code accentColor} property instantaneously;
          * instead, the property is only updated after calling {@link #commit()}, or after the

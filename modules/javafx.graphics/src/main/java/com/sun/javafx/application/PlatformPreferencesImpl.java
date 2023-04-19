@@ -44,47 +44,24 @@ import java.util.Objects;
  */
 public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
 
-    private static final Color DEFAULT_BACKGROUND_COLOR = Color.WHITE;
-    private static final Color DEFAULT_FOREGROUND_COLOR = Color.BLACK;
-    private static final Color DEFAULT_ACCENT_COLOR = Color.rgb(21, 126, 251);
-
-    private final ColorProperty backgroundColor = new ColorProperty(
-        "backgroundColor", DEFAULT_BACKGROUND_COLOR, List.of(
-            "Windows.UIColor.Background",
-            "macOS.NSColor.textBackgroundColor",
-            "GTK.theme_bg_color"
-        ));
-
-    private final ColorProperty foregroundColor = new ColorProperty(
-        "foregroundColor", DEFAULT_FOREGROUND_COLOR, List.of(
-            "Windows.UIColor.Foreground",
-            "macOS.NSColor.textColor",
-            "GTK.theme_fg_color"
-        ));
-
-    private final ColorProperty accentColor = new ColorProperty(
-        "accentColor", DEFAULT_ACCENT_COLOR, List.of(
-            "Windows.UIColor.Accent",
-            "macOS.NSColor.controlAccentColor"
-            // GTK: no accent color
-        ));
+    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.WHITE);
+    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.BLACK);
+    private final ColorProperty accentColor = new ColorProperty("accentColor", Color.rgb(21, 126, 251));
 
     private final List<ColorProperty> allColors = List.of(backgroundColor, foregroundColor, accentColor);
 
     private final class ColorProperty extends ReadOnlyObjectPropertyBase<Color> {
         private final String name;
-        private final List<String> platformKeys;
         private final Color defaultValue;
         private Color overrideValue;
         private Color effectiveValue;
         private Color platformValue;
 
-        ColorProperty(String name, Color initialValue, List<String> platformKeys) {
+        ColorProperty(String name, Color initialValue) {
             this.name = name;
             this.defaultValue = initialValue;
             this.effectiveValue = initialValue;
             this.platformValue = initialValue;
-            this.platformKeys = platformKeys;
         }
 
         @Override
@@ -103,7 +80,7 @@ public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
         }
 
         public boolean matchesKey(String key) {
-            return platformKeys.contains(key);
+            return Objects.equals(key, "javafx." + name);
         }
 
         public void setValue(Color value) {

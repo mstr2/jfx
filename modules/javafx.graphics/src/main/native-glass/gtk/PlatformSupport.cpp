@@ -29,11 +29,11 @@
 
 namespace
 {
-    void putColor(JNIEnv* env, GtkStyle* style, jobject preferences, const char* colorName) {
+    void putColor(JNIEnv* env, jobject prefs, GtkStyle* style, const char* lookupColorName, const char* prefColorName) {
         GdkColor color;
-        if (gtk_style_lookup_color(style, colorName, &color)) {
-            env->CallObjectMethod(preferences, jMapPut,
-                env->NewStringUTF(colorName),
+        if (gtk_style_lookup_color(style, lookupColorName, &color)) {
+            env->CallObjectMethod(prefs, jMapPut,
+                env->NewStringUTF(prefColorName),
                 env->CallStaticObjectMethod(
                     jColorCls, jColorRgb,
                     (int)(CLAMP((double)color.red / 65535.0, 0.0, 1.0) * 255.0),
@@ -63,24 +63,31 @@ jobject PlatformSupport::collectPreferences() const {
     if (EXCEPTION_OCCURED(env)) return NULL;
 
     GtkStyle* style = gtk_style_new();
-    putColor(env, style, prefs, "GTK.theme_fg_color");
-    putColor(env, style, prefs, "GTK.theme_bg_color");
-    putColor(env, style, prefs, "GTK.theme_base_color");
-    putColor(env, style, prefs, "GTK.theme_selected_bg_color");
-    putColor(env, style, prefs, "GTK.theme_selected_fg_color");
-    putColor(env, style, prefs, "GTK.insensitive_bg_color");
-    putColor(env, style, prefs, "GTK.insensitive_fg_color");
-    putColor(env, style, prefs, "GTK.insensitive_base_color");
-    putColor(env, style, prefs, "GTK.theme_unfocused_fg_color");
-    putColor(env, style, prefs, "GTK.theme_unfocused_bg_color");
-    putColor(env, style, prefs, "GTK.theme_unfocused_base_color");
-    putColor(env, style, prefs, "GTK.theme_unfocused_selected_bg_color");
-    putColor(env, style, prefs, "GTK.theme_unfocused_selected_fg_color");
-    putColor(env, style, prefs, "GTK.borders");
-    putColor(env, style, prefs, "GTK.unfocused_borders");
-    putColor(env, style, prefs, "GTK.warning_color");
-    putColor(env, style, prefs, "GTK.error_color");
-    putColor(env, style, prefs, "GTK.success_color");
+
+    // Platform-independent color keys
+    putColor(env, prefs, style, "theme_bg_color", "javafx.backgroundColor");
+    putColor(env, prefs, style, "theme_fg_color", "javafx.foregroundColor");
+
+    // Platform-specific color keys
+    putColor(env, prefs, style, "theme_fg_color", "GTK.theme_fg_color");
+    putColor(env, prefs, style, "theme_bg_color", "GTK.theme_bg_color");
+    putColor(env, prefs, style, "theme_base_color", "GTK.theme_base_color");
+    putColor(env, prefs, style, "theme_selected_bg_color", "GTK.theme_selected_bg_color");
+    putColor(env, prefs, style, "theme_selected_fg_color", "GTK.theme_selected_fg_color");
+    putColor(env, prefs, style, "insensitive_bg_color", "GTK.insensitive_bg_color");
+    putColor(env, prefs, style, "insensitive_fg_color", "GTK.insensitive_fg_color");
+    putColor(env, prefs, style, "insensitive_base_color", "GTK.insensitive_base_color");
+    putColor(env, prefs, style, "theme_unfocused_fg_color", "GTK.theme_unfocused_fg_color");
+    putColor(env, prefs, style, "theme_unfocused_bg_color", "GTK.theme_unfocused_bg_color");
+    putColor(env, prefs, style, "theme_unfocused_base_color", "GTK.theme_unfocused_base_color");
+    putColor(env, prefs, style, "theme_unfocused_selected_bg_color", "GTK.theme_unfocused_selected_bg_color");
+    putColor(env, prefs, style, "theme_unfocused_selected_fg_color", "GTK.theme_unfocused_selected_fg_color");
+    putColor(env, prefs, style, "borders", "GTK.borders");
+    putColor(env, prefs, style, "unfocused_borders", "GTK.unfocused_borders");
+    putColor(env, prefs, style, "warning_color", "GTK.warning_color");
+    putColor(env, prefs, style, "error_color", "GTK.error_color");
+    putColor(env, prefs, style, "success_color", "GTK.success_color");
+
     g_object_unref(style);
 
     GtkSettings* settings = gtk_settings_get_default();
