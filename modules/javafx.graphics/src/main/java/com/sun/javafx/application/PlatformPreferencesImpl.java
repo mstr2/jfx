@@ -25,6 +25,7 @@
 
 package com.sun.javafx.application;
 
+import com.sun.javafx.util.Logging;
 import com.sun.javafx.util.Utils;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
@@ -33,7 +34,6 @@ import javafx.beans.property.ReadOnlyObjectPropertyBase;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.scene.paint.Color;
 import javafx.stage.Appearance;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,21 +44,28 @@ import java.util.Objects;
  */
 public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
 
-    private final ColorProperty backgroundColor = new ColorProperty("backgroundColor", Color.WHITE);
-    private final ColorProperty foregroundColor = new ColorProperty("foregroundColor", Color.BLACK);
-    private final ColorProperty accentColor = new ColorProperty("accentColor", Color.rgb(21, 126, 251));
+    private final ColorProperty backgroundColor = new ColorProperty(
+            "backgroundColor", "javafx.backgroundColor", Color.WHITE);
+
+    private final ColorProperty foregroundColor = new ColorProperty(
+            "foregroundColor", "javafx.foregroundColor", Color.BLACK);
+
+    private final ColorProperty accentColor = new ColorProperty(
+            "accentColor", "javafx.accentColor", Color.rgb(21, 126, 251));
 
     private final List<ColorProperty> allColors = List.of(backgroundColor, foregroundColor, accentColor);
 
     private final class ColorProperty extends ReadOnlyObjectPropertyBase<Color> {
         private final String name;
+        private final String key;
         private final Color defaultValue;
         private Color overrideValue;
         private Color effectiveValue;
         private Color platformValue;
 
-        ColorProperty(String name, Color initialValue) {
+        ColorProperty(String name, String key, Color initialValue) {
             this.name = name;
+            this.key = key;
             this.defaultValue = initialValue;
             this.effectiveValue = initialValue;
             this.platformValue = initialValue;
@@ -74,24 +81,26 @@ public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
             return name;
         }
 
+        public String getKey() {
+            return key;
+        }
+
         @Override
         public Color get() {
             return effectiveValue;
         }
 
-        public boolean matchesKey(String key) {
-            return Objects.equals(key, "javafx." + name);
-        }
-
         public void setValue(Color value) {
             this.platformValue = value;
+            update();
         }
 
         public void setValueOverride(Color value) {
             this.overrideValue = value;
+            update();
         }
 
-        public void commit() {
+        private void update() {
             Color newValue = Objects.requireNonNullElse(
                 overrideValue != null ? overrideValue : platformValue,
                 defaultValue);
@@ -110,16 +119,18 @@ public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
 
         AppearanceProperty() {
             super(PlatformPreferencesImpl.this, "appearance");
-            InvalidationListener listener = observable -> commit();
+            InvalidationListener listener = observable -> update();
             backgroundColor.addListener(listener);
             foregroundColor.addListener(listener);
+            update();
         }
 
         public void setValueOverride(Appearance appearance) {
             appearanceOverride = appearance;
+            update();
         }
 
-        public void commit() {
+        private void update() {
             if (appearanceOverride != null) {
                 set(appearanceOverride);
             } else {
@@ -129,19 +140,6 @@ public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
                 set(isDark ? Appearance.DARK : Appearance.LIGHT);
             }
         }
-    }
-
-    public PlatformPreferencesImpl() {
-        commit();
-    }
-
-    @Override
-    public void commit() {
-        super.commit();
-        backgroundColor.commit();
-        foregroundColor.commit();
-        accentColor.commit();
-        appearance.commit();
     }
 
     @Override
@@ -205,21 +203,29 @@ public final class PlatformPreferencesImpl extends PlatformPreferencesBaseImpl {
     }
 
     @Override
-    protected void updateDerivedPreferences(Map<String, ChangedValue> changedPreferences) {
-        List<ColorProperty> changedColorProperties = new ArrayList<>();
-
+    void updateDerivedPreferences(Map<String, ChangedValue> changedPreferences) {
         for (Map.Entry<String, ChangedValue> entry : changedPreferences.entrySet()) {
-            if (entry.getValue().newValue() instanceof Color color) {
-                for (ColorProperty colorProperty : allColors) {
-                    if (colorProperty.matchesKey(entry.getKey())) {
-                        colorProperty.setValue(color);
-                        changedColorProperties.add(colorProperty);
-                    }
+            for (ColorProperty colorProperty : allColors) {
+                if (colorProperty.getKey().equals(entry.getKey())) {
+                    updateColorPreference(colorProperty, entry.getValue().newValue());
                 }
             }
         }
+    }
 
-        changedColorProperties.forEach(ColorProperty::commit);
+    private void updateColorPreference(ColorProperty property, Object value) {
+        if (value instanceof Color color) {
+            property.setValue(color);
+        } else {
+            if (value != null) {
+                Logging.getJavaFXLogger().warning(
+                    "Unexpected value of " + property.getKey() + " platform preference, " +
+                    "using default value instead (expected = " + Color.class.getName() +
+                    ", actual = " + value.getClass().getName() + ")");
+            }
+
+            property.setValue(null);
+        }
     }
 
 }

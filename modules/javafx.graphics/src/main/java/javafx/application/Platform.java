@@ -597,11 +597,6 @@ public final class Platform {
          * <p>
          * Specifying {@code null} clears the override, which restores the value of the
          * {@code appearance} property to the platform-provided value.
-         * <p>
-         * Calling this method does not update the {@code appearance} property instantaneously;
-         * instead, the property is only updated after calling {@link #commit()}, or after the
-         * occurrence of an operating system event that causes the {@code appearance} property
-         * to be recomputed.
          *
          * @param appearance the platform appearance override, or {@code null} to clear the override
          */
@@ -631,11 +626,6 @@ public final class Platform {
          * <p>
          * Overriding this property will not override key-value mappings that represent the
          * background color in the underlying map.
-         * <p>
-         * Calling this method does not update the {@code backgroundColor} property instantaneously;
-         * instead, the property is only updated after calling {@link #commit()}, or after the
-         * occurrence of an operating system event that causes the {@code backgroundColor} property
-         * to be recomputed.
          *
          * @param color the background color override, or {@code null} to clear the override
          */
@@ -665,11 +655,6 @@ public final class Platform {
          * <p>
          * Overriding this property will not override key-value mappings that represent the
          * foreground color in the underlying map.
-         * <p>
-         * Calling this method does not update the {@code foregroundColor} property instantaneously;
-         * instead, the property is only updated after calling {@link #commit()}, or after the
-         * occurrence of an operating system event that causes the {@code foregroundColor} property
-         * to be recomputed.
          *
          * @param color the foreground color override, or {@code null} to clear the override
          */
@@ -699,11 +684,6 @@ public final class Platform {
          * <p>
          * Overriding this property will not override key-value mappings that represent the
          * accent color in the underlying map.
-         * <p>
-         * Calling this method does not update the {@code accentColor} property instantaneously;
-         * instead, the property is only updated after calling {@link #commit()}, or after the
-         * occurrence of an operating system event that causes the {@code accentColor} property
-         * to be recomputed.
          *
          * @param color the accent color override, or {@code null} to clear the override
          */
@@ -787,10 +767,6 @@ public final class Platform {
          * Specifying a {@code null} value clears the override, which restores the value mapped to
          * the key to the platform-provided value. If the platform does not provide a mapping for
          * the specified key, the mapping is effectively removed.
-         * <p>
-         * Calling this method does not update the mapping instantaneously; instead, the mapping
-         * is only updated after calling {@link #commit()}, or after the occurrence of an operating
-         * system event that causes the mapped value to be recomputed.
          *
          * @param key the key
          * @param value the new value, or {@code null} to clear the override
@@ -800,12 +776,7 @@ public final class Platform {
          *                                  than the platform-provided value
          * @return the previous value associated with {@code key}
          */
-        <T> T override(String key, T value);
-
-        /**
-         * Commits outstanding overridden preferences, which also causes the values of derived
-         * properties to be recomputed.
-         */
-        void commit();
+        @Override
+        Object put(String key, Object value);
     }
 }

@@ -1048,7 +1048,7 @@ public class PlatformImpl {
 
     private static final PlatformPreferencesImpl platformPreferences = new PlatformPreferencesImpl();
 
-    public static Platform.Preferences getPlatformPreferences() {
+    public static PlatformPreferencesImpl getPlatformPreferences() {
         return platformPreferences;
     }
 

@@ -31,16 +31,15 @@ import javafx.beans.InvalidationListener;
 import javafx.collections.MapChangeListener;
 import javafx.scene.paint.Color;
 import java.util.AbstractMap;
-import java.util.AbstractSet;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Contains the {@link Map} implementation of the {@link Platform.Preferences} interface.
@@ -48,17 +47,44 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> implements Platform.Preferences {
 
-    private final Map<String, ValueEntry> backingMap = new HashMap<>() {
-        @Override
-        public ValueEntry put(String key, ValueEntry value) {
-            entrySet.invalidateSize();
-            return super.put(key, value);
-        }
-    };
+    private final List<InvalidationListener> invalidationListeners = new ArrayList<>();
+    private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new ArrayList<>();
+    private final Map<String, Object> platformPreferences = new HashMap<>();
+    private final Map<String, Object> userPreferences = new HashMap<>();
+    private final Map<String, Object> effectivePreferences = new HashMap<>();
+    private final Map<String, Object> unmodifiableEffectivePreferences = Collections.unmodifiableMap(effectivePreferences);
+    private Map<String, Object> lastEffectivePreferences = Map.of();
+    private boolean effectivePreferencesChanged;
 
-    private final EntrySet entrySet = new EntrySet(backingMap.entrySet());
-    private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
-    private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new CopyOnWriteArrayList<>();
+    @Override
+    public Set<Entry<String, Object>> entrySet() {
+        return unmodifiableEffectivePreferences.entrySet();
+    }
+
+    @Override
+    public Object remove(Object key) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public synchronized void addListener(InvalidationListener listener) {
+        invalidationListeners.add(listener);
+    }
+
+    @Override
+    public synchronized void removeListener(InvalidationListener listener) {
+        invalidationListeners.remove(listener);
+    }
+
+    @Override
+    public synchronized void addListener(MapChangeListener<? super String, ? super Object> listener) {
+        changeListeners.add(listener);
+    }
+
+    @Override
+    public synchronized void removeListener(MapChangeListener<? super String, ? super Object> listener) {
+        changeListeners.remove(listener);
+    }
 
     @Override
     public Optional<Integer> getInteger(String key) {
@@ -89,143 +115,121 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
     @SuppressWarnings("unchecked")
     public <T> Optional<T> getValue(String key, Class<T> type) {
         Objects.requireNonNull(key, "key cannot be null");
-        Object value = ValueEntry.getEffectiveValue(backingMap.get(key));
-        if (value != null && !type.isInstance(value)) {
-            throw new IllegalArgumentException(
-                "Incompatible types: requested = " + type.getName() + ", actual = " + value.getClass().getName());
+        Object value = effectivePreferences.get(key);
+
+        if (value == null) {
+            return Optional.empty();
         }
 
-        return value != null ? Optional.of((T)value) : Optional.empty();
+        if (type.isInstance(value)) {
+            return Optional.of((T)value);
+        }
+
+        throw new IllegalArgumentException(
+            "Incompatible types: requested = " + type.getName() +
+            ", actual = " + value.getClass().getName());
     }
 
     @Override
-    public Object get(Object key) {
+    public Object put(String key, Object value) {
         Objects.requireNonNull(key, "key cannot be null");
-        return ValueEntry.getEffectiveValue(backingMap.get(key));
-    }
+        Object effectiveValue = effectivePreferences.get(key);
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T> T override(String key, T value) {
-        Objects.requireNonNull(key, "key cannot be null");
-        ValueEntry entry = backingMap.get(key);
-        Object existingValue = ValueEntry.getEffectiveValue(entry);
-
-        if (value != null && existingValue != null && !existingValue.getClass().isInstance(value)) {
+        if (value != null && effectiveValue != null && !effectiveValue.getClass().isInstance(value)) {
             throw new IllegalArgumentException(
-                "Cannot override a value of type " + existingValue.getClass().getName() +
+                "Cannot override a value of type " + effectiveValue.getClass().getName() +
                 " with a value of type " + value.getClass().getName());
         }
 
-        backingMap.put(key, ValueEntry.withUserValue(entry, value));
-        return (T)existingValue;
-    }
-
-    @Override
-    public Object remove(Object key) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Set<Entry<String, Object>> entrySet() {
-        return entrySet;
-    }
-
-    @Override
-    public void addListener(InvalidationListener listener) {
-        invalidationListeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(InvalidationListener listener) {
-        invalidationListeners.remove(listener);
-    }
-
-    @Override
-    public void addListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.remove(listener);
-    }
-
-    @Override
-    public void commit() {
-        Map<String, ChangedValue> changedPreferences = null;
-
-        for (Map.Entry<String, ValueEntry> entry : backingMap.entrySet()) {
-            ValueEntry valueEntry = entry.getValue();
-            ChangedValue changedValue = valueEntry.tryCommit();
-
-            if (changedValue != null) {
-                if (changedPreferences == null) {
-                    changedPreferences = new HashMap<>();
-                }
-
-                changedPreferences.put(entry.getKey(), changedValue);
-            }
+        if (value != null) {
+            userPreferences.put(key, value);
+            effectivePreferences.put(key, value);
+        } else {
+            userPreferences.remove(key);
+            effectivePreferences.put(key, platformPreferences.get(key));
         }
 
-        if (changedPreferences != null) {
+        if (!Objects.equals(effectiveValue, value)) {
+            var changedPreferences = Map.of(key, new ChangedValue(effectiveValue, value));
+            updateDerivedPreferences(changedPreferences);
             fireValueChangedEvent(changedPreferences);
+            effectivePreferencesChanged = true;
         }
+
+        return effectiveValue;
     }
 
-    protected abstract void updateDerivedPreferences(Map<String, ChangedValue> changedPreferences);
+    /**
+     * Returns an unmodifiable map that contains all new or effectively changed mappings
+     * since the last time this method was called.
+     */
+    public final Map<String, Object> pollChanges() {
+        if (!effectivePreferencesChanged) {
+            return Map.of();
+        }
+
+        Map<String, Object> changes = new HashMap<>(size());
+
+        for (var pref : getEffectiveChanges(lastEffectivePreferences, effectivePreferences).entrySet()) {
+            changes.put(pref.getKey(), pref.getValue().newValue());
+        }
+
+        effectivePreferencesChanged = false;
+        lastEffectivePreferences = new HashMap<>(effectivePreferences);
+
+        return Collections.unmodifiableMap(changes);
+    }
 
     /**
      * Updates this map of preferences with a set of new or changed platform preferences.
-     * <p>
-     * The new preferences may include all available preferences, or only the new/changed preferences.
-     * The implementation delays firing notifications until all preferences have been applied to ensure
-     * that observers will never observe this map in an inconsistent state.
-     * InvalidationListeners are only notified once, even if several preferences have changed.
+     * The specified preferences may include all available preferences, or only the new/changed preferences.
      */
-    public final void update(Map<String, Object> preferences) {
-        Map<String, ChangedValue> changedPreferences = getChangedPreferences(preferences);
-        if (changedPreferences.isEmpty()) {
-            return;
-        }
+    public final void update(Map<String, Object> newOrChangedPreferences) {
+        Map<String, Object> currentEffectivePreferences = new HashMap<>(effectivePreferences);
+        platformPreferences.putAll(newOrChangedPreferences);
+        effectivePreferences.clear();
+        effectivePreferences.putAll(platformPreferences);
+        effectivePreferences.putAll(userPreferences);
 
-        for (Map.Entry<String, ChangedValue> entry : changedPreferences.entrySet()) {
-            ValueEntry existingEntry = backingMap.get(entry.getKey());
-            ValueEntry newEntry = ValueEntry.withPlatformValue(existingEntry, entry.getValue().newValue);
-            backingMap.put(entry.getKey(), newEntry);
+        // Only fire change notifications if any preference has effectively changed.
+        var effectivelyChangedPreferences = getEffectiveChanges(currentEffectivePreferences, effectivePreferences);
+        if (!effectivelyChangedPreferences.isEmpty()) {
+            updateDerivedPreferences(effectivelyChangedPreferences);
+            fireValueChangedEvent(effectivelyChangedPreferences);
+            effectivePreferencesChanged = true;
         }
-
-        updateDerivedPreferences(changedPreferences);
-        fireValueChangedEvent(changedPreferences);
     }
 
     /**
-     * Given a map of new preferences, this method returns a new map that only contains
-     * mappings that have actually changed compared to the currently known preferences.
+     * Returns a map that contains the new or changed mappings of {@code change} compared to {@code base}.
      */
-    private Map<String, ChangedValue> getChangedPreferences(Map<String, Object> preferences) {
-        Map<String, ChangedValue> changed = new HashMap<>();
+    private Map<String, ChangedValue> getEffectiveChanges(Map<String, Object> base, Map<String, Object> change) {
+        Map<String, ChangedValue> changed = null;
 
-        for (Map.Entry<String, Object> entry : preferences.entrySet()) {
-            Object existingValue = ValueEntry.getEffectiveValue(backingMap.get(entry.getKey()));
+        for (Map.Entry<String, Object> entry : change.entrySet()) {
             Object newValue = entry.getValue();
+            Object oldValue = base.get(entry.getKey());
             boolean equals = false;
 
-            if (existingValue instanceof Object[] && newValue instanceof Object[]) {
-                equals = Arrays.equals((Object[]) existingValue, (Object[]) newValue);
-            } else if (!(existingValue instanceof Object[]) && !(newValue instanceof Object[])) {
-                equals = Objects.equals(existingValue, newValue);
+            if (oldValue instanceof Object[] oldArray && newValue instanceof Object[] newArray) {
+                equals = Arrays.equals(oldArray, newArray);
+            } else if (!(oldValue instanceof Object[]) && !(newValue instanceof Object[])) {
+                equals = Objects.equals(oldValue, newValue);
             }
 
             if (!equals) {
-                changed.put(entry.getKey(), new ChangedValue(existingValue, newValue));
+                if (changed == null) {
+                    changed = new HashMap<>();
+                }
+
+                changed.put(entry.getKey(), new ChangedValue(oldValue, newValue));
             }
         }
 
-        return changed;
+        return changed != null ? changed : Map.of();
     }
 
-    private void fireValueChangedEvent(Map<String, ChangedValue> changedPreferences) {
+    private synchronized void fireValueChangedEvent(Map<String, ChangedValue> changedEntries) {
         for (InvalidationListener listener : invalidationListeners) {
             try {
                 listener.invalidated(this);
@@ -237,7 +241,7 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
         if (changeListeners.size() > 0) {
             var change = new MapExpressionHelper.SimpleChange<>(this);
 
-            for (Map.Entry<String, ChangedValue> entry : changedPreferences.entrySet()) {
+            for (Map.Entry<String, ChangedValue> entry : changedEntries.entrySet()) {
                 change.setPut(entry.getKey(), entry.getValue().oldValue, entry.getValue().newValue);
 
                 for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
@@ -251,137 +255,8 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
         }
     }
 
-    protected record ChangedValue(Object oldValue, Object newValue) {}
+    abstract void updateDerivedPreferences(Map<String, ChangedValue> changedPreferences);
 
-    private static class ValueEntry {
-        /**
-         * Returns the effective value of the specified {@code ValueEntry}, which is the
-         * user value (if not null) or the platform value (if the user value is null).
-         * The effective value may be null.
-         */
-        static Object getEffectiveValue(ValueEntry entry) {
-            if (entry == null) {
-                return null;
-            }
-
-            return entry.userValue != null ? entry.userValue : entry.platformValue;
-        }
-
-        /**
-         * Creates a new {@code ValueEntry} with the specified platform value.
-         * If the existing entry has an uncommitted attachment, it is automatically committed.
-         */
-        static ValueEntry withPlatformValue(ValueEntry entry, Object platformValue) {
-            Object userValue;
-            if (entry != null) {
-                userValue = entry.uncommittedEntry != null ? entry.uncommittedEntry.userValue : entry.userValue;
-            } else {
-                userValue = null;
-            }
-
-            return new ValueEntry(platformValue, userValue);
-        }
-
-        /**
-         * Creates a new {@code ValueEntry} with the specified user value.
-         * The user value will be recorded in the uncommitted attachment, which means that the
-         * returned {@code ValueEntry} will still resolve to its old value until it is committed.
-         */
-        static ValueEntry withUserValue(ValueEntry entry, Object userValue) {
-            if (entry != null) {
-                var uncommittedEntry = new ValueEntry(entry.platformValue, userValue);
-                return new ValueEntry(entry.platformValue, entry.userValue, uncommittedEntry);
-            } else if (userValue != null) {
-                var uncommittedEntry = new ValueEntry(null, userValue);
-                return new ValueEntry(null, null, uncommittedEntry);
-            } else {
-                return new ValueEntry(null, null);
-            }
-        }
-
-        private Object platformValue;
-        private Object userValue;
-        private ValueEntry uncommittedEntry;
-
-        private ValueEntry(Object platformValue, Object userValue) {
-            this.platformValue = platformValue;
-            this.userValue = userValue;
-        }
-
-        private ValueEntry(Object platformValue, Object userValue, ValueEntry uncommittedEntry) {
-            this(platformValue, userValue);
-            this.uncommittedEntry = uncommittedEntry;
-        }
-
-        /**
-         * Tries to commit an uncommitted attachment, and returns a {@link ChangedValue} if the
-         * effective value of this {@code ValueEntry} changed as a result.
-         */
-        ChangedValue tryCommit() {
-            if (uncommittedEntry == null) {
-                return null;
-            }
-
-            Object oldEffectiveValue = getEffectiveValue(this);
-            Object newEffectiveValue = getEffectiveValue(uncommittedEntry);
-            platformValue = uncommittedEntry.platformValue;
-            userValue = uncommittedEntry.userValue;
-            uncommittedEntry = null;
-
-            if (oldEffectiveValue != newEffectiveValue) {
-                return new ChangedValue(oldEffectiveValue, newEffectiveValue);
-            }
-
-            return null;
-        }
-    }
-
-    /**
-     * The entry set contains all mappings of the backing map where the effective value is not null.
-     */
-    private static class EntrySet extends AbstractSet<Entry<String, Object>> {
-        private final Set<Entry<String, ValueEntry>> backingSet;
-        private int size = -1;
-
-        EntrySet(Set<Entry<String, ValueEntry>> backingSet) {
-            this.backingSet = backingSet;
-        }
-
-        @Override
-        public Iterator<Entry<String, Object>> iterator() {
-            return new Iterator<>() {
-                final Iterator<Entry<String, ValueEntry>> it = backingSet.stream()
-                    .filter(entry -> ValueEntry.getEffectiveValue(entry.getValue()) != null)
-                    .iterator();
-
-                @Override
-                public boolean hasNext() {
-                    return it.hasNext();
-                }
-
-                @Override
-                public Entry<String, Object> next() {
-                    Entry<String, ValueEntry> entry = it.next();
-                    return new AbstractMap.SimpleImmutableEntry<>(
-                        entry.getKey(), ValueEntry.getEffectiveValue(entry.getValue()));
-                }
-            };
-        }
-
-        @Override
-        public int size() {
-            if (size < 0) {
-                size = (int)backingSet.stream()
-                    .filter(entry -> ValueEntry.getEffectiveValue(entry.getValue()) != null)
-                    .count();
-            }
-
-            return size;
-        }
-
-        void invalidateSize() {
-            size = -1;
-        }
-    }
+    record ChangedValue(Object oldValue, Object newValue) {}
 
 }

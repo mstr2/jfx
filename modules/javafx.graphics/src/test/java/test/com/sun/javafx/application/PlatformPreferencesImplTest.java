@@ -67,10 +67,8 @@ public class PlatformPreferencesImplTest {
         prefs.setAppearance(Appearance.DARK);
         prefs.setBackgroundColor(Color.WHITE);
         prefs.setForegroundColor(Color.BLACK);
-        prefs.commit();
         assertEquals(Appearance.DARK, prefs.getAppearance());
         prefs.setAppearance(null);
-        prefs.commit();
         assertEquals(Appearance.LIGHT, prefs.getAppearance());
     }
 
@@ -79,12 +77,8 @@ public class PlatformPreferencesImplTest {
         var prefs = new PlatformPreferencesImpl();
         assertEquals(Appearance.LIGHT, prefs.getAppearance());
         prefs.setAppearance(Appearance.DARK);
-        assertEquals(Appearance.LIGHT, prefs.getAppearance());
-        prefs.commit();
         assertEquals(Appearance.DARK, prefs.getAppearance());
         prefs.setAppearance(null);
-        assertEquals(Appearance.DARK, prefs.getAppearance());
-        prefs.commit();
         assertEquals(Appearance.LIGHT, prefs.getAppearance());
     }
 
@@ -93,12 +87,8 @@ public class PlatformPreferencesImplTest {
         var prefs = new PlatformPreferencesImpl();
         assertEquals(Color.WHITE, prefs.getBackgroundColor());
         prefs.setBackgroundColor(Color.GREEN);
-        assertEquals(Color.WHITE, prefs.getBackgroundColor());
-        prefs.commit();
         assertEquals(Color.GREEN, prefs.getBackgroundColor());
         prefs.setBackgroundColor(null);
-        assertEquals(Color.GREEN, prefs.getBackgroundColor());
-        prefs.commit();
         assertEquals(Color.WHITE, prefs.getBackgroundColor());
     }
 
@@ -107,12 +97,8 @@ public class PlatformPreferencesImplTest {
         var prefs = new PlatformPreferencesImpl();
         assertEquals(Color.BLACK, prefs.getForegroundColor());
         prefs.setForegroundColor(Color.GREEN);
-        assertEquals(Color.BLACK, prefs.getForegroundColor());
-        prefs.commit();
         assertEquals(Color.GREEN, prefs.getForegroundColor());
         prefs.setForegroundColor(null);
-        assertEquals(Color.GREEN, prefs.getForegroundColor());
-        prefs.commit();
         assertEquals(Color.BLACK, prefs.getForegroundColor());
     }
 

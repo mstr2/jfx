@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2568,6 +2568,17 @@ public class Scene implements EventTarget {
             }
         }
 
+        /**
+         * Changed preferences that may affect the current style theme are polled right before the CSS pass,
+         * which ensures that changes in the CSS theme are completed before CSS is applied.
+         */
+        private void updateStyleTheme() {
+            Map<String, Object> changedPreferences = PlatformImpl.getPlatformPreferences().pollChanges();
+            if (!changedPreferences.isEmpty()) {
+                // Things will happen here when StyleThemes are added.
+            }
+        }
+
         @Override
         public void pulse() {
             if (Scene.this.tracker != null) {
@@ -2580,6 +2591,8 @@ public class Scene implements EventTarget {
             focusCleanup();
 
             disposeAccessibles();
+
+            updateStyleTheme();
 
             // run any scene pre pulse listeners immediately _before_ css / layout,
             // and before scene synchronization

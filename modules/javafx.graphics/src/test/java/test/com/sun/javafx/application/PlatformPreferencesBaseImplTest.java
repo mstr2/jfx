@@ -45,11 +45,12 @@ public class PlatformPreferencesBaseImplTest {
     void testMapIsImmutable() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of("integer", 5, "double", 7.5));
-        assertThrows(UnsupportedOperationException.class, () -> prefs.put("key", "value"));
         assertThrows(UnsupportedOperationException.class, () -> prefs.remove("key"));
         assertThrows(UnsupportedOperationException.class, () -> prefs.clear());
         assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().remove(prefs.entrySet().iterator().next()));
         assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().clear());
+        assertThrows(UnsupportedOperationException.class, () -> prefs.keySet().remove(prefs.keySet().iterator().next()));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.keySet().clear());
     }
 
     @Test
@@ -58,19 +59,11 @@ public class PlatformPreferencesBaseImplTest {
         prefs.update(Map.of("integer", 5, "double", 7.5));
 
         // Override the "integer" mapping with a user value
-        assertEquals(5, prefs.override("integer", 10));
-        assertEquals(5, prefs.get("integer"));
-
-        // The user value only takes effect after committing
-        prefs.commit();
+        assertEquals(5, prefs.put("integer", 10));
         assertEquals(10, prefs.get("integer"));
 
         // Clear the user value
-        assertEquals(10, prefs.override("integer", (Integer)null));
-        assertEquals(10, prefs.get("integer"));
-
-        // The platform value only takes effect after committing
-        prefs.commit();
+        assertEquals(10, prefs.put("integer", (Integer)null));
         assertEquals(5, prefs.get("integer"));
     }
 
@@ -78,7 +71,7 @@ public class PlatformPreferencesBaseImplTest {
     void testCannotOverrideValueWithDifferentType() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of("integer", 5));
-        assertThrows(IllegalArgumentException.class, () -> prefs.override("integer", 3.141));
+        assertThrows(IllegalArgumentException.class, () -> prefs.put("integer", 3.141));
     }
 
     @Test
