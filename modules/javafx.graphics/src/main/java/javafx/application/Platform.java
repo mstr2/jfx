@@ -765,8 +765,8 @@ public final class Platform {
          * exist, this method creates a new mapping.
          *
          * @param key the key
-         * @param value the new value, or {@code null} to clear the override
-         * @throws NullPointerException if {@code key} is null
+         * @param value the new value
+         * @throws NullPointerException if {@code key} or {@code value} is null
          * @throws IllegalArgumentException if a platform-provided mapping for the key exists, and
          *                                  the specified value is an instance of a different class
          *                                  than the platform-provided value

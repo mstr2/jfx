@@ -90,6 +90,13 @@ public class PlatformPreferencesBaseImplTest {
     }
 
     @Test
+    void testCannotOverrideWithNullValue() {
+        var prefs = new PlatformPreferencesImpl();
+        prefs.update(Map.of("k", 5));
+        assertThrows(NullPointerException.class, () -> prefs.put("k", null));
+    }
+
+    @Test
     void testUnknownKeyReturnsEmptyValue() {
         var prefs = new PlatformPreferencesImpl();
         assertEquals(Optional.empty(), prefs.getInteger("does_not_exist"));
