@@ -758,15 +758,11 @@ public final class Platform {
         <T> Optional<T> getValue(String key, Class<T> type);
 
         /**
-         * Overrides a key-value mapping.
+         * Overrides a preference mapping.
          * <p>
          * If a platform-provided mapping for the key already exists, calling this method overrides
          * the value that is mapped to the key. If a platform-provided mapping for the key doesn't
          * exist, this method creates a new mapping.
-         * <p>
-         * Specifying a {@code null} value clears the override, which restores the value mapped to
-         * the key to the platform-provided value. If the platform does not provide a mapping for
-         * the specified key, the mapping is effectively removed.
          *
          * @param key the key
          * @param value the new value, or {@code null} to clear the override
@@ -778,5 +774,23 @@ public final class Platform {
          */
         @Override
         Object put(String key, Object value);
+
+        /**
+         * Resets an overridden preference mapping to its platform-provided value.
+         * <p>
+         * If the preference is overridden, but the platform does not provide a mapping for the
+         * specified key, the mapping will be removed. If no mapping exists for the specified
+         * key, calling this method has no effect.
+         *
+         * @param key the key
+         * @throws NullPointerException if {@code key} is null
+         */
+        void reset(String key);
+
+        /**
+         * Resets all overridden preference mappings to their platform-provided values and removes
+         * all mappings for which the platform does not provide a default value.
+         */
+        void reset();
     }
 }

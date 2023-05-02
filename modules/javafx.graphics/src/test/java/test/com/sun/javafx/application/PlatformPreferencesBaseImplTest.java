@@ -44,8 +44,8 @@ public class PlatformPreferencesBaseImplTest {
     @Test
     void testMapIsImmutable() {
         var prefs = new PlatformPreferencesImpl();
-        prefs.update(Map.of("integer", 5, "double", 7.5));
-        assertThrows(UnsupportedOperationException.class, () -> prefs.remove("key"));
+        prefs.update(Map.of("k1", 5, "k2", 7.5));
+        assertThrows(UnsupportedOperationException.class, () -> prefs.remove("k1"));
         assertThrows(UnsupportedOperationException.class, () -> prefs.clear());
         assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().remove(prefs.entrySet().iterator().next()));
         assertThrows(UnsupportedOperationException.class, () -> prefs.entrySet().clear());
@@ -54,24 +54,39 @@ public class PlatformPreferencesBaseImplTest {
     }
 
     @Test
-    void testAddAndRemoveUserValue() {
+    void testResetSingleMapping() {
         var prefs = new PlatformPreferencesImpl();
-        prefs.update(Map.of("integer", 5, "double", 7.5));
+        prefs.update(Map.of("k1", 5, "k2", 7.5));
 
-        // Override the "integer" mapping with a user value
-        assertEquals(5, prefs.put("integer", 10));
-        assertEquals(10, prefs.get("integer"));
+        // Override the "k1" mapping with a user value
+        assertEquals(5, prefs.put("k1", 10));
+        assertEquals(10, prefs.get("k1"));
 
         // Clear the user value
-        assertEquals(10, prefs.put("integer", (Integer)null));
-        assertEquals(5, prefs.get("integer"));
+        prefs.reset("k1");
+        assertEquals(5, prefs.get("k1"));
+    }
+
+    @Test
+    void testResetAllMappings() {
+        var prefs = new PlatformPreferencesImpl();
+        prefs.update(Map.of("k1", 5, "k2", 7.5));
+
+        prefs.put("k1", 10);
+        prefs.put("k2", 0.123);
+        assertEquals(10, prefs.getInteger("k1").orElseThrow());
+        assertEquals(0.123, prefs.getDouble("k2").orElseThrow(), 0.001);
+
+        prefs.reset();
+        assertEquals(5, prefs.getInteger("k1").orElseThrow());
+        assertEquals(7.5, prefs.getDouble("k2").orElseThrow(), 0.001);
     }
 
     @Test
     void testCannotOverrideValueWithDifferentType() {
         var prefs = new PlatformPreferencesImpl();
-        prefs.update(Map.of("integer", 5));
-        assertThrows(IllegalArgumentException.class, () -> prefs.put("integer", 3.141));
+        prefs.update(Map.of("k", 5));
+        assertThrows(IllegalArgumentException.class, () -> prefs.put("k", 3.141));
     }
 
     @Test
@@ -88,25 +103,25 @@ public class PlatformPreferencesBaseImplTest {
     @Test
     void testGetValueWithWrongTypeFails() {
         var prefs = new PlatformPreferencesImpl();
-        prefs.update(Map.of("integer", 5));
-        assertThrows(IllegalArgumentException.class, () -> prefs.getValue("integer", Double.class));
+        prefs.update(Map.of("k", 5));
+        assertThrows(IllegalArgumentException.class, () -> prefs.getValue("k", Double.class));
     }
 
     @Test
     void testOptionalKeys() {
         var prefs = new PlatformPreferencesImpl();
         prefs.update(Map.of(
-            "integer", 5,
-            "double", 7.5,
-            "boolean", true,
-            "string", "foo",
-            "color", Color.RED));
+            "k1", 5,
+            "k2", 7.5,
+            "k3", true,
+            "k4", "foo",
+            "k5", Color.RED));
 
-        assertEquals(5, prefs.getInteger("integer").get());
-        assertEquals(7.5, prefs.getDouble("double").get(), 0.001);
-        assertEquals(true, prefs.getBoolean("boolean").get());
-        assertEquals("foo", prefs.getString("string").get());
-        assertEquals(Color.RED, prefs.getColor("color").get());
+        assertEquals(5, prefs.getInteger("k1").orElseThrow());
+        assertEquals(7.5, prefs.getDouble("k2").orElseThrow(), 0.001);
+        assertEquals(true, prefs.getBoolean("k3").orElseThrow());
+        assertEquals("foo", prefs.getString("k4").orElseThrow());
+        assertEquals(Color.RED, prefs.getColor("k5").orElseThrow());
     }
 
     @Test

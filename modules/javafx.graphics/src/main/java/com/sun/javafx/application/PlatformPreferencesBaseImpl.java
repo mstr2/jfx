@@ -133,21 +133,17 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
     @Override
     public Object put(String key, Object value) {
         Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(value, "value cannot be null");
         Object effectiveValue = effectivePreferences.get(key);
 
-        if (value != null && effectiveValue != null && !effectiveValue.getClass().isInstance(value)) {
+        if (effectiveValue != null && !effectiveValue.getClass().isInstance(value)) {
             throw new IllegalArgumentException(
                 "Cannot override a value of type " + effectiveValue.getClass().getName() +
                 " with a value of type " + value.getClass().getName());
         }
 
-        if (value != null) {
-            userPreferences.put(key, value);
-            effectivePreferences.put(key, value);
-        } else {
-            userPreferences.remove(key);
-            effectivePreferences.put(key, platformPreferences.get(key));
-        }
+        userPreferences.put(key, value);
+        effectivePreferences.put(key, value);
 
         if (!Objects.equals(effectiveValue, value)) {
             var changedPreferences = Map.of(key, new ChangedValue(effectiveValue, value));
@@ -157,6 +153,35 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
         }
 
         return effectiveValue;
+    }
+
+    @Override
+    public void reset(String key) {
+        Objects.requireNonNull(key, "key cannot be null");
+        Object oldValue = effectivePreferences.get(key);
+        Object newValue;
+
+        userPreferences.remove(key);
+
+        if (platformPreferences.containsKey(key)) {
+            newValue = platformPreferences.get(key);
+            effectivePreferences.put(key, newValue);
+        } else {
+            newValue = null;
+            effectivePreferences.remove(key);
+        }
+
+        if (!Objects.equals(oldValue, newValue)) {
+            var changedPreferences = Map.of(key, new ChangedValue(oldValue, newValue));
+            updateDerivedPreferences(changedPreferences);
+            fireValueChangedEvent(changedPreferences);
+            effectivePreferencesChanged = true;
+        }
+    }
+
+    @Override
+    public void reset() {
+        forEach((key, value) -> reset(key));
     }
 
     /**
