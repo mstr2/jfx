@@ -26,16 +26,15 @@
 package com.sun.javafx.application;
 
 import com.sun.javafx.binding.MapExpressionHelper;
+import com.sun.javafx.collections.MapListenerHelper;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.collections.MapChangeListener;
 import javafx.scene.paint.Color;
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,12 +46,12 @@ import java.util.Set;
  */
 abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> implements Platform.Preferences {
 
-    private final List<InvalidationListener> invalidationListeners = new ArrayList<>();
-    private final List<MapChangeListener<? super String, ? super Object>> changeListeners = new ArrayList<>();
     private final Map<String, Object> platformPreferences = new HashMap<>();
     private final Map<String, Object> userPreferences = new HashMap<>();
     private final Map<String, Object> effectivePreferences = new HashMap<>();
     private final Map<String, Object> unmodifiableEffectivePreferences = Collections.unmodifiableMap(effectivePreferences);
+
+    private MapListenerHelper<String, Object> helper;
     private Map<String, Object> lastEffectivePreferences = Map.of();
     private boolean effectivePreferencesChanged;
 
@@ -67,23 +66,23 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
     }
 
     @Override
-    public synchronized void addListener(InvalidationListener listener) {
-        invalidationListeners.add(listener);
+    public void addListener(InvalidationListener listener) {
+        helper = MapListenerHelper.addListener(helper, listener);
     }
 
     @Override
-    public synchronized void removeListener(InvalidationListener listener) {
-        invalidationListeners.remove(listener);
+    public void removeListener(InvalidationListener listener) {
+        helper = MapListenerHelper.removeListener(helper, listener);
     }
 
     @Override
-    public synchronized void addListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.add(listener);
+    public void addListener(MapChangeListener<? super String, ? super Object> listener) {
+        helper = MapListenerHelper.addListener(helper, listener);
     }
 
     @Override
-    public synchronized void removeListener(MapChangeListener<? super String, ? super Object> listener) {
-        changeListeners.remove(listener);
+    public void removeListener(MapChangeListener<? super String, ? super Object> listener) {
+        helper = MapListenerHelper.removeListener(helper, listener);
     }
 
     @Override
@@ -254,29 +253,12 @@ abstract class PlatformPreferencesBaseImpl extends AbstractMap<String, Object> i
         return changed != null ? changed : Map.of();
     }
 
-    private synchronized void fireValueChangedEvent(Map<String, ChangedValue> changedEntries) {
-        for (InvalidationListener listener : invalidationListeners) {
-            try {
-                listener.invalidated(this);
-            } catch (Exception e) {
-                Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
-            }
-        }
+    private void fireValueChangedEvent(Map<String, ChangedValue> changedEntries) {
+        var change = new MapExpressionHelper.SimpleChange<>(this);
 
-        if (changeListeners.size() > 0) {
-            var change = new MapExpressionHelper.SimpleChange<>(this);
-
-            for (Map.Entry<String, ChangedValue> entry : changedEntries.entrySet()) {
-                change.setPut(entry.getKey(), entry.getValue().oldValue, entry.getValue().newValue);
-
-                for (MapChangeListener<? super String, ? super Object> listener : changeListeners) {
-                    try {
-                        listener.onChanged(change);
-                    } catch (Exception e) {
-                        Thread.currentThread().getUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
-                    }
-                }
-            }
+        for (Map.Entry<String, ChangedValue> entry : changedEntries.entrySet()) {
+            change.setPut(entry.getKey(), entry.getValue().oldValue, entry.getValue().newValue);
+            MapListenerHelper.fireValueChangedEvent(helper, change);
         }
     }
 

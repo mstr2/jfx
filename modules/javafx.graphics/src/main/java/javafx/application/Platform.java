@@ -561,16 +561,6 @@ public final class Platform {
      *     </tbody>
      * </table>
      *
-     * @implNote In many cases, multiple platform preferences can change at the same time.
-     *           For example, switching from light to dark mode changes various foreground elements to light
-     *           colors, and various background elements to dark colors.
-     *           <p>
-     *           The {@code Preferences} implementation returned from this method fires a single invalidation
-     *           event for such bulk changes. If a listener performs potentially heavy work, such as recreating
-     *           and applying CSS themes, it might be beneficial to use {@link javafx.beans.InvalidationListener}
-     *           instead of {@link javafx.collections.MapChangeListener} to prevent the listener from firing
-     *           multiple times in bulk change scenarios.
-     *
      * @since 21
      */
     public interface Preferences extends ObservableMap<String, Object> {

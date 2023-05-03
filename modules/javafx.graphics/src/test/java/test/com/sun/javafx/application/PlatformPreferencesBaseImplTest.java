@@ -166,9 +166,8 @@ public class PlatformPreferencesBaseImplTest {
         prefs.update(Map.of("foo", "bar"));
         assertEquals(1, count[0]);
 
-        // InvalidationListener is invoked only once, even when multiple values are changed at the same time
         prefs.update(Map.of("qux", "quux", "quz", "quuz"));
-        assertEquals(2, count[0]);
+        assertEquals(3, count[0]);
     }
 
     @Test
