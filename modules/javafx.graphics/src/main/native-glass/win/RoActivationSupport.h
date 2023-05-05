@@ -25,7 +25,8 @@
 
 #pragma once
 
-#define _ROAPI_
+#define _ROAPI_ // this flag gives us function prototypes without __declspec(dllimport)
+
 #include <roapi.h>
 #include <wrl.h>
 #include <hstring.h>
@@ -33,32 +34,41 @@
 #define RO_CHECKED(NAME, FUNC) \
     { HRESULT res = FUNC; if (FAILED(res)) throw RoException(NAME ## " failed: ", res); }
 
+void tryInitializeRoActivationSupport();
+void uninitializeRoActivationSupport();
+bool isRoActivationSupported();
+
+/*
+ * Facilitates interop between C-style strings and WinRT HSTRINGs.
+ * A hstring can be constructed from a C-style string, and it can be implicitly converted to a HSTRING.
+ * The lifetime of the HSTRING corresponds to the lifetime of the hstring instance.
+ */
 struct hstring
 {
     hstring(const char* str);
+    hstring(const hstring&) = delete;
     ~hstring();
+
     operator HSTRING();
+    hstring& operator=(hstring) = delete;
 
 private:
     HSTRING hstr_;
 };
 
-void tryInitializeRoActivationSupport();
-void uninitializeRoActivationSupport();
-bool isRoActivationSupported();
-
+/*
+ * The exception thrown by the RO_CHECKED macro, indicating that a Windows Runtime API call has failed.
+ * The exception message contains the system message text for the failed HRESULT.
+ */
 class RoException
 {
 public:
     RoException(const char* message);
     RoException(const char* message, HRESULT);
     RoException(const RoException&);
-    RoException(RoException&&);
     ~RoException();
 
-    RoException& operator=(const RoException&);
-    RoException& operator=(RoException&&);
-
+    RoException& operator=(RoException);
     const char* message() const;
 
 private:

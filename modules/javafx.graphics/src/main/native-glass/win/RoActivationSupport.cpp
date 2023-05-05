@@ -24,31 +24,21 @@
  */
 
 #include "RoActivationSupport.h"
+#include <utility>
 #include <comdef.h>
 #include <winstring.h>
 #include <jni.h>
 
 namespace
 {
-    bool initialized = false;
-    const char* moduleNotFoundMessage = "WinRT: %s not found\n";
-
-    const char* catStrW(const char* s1, const wchar_t* s2w)
-    {
-        int s1_len = int(strlen(s1));
-        int s2_len = WideCharToMultiByte(CP_ACP, 0, s2w, -1, NULL, 0, NULL, FALSE);
-        char* res = new char[s1_len + s2_len];
-        WideCharToMultiByte(CP_ACP, 0, s2w, -1, res + s1_len, s2_len, NULL, FALSE);
-        memcpy_s(res, s1_len + s2_len, s1, s1_len);
-        return res;
-    }
-
     typedef HRESULT WINAPI FnRoInitialize(RO_INIT_TYPE initType);
     typedef void WINAPI FnRoUninitialize();
     typedef HRESULT WINAPI FnRoActivateInstance(HSTRING activatableClassId, IInspectable** instance);
     typedef HRESULT WINAPI FnWindowsCreateString(PCNZWCH sourceString, UINT32 length, HSTRING* string);
     typedef HRESULT WINAPI FnWindowsDeleteString(HSTRING string);
 
+    bool initialized = false;
+    const char* moduleNotFoundMessage = "WinRT: %s not found\n";
     HMODULE hLibComBase = NULL;
     FnRoInitialize* pRoInitialize = NULL;
     FnRoUninitialize* pRoUninitialize = NULL;
@@ -182,6 +172,11 @@ hstring::operator HSTRING()
 
 RoException::RoException(const char* message)
 {
+    if (message == nullptr) {
+        message = "";
+    }
+
+    // Copy the "message" string.
     size_t len = strlen(message);
     char* msg = new char[len + 1];
     strcpy_s(msg, len + 1, message);
@@ -190,47 +185,32 @@ RoException::RoException(const char* message)
 
 RoException::RoException(const char* message, HRESULT res)
 {
-    message_ = catStrW(message, _com_error(res).ErrorMessage());
+    if (message == nullptr) {
+        message = "";
+    }
+
+    const wchar_t* error = _com_error(res).ErrorMessage();
+
+    // Concatenate the "message" and "error" strings.
+    int message_length = int(strlen(message));
+    int error_length = WideCharToMultiByte(CP_ACP, 0, error, -1, NULL, 0, NULL, FALSE);
+    char* result = new char[message_length + error_length];
+    WideCharToMultiByte(CP_ACP, 0, error, -1, result + message_length, error_length, NULL, FALSE);
+    memcpy_s(result, message_length, message, message_length);
+    message_ = result;
 }
 
-RoException::RoException(const RoException& source) : RoException(source.message()) {}
-
-RoException::RoException(RoException&& source)
-{
-    message_ = source.message_;
-    source.message_ = nullptr;
-}
+RoException::RoException(const RoException& source) :
+    RoException(source.message()) {}
 
 RoException::~RoException()
 {
-    if (message_ != nullptr) {
-        delete[] message_;
-    }
+    delete[] message_;
 }
 
-RoException& RoException::operator=(const RoException& source)
+RoException& RoException::operator=(RoException source)
 {
-    if (message_ != nullptr) {
-        delete[] message_;
-    }
-
-    size_t len = strlen(source.message());
-    char* msg = new char[len + 1];
-    strcpy_s(msg, len + 1, source.message());
-    message_ = msg;
-
-    return *this;
-}
-
-RoException& RoException::operator=(RoException&& source)
-{
-    if (message_ != nullptr) {
-        delete[] message_;
-    }
-
-    message_ = source.message_;
-    source.message_ = nullptr;
-
+    std::swap(*this, source);
     return *this;
 }
 
