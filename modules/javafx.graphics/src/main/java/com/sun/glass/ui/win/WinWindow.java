@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -284,6 +284,7 @@ class WinWindow extends Window {
     @Override native protected boolean _grabFocus(long ptr);
     @Override native protected void _ungrabFocus(long ptr);
     @Override native protected void _setCursor(long ptr, Cursor cursor);
+    @Override native protected void _setDarkFrame(long ptr, boolean dark);
 
     @Override
     protected void _requestInput(long ptr, String text, int type, double width, double height,

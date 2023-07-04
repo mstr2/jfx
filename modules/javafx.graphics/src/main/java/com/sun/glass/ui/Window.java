@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,6 +163,12 @@ public abstract class Window {
      * Indicates that the window is modal which affects whether the window is minimizable.
      */
     @Native public static final int MODAL = 1 << 9;
+
+    /**
+     * Indicates that the window should be decorated with a dark frame.
+     * If the window has no platform decorations, this flag has no effect.
+     */
+    @Native public static final int DARK_FRAME = 1 << 10;
 
     final static public class State {
         @Native public static final int NORMAL = 1;
@@ -605,6 +611,14 @@ public abstract class Window {
         Application.checkEventThread();
         checkNotClosed();
         _setBounds(ptr, 0, 0, false, false, 0, 0, cw, ch, 0, 0);
+    }
+
+    protected void _setDarkFrame(long ptr, boolean dark) {}
+
+    public void setDarkFrame(boolean dark) {
+        Application.checkEventThread();
+        checkNotClosed();
+        _setDarkFrame(ptr, dark);
     }
 
     public boolean isVisible() {

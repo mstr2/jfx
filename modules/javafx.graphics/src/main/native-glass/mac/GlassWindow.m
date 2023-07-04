@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -371,6 +371,15 @@ GLASS_NS_WINDOW_IMPLEMENTATION
     }
 }
 
+- (void)setDarkFrame:(bool)dark
+{
+    if (dark) {
+        [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]];
+    } else {
+        [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+    }
+}
+
 
 @end
 
@@ -445,6 +454,12 @@ static jlong _createWindowCommonDo(JNIEnv *env, jobject jWindow, jlong jOwnerPtr
             if (!jOwnerPtr) {
                 [window->nsWindow setLevel:NSNormalWindowLevel];
             }
+        }
+
+        if ((jStyleMask & com_sun_glass_ui_Window_DARK_FRAME) != 0) {
+            [window->nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]];
+        } else {
+            [window->nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
         }
 
         if (jOwnerPtr != 0L)
@@ -1444,6 +1459,27 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_mac_MacWindow__1exitModal
     {
         GlassWindow *window = getGlassWindow(env, jPtr);
         [NSApp stop:window->nsWindow];
+    }
+    GLASS_POOL_EXIT;
+    GLASS_CHECK_EXCEPTION(env);
+}
+
+/*
+ * Class:     com_sun_glass_ui_mac_MacWindow
+ * Method:    _setDarkFrame
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_com_sun_glass_ui_mac_MacWindow__1setDarkFrame
+(JNIEnv *env, jobject jWindow, jlong jPtr, jboolean dark)
+{
+    LOG("Java_com_sun_glass_ui_mac_MacWindow__1setDarkFrame");
+    if (!jPtr) return;
+
+    GLASS_ASSERT_MAIN_JAVA_THREAD(env);
+    GLASS_POOL_ENTER;
+    {
+        GlassWindow *window = getGlassWindow(env, jPtr);
+        [window setDarkFrame:dark];
     }
     GLASS_POOL_EXIT;
     GLASS_CHECK_EXCEPTION(env);

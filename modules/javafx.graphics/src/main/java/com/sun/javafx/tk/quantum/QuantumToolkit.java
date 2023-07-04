@@ -611,9 +611,11 @@ public final class QuantumToolkit extends Toolkit {
         }
     }
 
-    @Override public TKStage createTKStage(Window peerWindow, boolean securityDialog, StageStyle stageStyle, boolean primary, Modality modality, TKStage owner, boolean rtl, @SuppressWarnings("removal") AccessControlContext acc) {
+    @Override public TKStage createTKStage(Window peerWindow, boolean securityDialog, StageStyle stageStyle,
+                                           boolean darkFrame, boolean primary, Modality modality, TKStage owner,
+                                           boolean rtl, @SuppressWarnings("removal") AccessControlContext acc) {
         assertToolkitRunning();
-        WindowStage stage = new WindowStage(peerWindow, securityDialog, stageStyle, modality, owner);
+        WindowStage stage = new WindowStage(peerWindow, securityDialog, stageStyle, darkFrame, modality, owner);
         stage.setSecurityContext(acc);
         if (primary) {
             stage.setIsPrimary();
@@ -690,7 +692,7 @@ public final class QuantumToolkit extends Toolkit {
         assertToolkitRunning();
         boolean securityDialog = owner instanceof WindowStage ?
                 ((WindowStage)owner).isSecurityDialog() : false;
-        WindowStage stage = new WindowStage(peerWindow, securityDialog, popupStyle, null, owner);
+        WindowStage stage = new WindowStage(peerWindow, securityDialog, popupStyle, false, null, owner);
         stage.setSecurityContext(acc);
         stage.setIsPopup();
         stage.init(systemMenu);
