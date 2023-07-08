@@ -120,24 +120,16 @@ public class StyleManagerShim {
         sm.setDefaultUserAgentStylesheet(fname);
     }
 
-    public void setDefaultUserAgentStylesheet(Scene scene, String url) {
-        sm.setDefaultUserAgentStylesheet(scene, url);
-    }
-
     public void setDefaultUserAgentStylesheet(Stylesheet ua_stylesheet) {
         sm.setDefaultUserAgentStylesheet(ua_stylesheet);
     }
 
-    public void setUserAgentStylesheets(List<String> urls) {
+    public void setUserAgentStylesheets(List<Stylesheet> urls) {
         sm.setUserAgentStylesheets(urls);
     }
 
     public void addUserAgentStylesheet(String fname) {
         sm.addUserAgentStylesheet(fname);
-    }
-
-    public void addUserAgentStylesheet(Scene scene, String url) {
-        sm.addUserAgentStylesheet(scene, url);
     }
 
     public void addUserAgentStylesheet(Scene scene, Stylesheet ua_stylesheet) {

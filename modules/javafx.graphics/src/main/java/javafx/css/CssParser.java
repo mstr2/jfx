@@ -29,6 +29,7 @@ import com.sun.javafx.css.Combinator;
 import com.sun.javafx.css.FontFaceImpl;
 import com.sun.javafx.css.ParsedValueImpl;
 import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.css.StylesheetHelper;
 import com.sun.javafx.util.Utils;
 import javafx.css.converter.BooleanConverter;
 import javafx.css.converter.DurationConverter;
@@ -104,6 +105,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Stack;
+import java.util.function.Function;
 
 /**
  * A parser for a CSS document string.
@@ -115,8 +117,17 @@ final public class CssParser {
      * Constructs a {@code CssParser}.
      */
     public CssParser() {
-        properties = new HashMap<>();
+        this.properties = new HashMap<>();
+        this.resourceLoader = null;
     }
+
+    CssParser(Function<String, URL> resourceLoader) {
+        this.properties = new HashMap<>();
+        this.resourceLoader = resourceLoader;
+    }
+
+    // A function that can find a resource with a given name.
+    private final Function<String, URL> resourceLoader;
 
     // stylesheet as a string from parse method. This will be null if the
     // stylesheet is being parsed from a file; otherwise, the parser is parsing
@@ -4186,7 +4197,13 @@ final public class CssParser {
                     new ParsedValueImpl<>(uriValues, URLConverter.getInstance());
 
             String urlString = parsedValue.convert(null);
-            importedStylesheet = StyleManager.loadStylesheet(urlString);
+            if (urlString != null) {
+                try {
+                    URI uri = new URI(urlString);
+                    importedStylesheet = StylesheetHelper.tryLoad(uri, resourceLoader);
+                } catch (URISyntaxException ex) {
+                }
+            }
 
             // When we load an imported stylesheet, the sourceOfStylesheet field
             // gets set to the new stylesheet. Once it is done loading we must reset

@@ -25,15 +25,21 @@
 
 package javafx.css;
 
-import javafx.css.StyleConverter.StringStore;
-
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
+import javafx.css.StyleConverter.StringStore;
+import javafx.scene.text.Font;
 
 import com.sun.javafx.collections.TrackableObservableList;
 import com.sun.javafx.css.FontFaceImpl;
+import com.sun.javafx.css.StyleManager;
+import com.sun.javafx.css.StylesheetHelper;
+import com.sun.javafx.logging.PlatformLogger;
+import com.sun.javafx.util.DataURI;
+import com.sun.javafx.util.Logging;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -43,9 +49,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * A stylesheet which can apply properties to a tree of objects.  A stylesheet
@@ -58,6 +73,23 @@ import java.util.List;
  */
 public class Stylesheet {
 
+    static {
+        StylesheetHelper.setAccessor(new StylesheetHelper.Accessor() {
+            @Override
+            public URI getURI(Stylesheet stylesheet) {
+                return stylesheet.uri;
+            }
+
+            @Override
+            public Stylesheet tryLoad(URI uri, Function<String, URL> resourceLoader) {
+                return Stylesheet.tryLoad(uri, resourceLoader);
+            }
+        });
+    }
+
+    private static final PlatformLogger LOGGER = Logging.getCSSLogger();
+    private static final Pattern FILENAME_EXTENSION_PATTERN = Pattern.compile("(?<=.)\\.[^.]+$");
+
     /**
      * Version number of binary CSS format. The value is incremented whenever the format of the
      * binary stream changes. This number does not correlate with JavaFX versions.
@@ -66,7 +98,6 @@ public class Stylesheet {
      */
     final static int BINARY_CSS_VERSION = 6;
 
-    private final String url;
     /**
      *  The URL from which this {@code Stylesheet} was loaded.
      *
@@ -74,7 +105,17 @@ public class Stylesheet {
      *         the stylesheet was created from an inline style.
      */
     public String getUrl() {
-        return url;
+        return uri != null ? uri.toString() : null;
+    }
+
+    private URI uri;
+
+    void initURI(URI uri) {
+        if (this.uri != null) {
+            throw new IllegalArgumentException();
+        }
+
+        this.uri = uri;
     }
 
     /**
@@ -149,10 +190,10 @@ public class Stylesheet {
      * Constructs a Stylesheet using the given URL as the base URI. The
      * parameter may not be null.
      *
-     * @param url the base URI for this stylesheet
+     * @param uri the base URI for this stylesheet
      */
-    Stylesheet(String url) {
-        this.url = url;
+    Stylesheet(URI uri) {
+        this.uri = uri;
     }
 
     /**
@@ -180,15 +221,13 @@ public class Stylesheet {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj instanceof Stylesheet) {
-            Stylesheet other = (Stylesheet)obj;
-
-            if (this.url == null && other.url == null) {
+        if (obj instanceof Stylesheet other) {
+            if (this.uri == null && other.uri == null) {
                 return true;
-            } else if (this.url == null || other.url == null) {
+            } else if (this.uri == null || other.uri == null) {
                 return false;
             } else {
-                return this.url.equals(other.url);
+                return this.uri.equals(other.uri);
             }
         }
         return false;
@@ -199,7 +238,7 @@ public class Stylesheet {
      */
     @Override public int hashCode() {
         int hash = 7;
-        hash = 13 * hash + (this.url != null ? this.url.hashCode() : 0);
+        hash = 13 * hash + (this.uri != null ? this.uri.hashCode() : 0);
         return hash;
     }
 
@@ -207,7 +246,7 @@ public class Stylesheet {
     @Override public String toString() {
         StringBuilder sbuf = new StringBuilder();
         sbuf.append("/* ");
-        if (url != null) sbuf.append(url);
+        if (uri != null) sbuf.append(uri);
         if (rules.isEmpty()) {
             sbuf.append(" */");
         } else {
@@ -271,6 +310,229 @@ public class Stylesheet {
     final String[] getStringStore() { return stringStore; }
 
     /**
+     * Loads a stylesheet from the given URI.
+     *
+     * @param uri the URI of the requested stylesheet
+     * @return the stylesheet
+     * @throws NullPointerException if {@code name} is null
+     * @throws FileNotFoundException if the stylesheet cannot be found or is inaccessible
+     * @throws IOException if an I/O exception occurs when the stylesheet is loaded
+     * @since 21
+     */
+    public static Stylesheet load(URI uri) throws IOException {
+        Objects.requireNonNull("uri", "uri cannot be null");
+        return loadURI(uri.normalize(), null);
+    }
+
+    /**
+     * Loads a stylesheet from the given URI, using a method that can find stylesheet resources.
+     *
+     * @param uri the URI of the requested stylesheet
+     * @param resourceLoader a function that can find the stylesheet resource; usually this is a reference
+     *                       to the {@link Class#getResource(String)} method of the calling class or the
+     *                       {@link ClassLoader#getResource(String)} method of a class loader
+     * @return the stylesheet
+     * @throws NullPointerException if {@code name} is null
+     * @throws FileNotFoundException if the stylesheet cannot be found or is inaccessible
+     * @throws IOException if an I/O exception occurs when the stylesheet is loaded
+     * @since 21
+     */
+    public static Stylesheet load(URI uri, Function<String, URL> resourceLoader) throws IOException {
+        Objects.requireNonNull("uri", "uri cannot be null");
+        Objects.requireNonNull("resourceLoader", "resourceLoader cannot be null");
+        return loadURI(uri.normalize(), resourceLoader);
+    }
+
+    /**
+     * Loads a stylesheet from the given URI.
+     * In contrast to {@link #load(URI, Function)}, this method doesn't throw exceptions.
+     *
+     * @param uri the URI of the requested stylesheet
+     * @param resourceLoader a function that can find the stylesheet resource; usually this is a reference
+     *                       to the {@link Class#getResource(String)} method of the calling class or the
+     *                       {@link ClassLoader#getResource(String)} method of a class loader
+     * @return the stylesheet, or {@code null} if an error occurred
+     */
+    private static Stylesheet tryLoad(URI uri, Function<String, URL> resourceLoader) {
+        try {
+            return loadURI(uri.normalize(), resourceLoader);
+        } catch (Exception ex) {
+            // For data URIs, use the pretty-printed version for logging
+            var dataUri = DataURI.tryParse(uri.toString());
+            String stylesheetName = dataUri != null ? dataUri.toString() : uri.toString();
+            String message = String.format("Failed to load stylesheet %s: %s", stylesheetName, ex.getMessage());
+
+            ObservableList<CssParser.ParseError> errors = StyleManager.getErrors();
+            if (errors != null) {
+                errors.add(new CssParser.ParseError(message));
+            }
+
+            if (LOGGER.isLoggable(System.Logger.Level.WARNING)) {
+                LOGGER.warning(message);
+            }
+
+            return null;
+        }
+    }
+
+    private static synchronized Stylesheet loadURI(URI uri, Function<String, URL> resourceLoader) throws IOException {
+        if ("data".equalsIgnoreCase(uri.getScheme())) {
+            DataURI dataUri = DataURI.tryParse(uri.toString());
+            return loadDataURI(dataUri, resourceLoader);
+        }
+
+        @SuppressWarnings("removal")
+        boolean allowBss = AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+            return Boolean.valueOf(System.getProperty("binary.css"));
+        });
+
+        Stylesheet stylesheet = allowBss ? tryLoadBinaryURI(uri, resourceLoader) : null;
+        if (stylesheet != null) {
+            return stylesheet;
+        }
+
+        URL cssUrl = findURL(uri, resourceLoader);
+        if (cssUrl == null) {
+            throw new FileNotFoundException("Stylesheet not found or inaccessible to caller module: " + uri);
+        }
+
+        stylesheet = new CssParser(resourceLoader).parse(cssUrl);
+        stylesheet.initURI(uri);
+
+        loadFonts(stylesheet);
+
+        return stylesheet;
+    }
+
+    private static Stylesheet loadDataURI(DataURI dataUri, Function<String, URL> resourceLoader) throws IOException {
+        boolean isText =
+            "text".equalsIgnoreCase(dataUri.getMimeType())
+                && ("css".equalsIgnoreCase(dataUri.getMimeSubtype())
+                || "plain".equalsIgnoreCase(dataUri.getMimeSubtype()));
+
+        if (isText) {
+            String charsetName = dataUri.getParameters().get("charset");
+            Charset charset;
+
+            try {
+                charset = charsetName != null ? Charset.forName(charsetName) : Charset.defaultCharset();
+            } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
+                throw new UnsupportedCharsetException(
+                    String.format("Unsupported charset \"%s\" in stylesheet URI \"%s\"", charsetName, dataUri));
+            }
+
+            String stylesheetText = new String(dataUri.getData(), charset);
+            Stylesheet stylesheet = new CssParser(resourceLoader).parse(stylesheetText);
+            loadFonts(stylesheet);
+            return stylesheet;
+        }
+
+        boolean isBinary =
+            "application".equalsIgnoreCase(dataUri.getMimeType())
+                && "octet-stream".equalsIgnoreCase(dataUri.getMimeSubtype());
+
+        if (isBinary) {
+            try (InputStream stream = new ByteArrayInputStream(dataUri.getData())) {
+                Stylesheet stylesheet = Stylesheet.loadBinary(stream);
+                loadFonts(stylesheet);
+                return stylesheet;
+            }
+        }
+
+        throw new IllegalArgumentException(
+            String.format("Unexpected MIME type \"%s/%s\" in stylesheet URI \"%s\"",
+                          dataUri.getMimeType(), dataUri.getMimeSubtype(), dataUri));
+    }
+
+    /**
+     * Given an URI that points to a CSS file, this method looks for a BSS file with the
+     * same name, and tries to load the BSS file instead.
+     *
+     * @return a stylesheet that was loaded from a BSS file, or {@code null}
+     */
+    private static Stylesheet tryLoadBinaryURI(URI uri, Function<String, URL> resourceLoader) throws IOException {
+        String fileName = FILENAME_EXTENSION_PATTERN.matcher(uri.getPath()).replaceAll("");
+        String extension = uri.getPath().substring(fileName.length());
+        URI bssUri;
+
+        try {
+            bssUri = new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(),
+                    fileName + ".bss", uri.getQuery(), uri.getFragment());
+        } catch (URISyntaxException ex) {
+            throw new IllegalArgumentException(ex.getMessage());
+        }
+
+        if (".bss".equalsIgnoreCase(extension)) {
+            URL bssUrl = findURL(bssUri, resourceLoader);
+            if (bssUrl == null) {
+                throw new FileNotFoundException(
+                    "Stylesheet not found or inaccessible to caller module: " + bssUri);
+            }
+
+            try (InputStream stream = bssUrl.openStream()) {
+                return loadBinary(stream, bssUrl.toURI());
+            } catch (URISyntaxException ignored) {
+                return null;
+            }
+        }
+
+        URL bssUrl = findURL(bssUri, resourceLoader);
+        if (bssUrl != null) {
+            try (InputStream stream = bssUrl.openStream()) {
+                return loadBinary(stream, bssUrl.toURI());
+            } catch (IOException | URISyntaxException ignored) {
+                // If loadBinary throws an IOException, we return null to give the caller
+                // the chance to try loading the .CSS file instead.
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts the specified URI to an URL.
+     * If the URL has no scheme component, this method tries to find the path using the specified
+     * function or the calling thread's context class loader (in this order).
+     */
+    private static URL findURL(URI uri, Function<String, URL> resourceLoader) throws IOException {
+        if (uri.isAbsolute()) {
+            return uri.toURL();
+        }
+
+        String name = uri.toString();
+        String cleanName = name.startsWith("/") ? name.substring(1) : name;
+
+        if (resourceLoader != null) {
+            URL url = resourceLoader.apply(cleanName);
+            if (url != null) {
+                return url;
+            }
+        }
+
+        return Thread.currentThread().getContextClassLoader().getResource(cleanName);
+    }
+
+    /**
+     * Loads all fonts that are referenced by the specified stylesheet.
+     */
+    private static void loadFonts(Stylesheet stylesheet) {
+        faceLoop: for (FontFace fontFace : stylesheet.getFontFaces()) {
+            if (fontFace instanceof FontFaceImpl fontFaceImpl) {
+                for (FontFaceImpl.FontFaceSrc src : fontFaceImpl.getSources()) {
+                    if (src.getType() == FontFaceImpl.FontFaceSrcType.URL) {
+                        Font loadedFont = Font.loadFont(src.getSrc(), 10);
+                        if (loadedFont == null) {
+                            LOGGER.info("Could not load @font-face font [" + src.getSrc() + "]");
+                        }
+
+                        continue faceLoop;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Loads a binary stylesheet from a {@code URL}.
      *
      * @param url the {@code URL} from which the {@code Stylesheet} will be loaded
@@ -284,8 +546,8 @@ public class Stylesheet {
         }
 
         try (InputStream stream = url.openStream()) {
-            return loadBinary(stream, url.toExternalForm());
-        } catch (FileNotFoundException ex) {
+            return loadBinary(stream, url.toURI());
+        } catch (FileNotFoundException | URISyntaxException ex) {
             return null;
         }
     }
@@ -304,11 +566,11 @@ public class Stylesheet {
         return loadBinary(stream, null);
     }
 
-    private static Stylesheet loadBinary(InputStream stream, String uri) throws IOException {
+    private static Stylesheet loadBinary(InputStream stream, URI uri) throws IOException {
         Stylesheet stylesheet = null;
 
         try (DataInputStream dataInputStream =
-                     new DataInputStream(new BufferedInputStream(stream, 40 * 1024))) {
+                     new DataInputStream(new BufferedInputStream(stream, 4 * 1024))) {
 
             // read file version
             final int bssVersion = dataInputStream.readShort();

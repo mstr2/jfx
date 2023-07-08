@@ -47,6 +47,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -982,10 +984,10 @@ public class StyleManagerTest {
     }
 
     @Test
-    public void test_setUserAgentStylesheets() {
-
-        List<String> uaStylesheets = new ArrayList<>();
-        Collections.addAll(uaStylesheets, "/test/com/sun/javafx/css/ua0.css", "/test/com/sun/javafx/css/ua1.css");
+    public void test_setUserAgentStylesheets() throws IOException {
+        List<Stylesheet> uaStylesheets = List.of(
+            Stylesheet.load(URI.create("/test/com/sun/javafx/css/ua0.css")),
+            Stylesheet.load(URI.create("/test/com/sun/javafx/css/ua1.css")));
 
         final StyleManagerShim sm = StyleManagerShim.getInstance();
         sm.setUserAgentStylesheets(uaStylesheets);
@@ -996,10 +998,8 @@ public class StyleManagerTest {
     }
 
     @Test
-    public void test_setUserAgentStylesheets_overwrites_existing() {
-
-        List<String> uaStylesheets = new ArrayList<>();
-        Collections.addAll(uaStylesheets, "/test/com/sun/javafx/css/ua0.css");
+    public void test_setUserAgentStylesheets_overwrites_existing() throws IOException {
+        List<Stylesheet> uaStylesheets = List.of(Stylesheet.load(URI.create("/test/com/sun/javafx/css/ua0.css")));
 
         final StyleManagerShim sm = StyleManagerShim.getInstance();
 

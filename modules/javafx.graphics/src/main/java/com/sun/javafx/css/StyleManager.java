@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,10 +87,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 /**
  * Contains the stylesheet state for a single scene. This includes both the
@@ -282,7 +285,7 @@ final public class StyleManager {
     static class StylesheetContainer {
 
         // the stylesheet uri
-        final String fname;
+        final URI uri;
         // the parsed stylesheet so we don't reparse for every parent that uses it
         final Stylesheet stylesheet;
         // the parents or scenes that use this stylesheet. Typically, this list
@@ -296,14 +299,14 @@ final public class StyleManager {
         final byte[] checksum;
         boolean checksumInvalid = false;
 
-        StylesheetContainer(String fname, Stylesheet stylesheet) {
-            this(fname, stylesheet, stylesheet != null ? calculateCheckSum(stylesheet.getUrl()) : new byte[0]);
+        StylesheetContainer(URI uri, Stylesheet stylesheet) {
+            this(uri, stylesheet, uri != null ? calculateCheckSum(uri) : new byte[0]);
         }
 
-        StylesheetContainer(String fname, Stylesheet stylesheet, byte[] checksum) {
+        StylesheetContainer(URI uri, Stylesheet stylesheet, byte[] checksum) {
 
-            this.fname = fname;
-            hash = (fname != null) ? fname.hashCode() : 127;
+            this.uri = uri;
+            hash = (uri != null) ? uri.hashCode() : 127;
 
             this.stylesheet = stylesheet;
             if (stylesheet != null) {
@@ -351,14 +354,14 @@ final public class StyleManager {
                 return false;
             }
             final StylesheetContainer other = (StylesheetContainer) obj;
-            if ((this.fname == null) ? (other.fname != null) : !this.fname.equals(other.fname)) {
+            if ((this.uri == null) ? (other.uri != null) : !this.uri.equals(other.uri)) {
                 return false;
             }
             return true;
         }
 
         @Override public String toString() {
-            return fname;
+            return uri.toString();
         }
 
     }
@@ -429,7 +432,7 @@ final public class StyleManager {
      * stylesheets are either platformUserAgentStylesheetContainers or userAgentStylesheetContainers
      */
     // public for unit testing
-    public final Map<String,StylesheetContainer> stylesheetContainerMap = new HashMap<>();
+    public final Map<URI, StylesheetContainer> stylesheetContainerMap = new HashMap<>();
 
 
     /**
@@ -451,7 +454,7 @@ final public class StyleManager {
 
                 for(int n=userAgentStylesheetContainers.size()-1; 0<=n; --n) {
                     StylesheetContainer container = userAgentStylesheetContainers.get(n);
-                    if (sceneUserAgentStylesheet.equals(container.fname)) {
+                    if (sceneUserAgentStylesheet.equals(container.uri)) {
                         container.parentUsers.remove(scene.getRoot());
                         if (container.parentUsers.list.size() == 0) {
                             userAgentStylesheetContainers.remove(n);
@@ -463,12 +466,11 @@ final public class StyleManager {
             //
             // remove any parents belonging to this scene from the stylesheetContainerMap
             //
-            Set<Entry<String,StylesheetContainer>> stylesheetContainers = stylesheetContainerMap.entrySet();
-            Iterator<Entry<String,StylesheetContainer>> iter = stylesheetContainers.iterator();
+            Set<Entry<URI, StylesheetContainer>> stylesheetContainers = stylesheetContainerMap.entrySet();
+            Iterator<Entry<URI, StylesheetContainer>> iter = stylesheetContainers.iterator();
 
             while(iter.hasNext()) {
-
-                Entry<String,StylesheetContainer> entry = iter.next();
+                Entry<URI, StylesheetContainer> entry = iter.next();
                 StylesheetContainer container = entry.getValue();
 
                 Iterator<Reference<Parent>> parentIter = container.parentUsers.list.iterator();
@@ -550,9 +552,9 @@ final public class StyleManager {
                 }
             }
 
-            Iterator<Entry<String,StylesheetContainer>> containerIterator = stylesheetContainerMap.entrySet().iterator();
+            Iterator<Entry<URI, StylesheetContainer>> containerIterator = stylesheetContainerMap.entrySet().iterator();
             while (containerIterator.hasNext()) {
-                Entry<String,StylesheetContainer> entry = containerIterator.next();
+                Entry<URI, StylesheetContainer> entry = containerIterator.next();
                 StylesheetContainer container = entry.getValue();
                 container.parentUsers.remove(parent);
                 if (container.parentUsers.list.isEmpty()) {
@@ -566,8 +568,7 @@ final public class StyleManager {
 
                     // clean up image cache by removing images from the cache that
                     // might have come from this stylesheet
-                    final String fname = container.fname;
-                    imageCache.cleanUpImageCache(fname);
+                    imageCache.cleanUpImageCache(container.uri);
                 }
             }
 
@@ -633,7 +634,7 @@ final public class StyleManager {
                 Iterator<StylesheetContainer> iterator = userAgentStylesheetContainers.iterator();
                 while(iterator.hasNext()) {
                     StylesheetContainer container = iterator.next();
-                    if (sceneUserAgentStylesheet.equals(container.fname)) {
+                    if (sceneUserAgentStylesheet.equals(container.uri.toString())) {
                         container.parentUsers.remove(subScene.getRoot());
                         if (container.parentUsers.list.size() == 0) {
                             iterator.remove();
@@ -689,9 +690,9 @@ final public class StyleManager {
         if (stylesheetContainer == null) return;
 
         synchronized (styleLock) {
-            final String fname = stylesheetContainer.fname;
+            URI uri = stylesheetContainer.uri;
 
-            stylesheetContainerMap.remove(fname);
+            stylesheetContainerMap.remove(uri);
 
             if (stylesheetContainer.selectorPartitioning != null) {
                 stylesheetContainer.selectorPartitioning.reset();
@@ -705,17 +706,17 @@ final public class StyleManager {
                     continue;
                 }
 
-                List<List<String>> entriesToRemove = new ArrayList<>();
+                List<List<URI>> entriesToRemove = new ArrayList<>();
 
-                for (Entry<List<String>, Map<Key,Cache>> cacheMapEntry : container.cacheMap.entrySet()) {
-                    List<String> cacheMapKey = cacheMapEntry.getKey();
-                    if (cacheMapKey != null ? cacheMapKey.contains(fname) : fname == null) {
+                for (Entry<List<URI>, Map<Key,Cache>> cacheMapEntry : container.cacheMap.entrySet()) {
+                    List<URI> cacheMapKey = cacheMapEntry.getKey();
+                    if (cacheMapKey != null ? cacheMapKey.contains(uri) : uri == null) {
                         entriesToRemove.add(cacheMapKey);
                     }
                 }
 
                 if (!entriesToRemove.isEmpty()) {
-                    for (List<String> cacheMapKey : entriesToRemove) {
+                    for (List<URI> cacheMapKey : entriesToRemove) {
                         Map<Key,Cache> cacheEntry = container.cacheMap.remove(cacheMapKey);
                         if (cacheEntry != null) {
                             cacheEntry.clear();
@@ -726,7 +727,7 @@ final public class StyleManager {
 
             // clean up image cache by removing images from the cache that
             // might have come from this stylesheet
-            imageCache.cleanUpImageCache(fname);
+            imageCache.cleanUpImageCache(uri);
 
             final List<Reference<Parent>> parentList = stylesheetContainer.parentUsers.list;
 
@@ -798,14 +799,12 @@ final public class StyleManager {
             }
         }
 
-        void cleanUpImageCache(String imgFname) {
+        void cleanUpImageCache(URI imgUri) {
 
             synchronized (styleLock) {
-                if (imgFname == null || imageCache.isEmpty()) return;
+                if (imgUri == null || imageCache.isEmpty()) return;
 
-                final String fname = imgFname.trim();
-                if (fname.isEmpty()) return;
-
+                //imgUri.
                 int len = fname.lastIndexOf('/');
                 final String path = (len > 0) ? fname.substring(0,len) : fname;
                 final int plen = path.length();
@@ -846,88 +845,17 @@ final public class StyleManager {
         return imageCache.getCachedImage(url);
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    //
-    // Stylesheet loading
-    //
-    ////////////////////////////////////////////////////////////////////////////
-
-
-    private static final String skinPrefix = "com/sun/javafx/scene/control/skin/";
-    private static final String skinUtilsClassName = "com.sun.javafx.scene.control.skin.Utils";
-
-    private static URL getURL(final String str) {
-
-        // Note: this code is duplicated, more or less, in URLConverter
-
-        if (str == null || str.trim().isEmpty()) return null;
-
-        try {
-
-            URI uri =  new URI(str.trim());
-
-            // if url doesn't have a scheme
-            if (uri.isAbsolute() == false) {
-
-                // FIXME: JIGSAW -- move this into a utility method, since it will
-                // likely be needed elsewhere (e.g., in URLConverter)
-                if (str.startsWith(skinPrefix) &&
-                        (str.endsWith(".css") || str.endsWith(".bss"))) {
-
-                    try {
-                        ClassLoader cl = StyleManager.class.getClassLoader();
-                        Class<?> clz = Class.forName(skinUtilsClassName, true, cl);
-                        Method m_getResource = clz.getMethod("getResource", String.class);
-                        return (URL)m_getResource.invoke(null, str.substring(skinPrefix.length()));
-                    } catch (ClassNotFoundException
-                            | NoSuchMethodException
-                            | IllegalAccessException
-                            | InvocationTargetException ex) {
-                        ex.printStackTrace();
-                        return null;
-                    }
-                }
-
-                final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-                final String path = uri.getPath();
-
-                URL resource = null;
-
-                // FIXME: JIGSAW -- The following will only find resources not in a module
-                if (path.startsWith("/")) {
-                    resource = contextClassLoader.getResource(path.substring(1));
-                } else {
-                    resource = contextClassLoader.getResource(path);
-                }
-
-                return resource;
-            }
-
-            // else, url does have a scheme
-            return uri.toURL();
-
-        } catch (MalformedURLException malf) {
-            // Do not log exception here - caller will handle null return.
-            // For example, we might be looking for a .bss that doesn't exist
-            return null;
-        } catch (URISyntaxException urise) {
-            return null;
-        }
-    }
-
     // Calculate checksum for stylesheet file. Return byte[0] if checksum could not be calculated.
-    static byte[] calculateCheckSum(String fname) {
+    static byte[] calculateCheckSum(URI uri) {
 
-        if (fname == null || fname.isEmpty()) return new byte[0];
+        if (uri == null) return new byte[0];
 
         try {
-            final URL url = getURL(fname);
-
             // We only care about stylesheets from file: URLs.
-            if (url != null && "file".equals(url.getProtocol())) {
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
 
                 // not looking for security, just a checksum. MD5 should be faster than SHA
-                try (final InputStream stream = url.openStream();
+                try (final InputStream stream = uri.toURL().openStream();
                     final DigestInputStream dis = new DigestInputStream(stream, MessageDigest.getInstance("MD5")); ) {
                     dis.getMessageDigest().reset();
                     byte[] buffer = new byte[4096];
@@ -946,300 +874,6 @@ final public class StyleManager {
         return new byte[0];
     }
 
-    @SuppressWarnings("removal")
-    public static Stylesheet loadStylesheet(final String fname) {
-        try {
-            return loadStylesheetUnPrivileged(fname);
-        } catch (java.security.AccessControlException ace) {
-
-            // FIXME: JIGSAW -- we no longer are in a jar file, so this code path
-            // is obsolete and needs to be redone or eliminated. Fortunately, I
-            // don't think it is actually needed.
-            System.err.println("WARNING: security exception trying to load: " + fname);
-
-            /*
-            ** we got an access control exception, so
-            ** we could be running with a security manager.
-            ** we'll allow the app to read a css file from our runtime jar,
-            ** and give it one more chance.
-            */
-
-            /*
-            ** check that there are enough chars after the !/ to have a valid .css or .bss file name
-            */
-            if ((fname.length() < 7) && (fname.indexOf("!/") < fname.length()-7)) {
-                return null;
-            }
-
-            /*
-            **
-            ** first check that it's actually looking for the same runtime jar
-            ** that we're running from, and not some other file.
-            */
-            try {
-                URI requestedFileUrI = new URI(fname);
-
-                /*
-                ** is the requested file in a jar
-                */
-                if ("jar".equals(requestedFileUrI.getScheme())) {
-                    /*
-                    ** let's check that the css file is being requested from our
-                    ** runtime jar
-                    */
-                    URI styleManagerJarURI = AccessController.doPrivileged((PrivilegedExceptionAction<URI>) () -> StyleManager.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-
-                    final String styleManagerJarPath = styleManagerJarURI.getSchemeSpecificPart();
-                    String requestedFilePath = requestedFileUrI.getSchemeSpecificPart();
-                    String requestedFileJarPart = requestedFilePath.substring(requestedFilePath.indexOf('/'), requestedFilePath.indexOf("!/"));
-                    /*
-                    ** it's the correct jar, check it's a file access
-                    ** strip off the leading jar
-                    */
-                    if (styleManagerJarPath.equals(requestedFileJarPart)) {
-                        /*
-                        ** strip off the leading "jar",
-                        ** the css file name is past the last '!'
-                        */
-                        String requestedFileJarPathNoLeadingSlash = fname.substring(fname.indexOf("!/")+2);
-                        /*
-                        ** check that it's looking for a css file in the runtime jar
-                        */
-                        if (fname.endsWith(".css") || fname.endsWith(".bss")) {
-                            /*
-                            ** set up a read permission for the jar
-                            */
-                            FilePermission perm = new FilePermission(styleManagerJarPath, "read");
-
-                            PermissionCollection perms = perm.newPermissionCollection();
-                            perms.add(perm);
-                            AccessControlContext permsAcc = new AccessControlContext(
-                                new ProtectionDomain[] {
-                                    new ProtectionDomain(null, perms)
-                                });
-                            /*
-                            ** check that the jar file exists, and that we're allowed to
-                            ** read it.
-                            */
-                            JarFile jar = null;
-                            try {
-                                jar = AccessController.doPrivileged((PrivilegedExceptionAction<JarFile>) () -> new JarFile(styleManagerJarPath), permsAcc);
-                            } catch (PrivilegedActionException pae) {
-                                /*
-                                ** we got either a FileNotFoundException or an IOException
-                                ** in the privileged read. Return the same error as we
-                                ** would have returned if the css file hadn't of existed.
-                                */
-                                return null;
-                            }
-                            if (jar != null) {
-                                /*
-                                ** check that the file is in the jar
-                                */
-                                JarEntry entry = jar.getJarEntry(requestedFileJarPathNoLeadingSlash);
-                                if (entry != null) {
-                                    /*
-                                    ** allow read access to the jar
-                                    */
-                                    return AccessController.doPrivileged(
-                                            (PrivilegedAction<Stylesheet>) () -> loadStylesheetUnPrivileged(fname), permsAcc);
-                                }
-                            }
-                        }
-                    }
-                }
-                /*
-                ** no matter what happen, we return the same error that would
-                ** be returned if the css file hadn't of existed.
-                ** That way there in no information leaked.
-                */
-                return null;
-            }
-            /*
-            ** no matter what happen, we return the same error that would
-            ** be returned if the css file hadn't of existed.
-            ** That way there in no information leaked.
-            */
-            catch (java.net.URISyntaxException e) {
-                return null;
-            }
-            catch (java.security.PrivilegedActionException e) {
-                return null;
-            }
-       }
-    }
-
-
-    private static Stylesheet loadStylesheetUnPrivileged(final String fname) {
-
-        synchronized (styleLock) {
-            @SuppressWarnings("removal")
-            Boolean parse = AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
-
-                final String bss = System.getProperty("binary.css");
-                // binary.css is true by default.
-                // parse only if the file is not a .bss
-                // and binary.css is set to false
-                return (!fname.endsWith(".bss") && bss != null) ?
-                    !Boolean.valueOf(bss) : Boolean.FALSE;
-            });
-
-            try {
-                final String ext = (parse) ? (".css") : (".bss");
-                java.net.URL url = null;
-                Stylesheet stylesheet = null;
-                // check if url has extension, if not then just url as is and always parse as css text
-                if (!(fname.endsWith(".css") || fname.endsWith(".bss"))) {
-                    url = getURL(fname);
-                } else {
-                    final String name = fname.substring(0, fname.length() - 4);
-
-                    url = getURL(name+ext);
-                    if (url == null && (parse = !parse)) {
-                        // If we failed to get the URL for the .bss file,
-                        // fall back to the .css file.
-                        // Note that 'parse' is toggled in the test.
-                        url = getURL(name+".css");
-                    }
-
-                    if ((url != null) && !parse) {
-                        try {
-                            // RT-36332: if loadBinary throws an IOException, make sure to try .css
-                            stylesheet = Stylesheet.loadBinary(url);
-                        } catch (IOException ignored) {
-                        }
-
-                        if (stylesheet == null) {
-                            // If we failed to load the .bss file,
-                            // fall back to the .css file.
-                            url = getURL(fname);
-                        }
-                    }
-                }
-
-                if (stylesheet == null) {
-                    DataURI dataUri = null;
-
-                    if (url != null) {
-                        stylesheet = new CssParser().parse(url);
-                    } else {
-                        dataUri = DataURI.tryParse(fname);
-                    }
-
-                    if (dataUri != null) {
-                        boolean isText =
-                            "text".equalsIgnoreCase(dataUri.getMimeType())
-                                && ("css".equalsIgnoreCase(dataUri.getMimeSubtype())
-                                    || "plain".equalsIgnoreCase(dataUri.getMimeSubtype()));
-
-                        boolean isBinary =
-                            "application".equalsIgnoreCase(dataUri.getMimeType())
-                                && "octet-stream".equalsIgnoreCase(dataUri.getMimeSubtype());
-
-                        if (isText) {
-                            String charsetName = dataUri.getParameters().get("charset");
-                            Charset charset;
-
-                            try {
-                                charset = charsetName != null ? Charset.forName(charsetName) : Charset.defaultCharset();
-                            } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
-                                String message = String.format(
-                                    "Unsupported charset \"%s\" in stylesheet URI \"%s\"", charsetName, dataUri);
-
-                                if (errors != null) {
-                                    errors.add(new CssParser.ParseError(message));
-                                }
-
-                                if (getLogger().isLoggable(Level.WARNING)) {
-                                    getLogger().warning(message);
-                                }
-
-                                return null;
-                            }
-
-                            var stylesheetText = new String(dataUri.getData(), charset);
-                            stylesheet = new CssParser().parse(stylesheetText);
-                        } else if (isBinary) {
-                            try (InputStream stream = new ByteArrayInputStream(dataUri.getData())) {
-                                stylesheet = Stylesheet.loadBinary(stream);
-                            }
-                        } else {
-                            String message = String.format("Unexpected MIME type \"%s/%s\" in stylesheet URI \"%s\"",
-                                dataUri.getMimeType(), dataUri.getMimeSubtype(), dataUri);
-
-                            if (errors != null) {
-                                errors.add(new CssParser.ParseError(message));
-                            }
-
-                            if (getLogger().isLoggable(Level.WARNING)) {
-                                getLogger().warning(message);
-                            }
-
-                            return null;
-                        }
-                    }
-                }
-
-                if (stylesheet == null) {
-                    if (errors != null) {
-                        CssParser.ParseError error =
-                            new CssParser.ParseError(
-                                "Resource \""+fname+"\" not found."
-                            );
-                        errors.add(error);
-                    }
-                    if (getLogger().isLoggable(Level.WARNING)) {
-                        getLogger().warning(
-                            String.format("Resource \"%s\" not found.", fname)
-                        );
-                    }
-                }
-
-                // load any fonts from @font-face
-                if (stylesheet != null) {
-                    faceLoop: for(FontFace fontFace: stylesheet.getFontFaces()) {
-                        if (fontFace instanceof FontFaceImpl) {
-                            for(FontFaceImpl.FontFaceSrc src: ((FontFaceImpl)fontFace).getSources()) {
-                                if (src.getType() == FontFaceImpl.FontFaceSrcType.URL) {
-                                    Font loadedFont = Font.loadFont(src.getSrc(),10);
-                                    if (loadedFont == null) {
-                                        getLogger().info("Could not load @font-face font [" + src.getSrc() + "]");
-                                    }
-                                    continue faceLoop;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                return stylesheet;
-
-            } catch (FileNotFoundException fnfe) {
-                if (errors != null) {
-                    CssParser.ParseError error =
-                        new CssParser.ParseError(
-                            "Stylesheet \""+fname+"\" not found."
-                        );
-                    errors.add(error);
-                }
-                if (getLogger().isLoggable(Level.INFO)) {
-                    getLogger().info("Could not find stylesheet: " + fname);//, fnfe);
-                }
-            } catch (IOException ioe) {
-                // For data URIs, use the pretty-printed version for logging
-                var dataUri = DataURI.tryParse(fname);
-                String stylesheetName = dataUri != null ? dataUri.toString() : fname;
-
-                if (errors != null) {
-                    errors.add(new CssParser.ParseError("Could not load stylesheet: " + stylesheetName));
-                }
-                if (getLogger().isLoggable(Level.INFO)) {
-                    getLogger().info("Could not load stylesheet: " + stylesheetName);
-                }
-            }
-            return null;
-        }
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     //
@@ -1247,70 +881,44 @@ final public class StyleManager {
     //
     ////////////////////////////////////////////////////////////////////////////
 
-
     /**
      * Set a bunch of user agent stylesheets all at once. The order of the stylesheets in the list
-     * is the order of their styles in the cascade. Passing null, an empty list, or a list full of empty
-     * strings does nothing.
-     *
-     * @param urls The list of stylesheet URLs as Strings.
+     * is the order of their styles in the cascade.
      */
-    public void setUserAgentStylesheets(List<String> urls) {
-
-        if (urls == null || urls.size() == 0) return;
-
+    public void setUserAgentStylesheets(List<Stylesheet> stylesheets) {
         synchronized (styleLock) {
             // Avoid resetting user agent stylesheets if they haven't changed.
-            if (urls.size() == platformUserAgentStylesheetContainers.size()) {
+            if (stylesheets.size() == platformUserAgentStylesheetContainers.size()) {
                 boolean isSame = true;
-                for (int n=0, nMax=urls.size(); n < nMax && isSame; n++) {
-
-                    final String url = urls.get(n);
-                    final String fname = (url != null) ? url.trim() : null;
-
-                    if (fname == null || fname.isEmpty()) break;
-
+                for (int n = 0, nMax = stylesheets.size(); n < nMax && isSame; n++) {
                     StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                    isSame = fname.equals(container.fname);
+                    URI uri = StylesheetHelper.getURI(stylesheets.get(n));
+                    isSame = Objects.equals(uri, container.uri);
                     if (isSame) {
                         // don't use fname in calculateCheckSum since it is just the key to
                         // find the StylesheetContainer. Rather, use the URL of the
                         // stylesheet that was already loaded. For example, we could have
                         // fname = "com/sun/javafx/scene/control/skin/modena/modena.css, but
                         // the stylesheet URL could be jar:file://some/path/!com/sun/javafx/scene/control/skin/modena/modena.bss
-                        String stylesheetUrl = container.stylesheet.getUrl();
-                        byte[] checksum = calculateCheckSum(stylesheetUrl);
+                        byte[] checksum = calculateCheckSum(uri);
                         isSame = Arrays.equals(checksum, container.checksum);
                     }
                 }
                 if (isSame) return;
             }
 
-            boolean modified = false;
+            platformUserAgentStylesheetContainers.clear();
 
-            for (int n=0, nMax=urls.size(); n < nMax; n++) {
-
-                final String url = urls.get(n);
-                final String fname = (url != null) ? url.trim() : null;
-
-                if (fname == null || fname.isEmpty()) continue;
-
-                if (!modified) {
-                    // we have at least one non null or non-empty url
-                    platformUserAgentStylesheetContainers.clear();
-                    modified = true;
-                }
-
+            for (int n = 0, nMax = stylesheets.size(); n < nMax; n++) {
+                URI uri = StylesheetHelper.getURI(stylesheets.get(n));
                 if (n==0) {
-                    _setDefaultUserAgentStylesheet(fname);
+                    _setDefaultUserAgentStylesheet(uri, stylesheets.get(n));
                 } else {
-                    _addUserAgentStylesheet(fname);
+                    _addUserAgentStylesheet(uri, stylesheets.get(n));
                 }
             }
 
-            if (modified) {
-                userAgentStylesheetsChanged();
-            }
+            userAgentStylesheetsChanged();
         }
     }
 
@@ -1320,8 +928,12 @@ final public class StyleManager {
      *
      * @param fname The file URL, either relative or absolute, as a String.
      */
-    public void addUserAgentStylesheet(String fname) {
-        addUserAgentStylesheet(null, fname);
+    public void addUserAgentStylesheet(URI uri) {
+        try {
+            addUserAgentStylesheet(null, uri, Stylesheet.load(uri));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     /**
@@ -1331,38 +943,30 @@ final public class StyleManager {
      * @param url  The file URL, either relative or absolute, as a String.
      */
     // For RT-20643
-    public void addUserAgentStylesheet(Scene scene, String url) {
-
-        final String fname = (url != null) ? url.trim() : null;
-        if (fname == null || fname.isEmpty()) {
-            return;
-        }
-
+    public void addUserAgentStylesheet(Scene scene, URI uri, Stylesheet stylesheet) {
         synchronized (styleLock) {
-            if (_addUserAgentStylesheet(fname)) {
+            if (_addUserAgentStylesheet(uri, stylesheet)) {
                 userAgentStylesheetsChanged();
             }
         }
     }
 
     // fname is assumed to be non null and non empty
-    private boolean _addUserAgentStylesheet(String fname) {
+    private boolean _addUserAgentStylesheet(URI uri, Stylesheet stylesheet) {
 
         synchronized (styleLock) {
             // if we already have this stylesheet, bail
             for (int n=0, nMax= platformUserAgentStylesheetContainers.size(); n < nMax; n++) {
                 StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                if (fname.equals(container.fname)) {
+                if (uri.equals(container.uri)) {
                     return false;
                 }
             }
 
-            final Stylesheet ua_stylesheet = loadStylesheet(fname);
+            if (stylesheet == null) return false;
 
-            if (ua_stylesheet == null) return false;
-
-            ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
-            platformUserAgentStylesheetContainers.add(new StylesheetContainer(fname, ua_stylesheet));
+            stylesheet.setOrigin(StyleOrigin.USER_AGENT);
+            platformUserAgentStylesheetContainers.add(new StylesheetContainer(uri, stylesheet));
             return true;
         }
     }
@@ -1380,19 +984,18 @@ final public class StyleManager {
         }
 
         // null url is ok, just means that it is a stylesheet not loaded from a file
-        String url = ua_stylesheet.getUrl();
-        final String fname = url != null ? url.trim() : "";
+        URI uri = StylesheetHelper.getURI(ua_stylesheet);
 
         synchronized (styleLock) {
             // if we already have this stylesheet, bail
             for (int n=0, nMax= platformUserAgentStylesheetContainers.size(); n < nMax; n++) {
                 StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                if (fname.equals(container.fname)) {
+                if (Objects.equals(uri, container.uri)) {
                     return;
                 }
             }
 
-            platformUserAgentStylesheetContainers.add(new StylesheetContainer(fname, ua_stylesheet));
+            platformUserAgentStylesheetContainers.add(new StylesheetContainer(uri, ua_stylesheet));
 
             if (ua_stylesheet != null) {
                 ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
@@ -1406,8 +1009,12 @@ final public class StyleManager {
      *
      * @param fname The file URL, either relative or absolute, as a String.
      */
-    public void setDefaultUserAgentStylesheet(String fname) {
-        setDefaultUserAgentStylesheet(null, fname);
+    public void setDefaultUserAgentStylesheet(URI uri) {
+        try {
+            setDefaultUserAgentStylesheet(null, uri, Stylesheet.load(uri));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     /**
@@ -1416,28 +1023,22 @@ final public class StyleManager {
      * @param url  The file URL, either relative or absolute, as a String.
      */
     // For RT-20643
-    public void setDefaultUserAgentStylesheet(Scene scene, String url) {
-
-        final String fname = (url != null) ? url.trim() : null;
-        if (fname == null || fname.isEmpty()) {
-            return;
-        }
-
+    public void setDefaultUserAgentStylesheet(Scene scene, URI uri, Stylesheet stylesheet) {
         synchronized (styleLock) {
-            if(_setDefaultUserAgentStylesheet(fname)) {
+            if(_setDefaultUserAgentStylesheet(uri, stylesheet)) {
                 userAgentStylesheetsChanged();
             }
         }
     }
 
     // fname is expected to be non null and non empty
-    private boolean _setDefaultUserAgentStylesheet(String fname) {
+    private boolean _setDefaultUserAgentStylesheet(URI uri, Stylesheet stylesheet) {
 
         synchronized (styleLock) {
             // if we already have this stylesheet, make sure it is the first element
             for (int n=0, nMax= platformUserAgentStylesheetContainers.size(); n < nMax; n++) {
                 StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                if (fname.equals(container.fname)) {
+                if (Objects.equals(uri, container.uri)) {
                     if (n > 0) {
                         platformUserAgentStylesheetContainers.remove(n);
                         if (hasDefaultUserAgentStylesheet) {
@@ -1451,12 +1052,10 @@ final public class StyleManager {
                 }
             }
 
-            final Stylesheet ua_stylesheet = loadStylesheet(fname);
+            if (stylesheet == null) return false;
 
-            if (ua_stylesheet == null) return false;
-
-            ua_stylesheet.setOrigin(StyleOrigin.USER_AGENT);
-            final StylesheetContainer sc = new StylesheetContainer(fname, ua_stylesheet);
+            stylesheet.setOrigin(StyleOrigin.USER_AGENT);
+            final StylesheetContainer sc = new StylesheetContainer(uri, stylesheet);
 
             if (platformUserAgentStylesheetContainers.size() == 0) {
                 platformUserAgentStylesheetContainers.add(sc);
@@ -1478,10 +1077,8 @@ final public class StyleManager {
      * stylesheet list.
      * @param url  The file URL, either relative or absolute, as a String.
      */
-    public void removeUserAgentStylesheet(String url) {
-
-        final String fname = (url != null) ? url.trim() : null;
-        if (fname == null || fname.isEmpty()) {
+    public void removeUserAgentStylesheet(URI uri) {
+        if (uri == null) {
             return;
         }
 
@@ -1489,13 +1086,13 @@ final public class StyleManager {
             // if we already have this stylesheet, remove it!
             boolean removed = false;
             for (int n = platformUserAgentStylesheetContainers.size() - 1; n >= 0; n--) {
-                // don't remove the platform default user agent stylesheet
-                if (fname.equals(Application.getUserAgentStylesheet())) {
-                    continue;
-                }
+//                // don't remove the platform default user agent stylesheet
+//                if (fname.equals(Application.getUserAgentStylesheet())) {
+//                    continue;
+//                }
 
                 StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                if (fname.equals(container.fname)) {
+                if (Objects.equals(uri, container.uri)) {
                     platformUserAgentStylesheetContainers.remove(n);
                     removed = true;
                 }
@@ -1517,14 +1114,13 @@ final public class StyleManager {
         }
 
         // null url is ok, just means that it is a stylesheet not loaded from a file
-        String url = ua_stylesheet.getUrl();
-        final String fname = url != null ? url.trim() : "";
+        URI uri = StylesheetHelper.getURI(ua_stylesheet);
 
         synchronized (styleLock) {
             // if we already have this stylesheet, make sure it is the first element
             for (int n=0, nMax= platformUserAgentStylesheetContainers.size(); n < nMax; n++) {
                 StylesheetContainer container = platformUserAgentStylesheetContainers.get(n);
-                if (fname.equals(container.fname)) {
+                if (Objects.equals(uri, container.uri)) {
                     if (n > 0) {
                         platformUserAgentStylesheetContainers.remove(n);
                         if (hasDefaultUserAgentStylesheet) {
@@ -1537,7 +1133,7 @@ final public class StyleManager {
                 }
             }
 
-            StylesheetContainer sc = new StylesheetContainer(fname, ua_stylesheet);
+            StylesheetContainer sc = new StylesheetContainer(uri, ua_stylesheet);
             if (platformUserAgentStylesheetContainers.size() == 0) {
                 platformUserAgentStylesheetContainers.add(sc);
             } else if (hasDefaultUserAgentStylesheet) {
@@ -1577,28 +1173,29 @@ final public class StyleManager {
         for (Parent root : parents) NodeHelper.reapplyCSS(root);
     }
 
-    private List<StylesheetContainer> processStylesheets(List<String> stylesheets, Parent parent) {
+    private List<StylesheetContainer> processStylesheets(List<URI> stylesheets, Parent parent) {
 
         synchronized (styleLock) {
             final List<StylesheetContainer> list = new ArrayList<>();
             for (int n = 0, nMax = stylesheets.size(); n < nMax; n++) {
-                final String fname = stylesheets.get(n);
+                URI uri = stylesheets.get(n);
 
                 StylesheetContainer container = null;
-                if (stylesheetContainerMap.containsKey(fname)) {
-                    container = stylesheetContainerMap.get(fname);
+                if (stylesheetContainerMap.containsKey(uri)) {
+                    container = stylesheetContainerMap.get(uri);
 
                     if (!list.contains(container)) {
                         // minor optimization: if existing checksum in byte[0], then don't bother recalculating
                         if (container.checksumInvalid) {
-                            final byte[] checksum = calculateCheckSum(fname);
+                            final byte[] checksum = calculateCheckSum(uri);
                             if (!Arrays.equals(checksum, container.checksum)) {
                                 removeStylesheetContainer(container);
 
                                 // Stylesheet did change. Re-load the stylesheet and update the container map.
-                                Stylesheet stylesheet = loadStylesheet(fname);
-                                container = new StylesheetContainer(fname, stylesheet, checksum);
-                                stylesheetContainerMap.put(fname, container);
+                                Function<String, URL> resourceLoader = name -> StylesheetHelper.getResource(uri, name);
+                                Stylesheet stylesheet = StylesheetHelper.tryLoad(uri, resourceLoader);
+                                container = new StylesheetContainer(uri, stylesheet, checksum);
+                                stylesheetContainerMap.put(uri, container);
                             } else {
                                 container.checksumInvalid = false;
                             }
@@ -1612,17 +1209,18 @@ final public class StyleManager {
                     container.parentUsers.add(parent);
 
                 } else {
-                    final Stylesheet stylesheet = loadStylesheet(fname);
+                    Function<String, URL> resourceLoader = name -> StylesheetHelper.getResource(uri, name);
+                    Stylesheet stylesheet = StylesheetHelper.tryLoad(uri, resourceLoader);
                     // stylesheet may be null which would mean that some IOException
                     // was thrown while trying to load it. Add it to the
                     // stylesheetContainerMap anyway as this will prevent further
                     // attempts to parse the file
-                    container = new StylesheetContainer(fname, stylesheet);
+                    container = new StylesheetContainer(uri, stylesheet);
                     // RT-22565: remember that this parent or scene uses this stylesheet.
                     // Later, if the cache is cleared, the parent or scene is told to
                     // reapply css.
                     container.parentUsers.add(parent);
-                    stylesheetContainerMap.put(fname, container);
+                    stylesheetContainerMap.put(uri, container);
 
                     list.add(container);
                 }
@@ -1776,7 +1374,8 @@ final public class StyleManager {
                 key.styleClasses.add(StyleClassSet.getStyleClass(styleClass));
             }
 
-            Map<Key, Cache> cacheMap = cacheContainer.getCacheMap(parentStylesheets,regionUserAgentStylesheet);
+            Map<Key, Cache> cacheMap = cacheContainer.getCacheMap(
+                parentStylesheets, URI.create(regionUserAgentStylesheet));
             Cache cache = cacheMap.get(key);
 
             if (cache != null) {
@@ -1795,22 +1394,23 @@ final public class StyleManager {
                 if (hasSubSceneUserAgentStylesheet || hasSceneUserAgentStylesheet) {
 
                     // if has both, use SubScene
-                    final String uaFileName = hasSubSceneUserAgentStylesheet ?
+                    URI uaFileName = URI.create(hasSubSceneUserAgentStylesheet ?
                             subScene.getUserAgentStylesheet().trim() :
-                            scene.getUserAgentStylesheet().trim();
+                            scene.getUserAgentStylesheet().trim());
 
 
                     StylesheetContainer container = null;
                     for (int n=0, nMax=userAgentStylesheetContainers.size(); n<nMax; n++) {
                         container = userAgentStylesheetContainers.get(n);
-                        if (uaFileName.equals(container.fname)) {
+                        if (Objects.equals(uaFileName, container.uri)) {
                             break;
                         }
                         container = null;
                     }
 
                     if (container == null) {
-                        Stylesheet stylesheet = loadStylesheet(uaFileName);
+                        Function<String, URL> resourceLoader = name -> StylesheetHelper.getResource(uaFileName, name);
+                        Stylesheet stylesheet = StylesheetHelper.tryLoad(uaFileName, resourceLoader);
                         if (stylesheet != null) {
                             stylesheet.setOrigin(StyleOrigin.USER_AGENT);
                         }
@@ -1840,22 +1440,25 @@ final public class StyleManager {
                 }
 
                 if (hasRegionUserAgentStylesheet) {
+                    URI uri = URI.create(regionUserAgentStylesheet);
+
                     // Unfortunate duplication of code from previous block. No time to refactor.
                     StylesheetContainer container = null;
                     for (int n=0, nMax=userAgentStylesheetContainers.size(); n<nMax; n++) {
                         container = userAgentStylesheetContainers.get(n);
-                        if (regionUserAgentStylesheet.equals(container.fname)) {
+                        if (Objects.equals(uri, container.uri)) {
                             break;
                         }
                         container = null;
                     }
 
                     if (container == null) {
-                        Stylesheet stylesheet = loadStylesheet(regionUserAgentStylesheet);
+                        Function<String, URL> resourceLoader = name -> StylesheetHelper.getResource(uri, name);
+                        Stylesheet stylesheet = StylesheetHelper.tryLoad(uri, resourceLoader);
                         if (stylesheet != null) {
                             stylesheet.setOrigin(StyleOrigin.USER_AGENT);
                         }
-                        container = new StylesheetContainer(regionUserAgentStylesheet, stylesheet);
+                        container = new StylesheetContainer(uri, stylesheet);
                         userAgentStylesheetContainers.add(container);
                     }
 
@@ -1957,7 +1560,7 @@ final public class StyleManager {
     //
     ////////////////////////////////////////////////////////////////////////////
 
-    private static List<String> cacheMapKey;
+    private static List<URI> cacheMapKey;
 
     // Each Scene has its own cache
     // package for testing
@@ -1968,15 +1571,14 @@ final public class StyleManager {
             return styleCache;
         }
 
-        private Map<Key,Cache> getCacheMap(List<StylesheetContainer> parentStylesheets, String regionUserAgentStylesheet) {
+        private Map<Key,Cache> getCacheMap(List<StylesheetContainer> parentStylesheets, URI regionUserAgentStylesheet) {
 
             if (cacheMap == null) {
                 cacheMap = new HashMap<>();
             }
 
             synchronized (styleLock) {
-                if ((parentStylesheets == null || parentStylesheets.isEmpty()) &&
-                        (regionUserAgentStylesheet == null || regionUserAgentStylesheet.isEmpty())) {
+                if ((parentStylesheets == null || parentStylesheets.isEmpty()) && (regionUserAgentStylesheet == null)) {
 
                     Map<Key,Cache> cmap = cacheMap.get(null);
                     if (cmap == null) {
@@ -1993,8 +1595,8 @@ final public class StyleManager {
                     }
                     for (int n=0; n<nMax; n++) {
                         StylesheetContainer sc = parentStylesheets.get(n);
-                        if (sc == null || sc.fname == null || sc.fname.isEmpty()) continue;
-                        cacheMapKey.add(sc.fname);
+                        if (sc == null || sc.uri == null) continue;
+                        cacheMapKey.add(sc.uri);
                     }
                     if (regionUserAgentStylesheet != null) {
                         cacheMapKey.add(regionUserAgentStylesheet);
@@ -2109,7 +1711,7 @@ final public class StyleManager {
 
         private Map<StyleCache.Key,StyleCache> styleCache;
 
-        private Map<List<String>, Map<Key,Cache>> cacheMap;
+        private Map<List<URI>, Map<Key,Cache>> cacheMap;
 
         private List<StyleMap> styleMapList;
 
