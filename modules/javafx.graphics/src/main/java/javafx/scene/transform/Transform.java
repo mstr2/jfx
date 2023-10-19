@@ -46,6 +46,7 @@ import javafx.beans.property.ReadOnlyBooleanPropertyBase;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.event.EventHandlerPriority;
 import javafx.event.EventTarget;
 import javafx.event.EventType;
 import javafx.geometry.Bounds;
@@ -1897,7 +1898,26 @@ public abstract class Transform implements Cloneable, EventTarget {
             final EventType<T> eventType,
             final EventHandler<? super T> eventHandler) {
         getInternalEventDispatcher()
-                .addEventHandler(eventType, eventHandler);
+                .addEventHandler(eventType, eventHandler, EventHandlerPriority.DEFAULT);
+        // need to validate all properties to get the change events
+        validate();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Currently the only event delivered to a {@code Transform} is the {@code TransformChangedEvent}
+     * with its single type {@code TRANSFORM_CHANGED}.
+     *
+     * @since 22
+     */
+    @Override
+    public final <T extends Event> void addEventHandler(
+            final EventType<T> eventType,
+            final EventHandler<? super T> eventHandler,
+            final EventHandlerPriority priority) {
+        getInternalEventDispatcher()
+                .addEventHandler(eventType, eventHandler, priority);
         // need to validate all properties to get the change events
         validate();
     }
@@ -1927,7 +1947,26 @@ public abstract class Transform implements Cloneable, EventTarget {
             final EventType<T> eventType,
             final EventHandler<? super T> eventFilter) {
         getInternalEventDispatcher()
-                .addEventFilter(eventType, eventFilter);
+                .addEventFilter(eventType, eventFilter, EventHandlerPriority.DEFAULT);
+        // need to validate all properties to get the change events
+        validate();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Currently the only event delivered to a {@code Transform} is the {@code TransformChangedEvent}
+     * with its single type {@code TRANSFORM_CHANGED}.
+     *
+     * @since 22
+     */
+    @Override
+    public final <T extends Event> void addEventFilter(
+            final EventType<T> eventType,
+            final EventHandler<? super T> eventFilter,
+            final EventHandlerPriority priority) {
+        getInternalEventDispatcher()
+                .addEventFilter(eventType, eventFilter, priority);
         // need to validate all properties to get the change events
         validate();
     }

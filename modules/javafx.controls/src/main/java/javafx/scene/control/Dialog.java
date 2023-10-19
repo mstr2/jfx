@@ -39,6 +39,7 @@ import javafx.css.PseudoClass;
 import javafx.event.Event;
 import javafx.event.EventDispatchChain;
 import javafx.event.EventHandler;
+import javafx.event.EventHandlerPriority;
 import javafx.event.EventTarget;
 import javafx.event.EventType;
 import javafx.scene.Node;
@@ -902,7 +903,13 @@ public class Dialog<R> implements EventTarget {
 
     @Override
     public final <E extends Event> void addEventHandler(EventType<E> eventType, EventHandler<? super E> eventHandler) {
-        eventHandlerManager.addEventHandler(eventType, eventHandler);
+        eventHandlerManager.addEventHandler(eventType, eventHandler, EventHandlerPriority.DEFAULT);
+    }
+
+    @Override
+    public final <E extends Event> void addEventHandler(EventType<E> eventType, EventHandler<? super E> eventHandler,
+                                                        EventHandlerPriority priority) {
+        eventHandlerManager.addEventHandler(eventType, eventHandler, priority);
     }
 
     @Override
@@ -912,7 +919,13 @@ public class Dialog<R> implements EventTarget {
 
     @Override
     public final <E extends Event> void addEventFilter(EventType<E> eventType, EventHandler<? super E> eventFilter) {
-        eventHandlerManager.addEventFilter(eventType, eventFilter);
+        eventHandlerManager.addEventFilter(eventType, eventFilter, EventHandlerPriority.DEFAULT);
+    }
+
+    @Override
+    public final <E extends Event> void addEventFilter(EventType<E> eventType, EventHandler<? super E> eventFilter,
+                                                       EventHandlerPriority priority) {
+        eventHandlerManager.addEventFilter(eventType, eventFilter, priority);
     }
 
     @Override

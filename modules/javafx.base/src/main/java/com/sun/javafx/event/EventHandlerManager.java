@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Map;
 
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.event.EventHandlerPriority;
 import javafx.event.EventType;
 
 /**
@@ -59,14 +60,16 @@ public class EventHandlerManager extends BasicEventDispatcher {
      */
     public final <T extends Event> void addEventHandler(
             final EventType<T> eventType,
-            final EventHandler<? super T> eventHandler) {
+            final EventHandler<? super T> eventHandler,
+            final EventHandlerPriority priority) {
         validateEventType(eventType);
         validateEventHandler(eventHandler);
+        validatePriority(priority);
 
         final CompositeEventHandler<T> compositeEventHandler =
                 createGetCompositeEventHandler(eventType);
 
-        compositeEventHandler.addEventHandler(eventHandler);
+        compositeEventHandler.addEventHandler(eventHandler, priority);
     }
 
     /**
@@ -101,14 +104,16 @@ public class EventHandlerManager extends BasicEventDispatcher {
      */
     public final <T extends Event> void addEventFilter(
             final EventType<T> eventType,
-            final EventHandler<? super T> eventFilter) {
+            final EventHandler<? super T> eventFilter,
+            final EventHandlerPriority priority) {
         validateEventType(eventType);
         validateEventFilter(eventFilter);
+        validatePriority(priority);
 
         final CompositeEventHandler<T> compositeEventHandler =
                 createGetCompositeEventHandler(eventType);
 
-        compositeEventHandler.addEventFilter(eventFilter);
+        compositeEventHandler.addEventFilter(eventFilter, priority);
     }
 
     /**
@@ -259,6 +264,13 @@ public class EventHandlerManager extends BasicEventDispatcher {
             final EventHandler<?> eventFilter) {
         if (eventFilter == null) {
             throw new NullPointerException("Event filter must not be null");
+        }
+    }
+
+    private static void validatePriority(
+            final EventHandlerPriority priority) {
+        if (priority == null) {
+            throw new NullPointerException("Priority must not be null");
         }
     }
 }

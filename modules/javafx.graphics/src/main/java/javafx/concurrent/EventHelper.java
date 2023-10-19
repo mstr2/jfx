@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,12 +123,14 @@ class EventHelper {
      * @param <T> the specific event class of the handler
      * @param eventType the type of the events to receive by the handler
      * @param eventHandler the handler to register
+     * @param priority the priority
      */
     final <T extends Event> void addEventHandler(
             final EventType<T> eventType,
-            final EventHandler<? super T> eventHandler) {
+            final EventHandler<? super T> eventHandler,
+            final EventHandlerPriority priority) {
         getInternalEventDispatcher()
-                .addEventHandler(eventType, eventHandler);
+                .addEventHandler(eventType, eventHandler, priority);
     }
 
     /**
@@ -155,12 +157,14 @@ class EventHelper {
      * @param <T> the specific event class of the filter
      * @param eventType the type of the events to receive by the filter
      * @param eventFilter the filter to register
+     * @param priority the priority
      */
     final <T extends Event> void addEventFilter(
             final EventType<T> eventType,
-            final EventHandler<? super T> eventFilter) {
+            final EventHandler<? super T> eventFilter,
+            final EventHandlerPriority priority) {
         getInternalEventDispatcher()
-                .addEventFilter(eventType, eventFilter);
+                .addEventFilter(eventType, eventFilter, priority);
     }
 
     /**

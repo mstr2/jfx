@@ -49,6 +49,7 @@ import javafx.event.Event;
 import javafx.event.EventDispatchChain;
 import javafx.event.EventDispatcher;
 import javafx.event.EventHandler;
+import javafx.event.EventHandlerPriority;
 import javafx.event.EventTarget;
 import javafx.event.EventType;
 import javafx.geometry.Rectangle2D;
@@ -1318,7 +1319,16 @@ public class Window implements EventTarget {
             final EventType<T> eventType,
             final EventHandler<? super T> eventHandler) {
         getInternalEventDispatcher().getEventHandlerManager()
-                                    .addEventHandler(eventType, eventHandler);
+                                    .addEventHandler(eventType, eventHandler, EventHandlerPriority.DEFAULT);
+    }
+
+    @Override
+    public final <T extends Event> void addEventHandler(
+            final EventType<T> eventType,
+            final EventHandler<? super T> eventHandler,
+            final EventHandlerPriority priority) {
+        getInternalEventDispatcher().getEventHandlerManager()
+                                    .addEventHandler(eventType, eventHandler, priority);
     }
 
     @Override
@@ -1335,7 +1345,16 @@ public class Window implements EventTarget {
             final EventType<T> eventType,
             final EventHandler<? super T> eventFilter) {
         getInternalEventDispatcher().getEventHandlerManager()
-                                    .addEventFilter(eventType, eventFilter);
+                                    .addEventFilter(eventType, eventFilter, EventHandlerPriority.DEFAULT);
+    }
+
+    @Override
+    public final <T extends Event> void addEventFilter(
+            final EventType<T> eventType,
+            final EventHandler<? super T> eventFilter,
+            final EventHandlerPriority priority) {
+        getInternalEventDispatcher().getEventHandlerManager()
+                                    .addEventFilter(eventType, eventFilter, priority);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.sun.javafx.event;
 
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.event.EventHandlerPriority;
 import javafx.event.WeakEventHandler;
 
 public final class CompositeEventHandler<T extends Event> {
@@ -43,9 +44,10 @@ public final class CompositeEventHandler<T extends Event> {
         return eventHandler;
     }
 
-    public void addEventHandler(final EventHandler<? super T> eventHandler) {
+    public void addEventHandler(final EventHandler<? super T> eventHandler,
+                                final EventHandlerPriority priority) {
         if (find(eventHandler, false) == null) {
-            append(lastRecord, createEventHandlerRecord(eventHandler));
+            append(findInsertAfter(priority), createEventHandlerRecord(eventHandler, priority));
         }
     }
 
@@ -56,9 +58,10 @@ public final class CompositeEventHandler<T extends Event> {
         }
     }
 
-    public void addEventFilter(final EventHandler<? super T> eventFilter) {
+    public void addEventFilter(final EventHandler<? super T> eventFilter,
+                               final EventHandlerPriority priority) {
         if (find(eventFilter, true) == null) {
-            append(lastRecord, createEventFilterRecord(eventFilter));
+            append(findInsertAfter(priority), createEventFilterRecord(eventFilter, priority));
         }
     }
 
@@ -121,19 +124,17 @@ public final class CompositeEventHandler<T extends Event> {
     }
 
     private EventProcessorRecord<T> createEventHandlerRecord(
-            final EventHandler<? super T> eventHandler) {
+            final EventHandler<? super T> eventHandler, final EventHandlerPriority priority) {
         return (eventHandler instanceof WeakEventHandler)
-                   ? new WeakEventHandlerRecord(
-                             (WeakEventHandler<? super T>) eventHandler)
-                   : new NormalEventHandlerRecord(eventHandler);
+                   ? new WeakEventHandlerRecord<>((WeakEventHandler<? super T>) eventHandler, priority)
+                   : new NormalEventHandlerRecord<>(eventHandler, priority);
     }
 
     private EventProcessorRecord<T> createEventFilterRecord(
-            final EventHandler<? super T> eventFilter) {
+            final EventHandler<? super T> eventFilter, final EventHandlerPriority priority) {
         return (eventFilter instanceof WeakEventHandler)
-                   ? new WeakEventFilterRecord(
-                             (WeakEventHandler<? super T>) eventFilter)
-                   : new NormalEventFilterRecord(eventFilter);
+                   ? new WeakEventFilterRecord<>((WeakEventHandler<? super T>) eventFilter, priority)
+                   : new NormalEventFilterRecord<>(eventFilter, priority);
     }
 
     private void remove(final EventProcessorRecord<T> record) {
@@ -206,9 +207,29 @@ public final class CompositeEventHandler<T extends Event> {
         return false;
     }
 
+    private EventProcessorRecord<T> findInsertAfter(EventHandlerPriority priority) {
+        EventProcessorRecord<T> record = firstRecord;
+        while (record != null) {
+            if (record.isDisconnected()) {
+                remove(record);
+            } else if (record.priority.compareTo(priority) < 0) {
+                return record.prevRecord;
+            }
+
+            record = record.nextRecord;
+        }
+
+        return lastRecord;
+    }
+
     private static abstract class EventProcessorRecord<T extends Event> {
+        private final EventHandlerPriority priority;
         private EventProcessorRecord<T> nextRecord;
         private EventProcessorRecord<T> prevRecord;
+
+        EventProcessorRecord(EventHandlerPriority priority) {
+            this.priority = priority;
+        }
 
         public abstract boolean stores(EventHandler<? super T> eventProcessor,
                                        boolean isFilter);
@@ -226,8 +247,9 @@ public final class CompositeEventHandler<T extends Event> {
             extends EventProcessorRecord<T> {
         private final EventHandler<? super T> eventHandler;
 
-        public NormalEventHandlerRecord(
-                final EventHandler<? super T> eventHandler) {
+        public NormalEventHandlerRecord(final EventHandler<? super T> eventHandler,
+                                        final EventHandlerPriority priority) {
+            super(priority);
             this.eventHandler = eventHandler;
         }
 
@@ -261,8 +283,9 @@ public final class CompositeEventHandler<T extends Event> {
             extends EventProcessorRecord<T> {
         private final WeakEventHandler<? super T> weakEventHandler;
 
-        public WeakEventHandlerRecord(
-                final WeakEventHandler<? super T> weakEventHandler) {
+        public WeakEventHandlerRecord(final WeakEventHandler<? super T> weakEventHandler,
+                                      final EventHandlerPriority priority) {
+            super(priority);
             this.weakEventHandler = weakEventHandler;
         }
 
@@ -296,8 +319,9 @@ public final class CompositeEventHandler<T extends Event> {
             extends EventProcessorRecord<T> {
         private final EventHandler<? super T> eventFilter;
 
-        public NormalEventFilterRecord(
-                final EventHandler<? super T> eventFilter) {
+        public NormalEventFilterRecord(final EventHandler<? super T> eventFilter,
+                                       final EventHandlerPriority priority) {
+            super(priority);
             this.eventFilter = eventFilter;
         }
 
@@ -331,8 +355,9 @@ public final class CompositeEventHandler<T extends Event> {
             extends EventProcessorRecord<T> {
         private final WeakEventHandler<? super T> weakEventFilter;
 
-        public WeakEventFilterRecord(
-                final WeakEventHandler<? super T> weakEventFilter) {
+        public WeakEventFilterRecord(final WeakEventHandler<? super T> weakEventFilter,
+                                     final EventHandlerPriority priority) {
+            super(priority);
             this.weakEventFilter = weakEventFilter;
         }
 
