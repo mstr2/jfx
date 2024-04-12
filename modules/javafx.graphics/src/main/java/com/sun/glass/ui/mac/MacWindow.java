@@ -115,6 +115,8 @@ final class MacWindow extends Window {
     @Override native protected boolean _grabFocus(long ptr);
     @Override native protected void _ungrabFocus(long ptr);
 
+    @Override native protected void _setDarkFrame(long ptr, boolean dark);
+
     @Override
     protected void notifyResize(int type, int width, int height) {
         width  = Math.round( width * getPlatformScaleX());

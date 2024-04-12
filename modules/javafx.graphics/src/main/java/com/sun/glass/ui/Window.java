@@ -164,6 +164,12 @@ public abstract class Window {
      */
     @Native public static final int MODAL = 1 << 9;
 
+    /**
+     * Indicates that the window should be decorated with a dark frame.
+     * If the window has no platform decorations, this flag has no effect.
+     */
+    @Native public static final int DARK_FRAME = 1 << 10;
+
     final static public class State {
         @Native public static final int NORMAL = 1;
         @Native public static final int MINIMIZED = 2;
@@ -605,6 +611,14 @@ public abstract class Window {
         Application.checkEventThread();
         checkNotClosed();
         _setBounds(ptr, 0, 0, false, false, 0, 0, cw, ch, 0, 0);
+    }
+
+    protected void _setDarkFrame(long ptr, boolean dark) {}
+
+    public void setDarkFrame(boolean dark) {
+        Application.checkEventThread();
+        checkNotClosed();
+        _setDarkFrame(ptr, dark);
     }
 
     public boolean isVisible() {

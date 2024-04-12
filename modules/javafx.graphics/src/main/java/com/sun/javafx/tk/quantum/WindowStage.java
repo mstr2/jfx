@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,7 @@ public class WindowStage extends GlassStage {
     private StageStyle style;
     private GlassStage owner = null;
     private Modality modality = Modality.NONE;
+    private boolean darkFrame;
     private final boolean securityDialog;
 
     private OverlayWarning warning = null;
@@ -93,9 +94,11 @@ public class WindowStage extends GlassStage {
                                  ".QuantumMessagesBundle", LOCALE);
 
 
-    public WindowStage(javafx.stage.Window peerWindow, boolean securityDialog, final StageStyle stageStyle, Modality modality, TKStage owner) {
+    public WindowStage(javafx.stage.Window peerWindow, boolean securityDialog, final StageStyle stageStyle,
+                       boolean darkFrame, Modality modality, TKStage owner) {
         this.style = stageStyle;
         this.owner = (GlassStage)owner;
+        this.darkFrame = darkFrame;
         this.modality = modality;
         this.securityDialog = securityDialog;
 
@@ -181,6 +184,9 @@ public class WindowStage extends GlassStage {
             }
             if (modality != Modality.NONE) {
                 windowMask |= Window.MODAL;
+            }
+            if (darkFrame) {
+                windowMask |= Window.DARK_FRAME;
             }
             platformWindow =
                     app.createWindow(ownerWindow, Screen.getMainScreen(), windowMask);
@@ -752,6 +758,11 @@ public class WindowStage extends GlassStage {
             }
             return null;
         }, getAccessControlContext());
+    }
+
+    @Override
+    public void setDarkFrame(boolean dark) {
+        platformWindow.setDarkFrame(dark);
     }
 
     @Override public void toBack() {

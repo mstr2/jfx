@@ -284,6 +284,7 @@ class WinWindow extends Window {
     @Override native protected boolean _grabFocus(long ptr);
     @Override native protected void _ungrabFocus(long ptr);
     @Override native protected void _setCursor(long ptr, Cursor cursor);
+    @Override native protected void _setDarkFrame(long ptr, boolean dark);
 
     @Override
     protected void _requestInput(long ptr, String text, int type, double width, double height,

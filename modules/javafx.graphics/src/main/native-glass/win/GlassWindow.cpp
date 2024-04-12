@@ -1213,6 +1213,13 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
         if (!hWnd) {
             delete pWindow;
         } else {
+            BOOL darkMode = mask & com_sun_glass_ui_Window_DARK_FRAME;
+
+            // DWMWA_USE_IMMERSIVE_DARK_MODE is 20 since Windows 10 build 18362, and 19 before.
+            if (DwmSetWindowAttribute(hWnd, 20, &darkMode, sizeof(darkMode)) != S_OK) {
+                DwmSetWindowAttribute(hWnd, 19, &darkMode, sizeof(darkMode));
+            }
+
             if (!closeable) {
                 HMENU hSysMenu = ::GetSystemMenu(hWnd, FALSE);
                 if (hSysMenu != NULL) {
@@ -1905,6 +1912,30 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinWindow__1setCursor
     LEAVE_MAIN_THREAD_WITH_hWnd;
 
     ARG(jCursor) = jCursor;
+    PERFORM();
+}
+
+/*
+ * Class:     com_sun_glass_ui_win_WinWindow
+ * Method:    _setDarkFrame
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinWindow__1setDarkFrame
+    (JNIEnv *env, jobject jThis, jlong ptr, jboolean dark)
+{
+    ENTER_MAIN_THREAD()
+    {
+        BOOL darkMode = dark;
+
+        // DWMWA_USE_IMMERSIVE_DARK_MODE is 20 since Windows 10 build 18362, and 19 before.
+        if (DwmSetWindowAttribute(hWnd, 20, &darkMode, sizeof(darkMode)) != S_OK) {
+            DwmSetWindowAttribute(hWnd, 19, &darkMode, sizeof(darkMode));
+        }
+    }
+    jboolean dark;
+    LEAVE_MAIN_THREAD_WITH_hWnd;
+
+    ARG(dark) = dark;
     PERFORM();
 }
 
