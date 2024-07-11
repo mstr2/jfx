@@ -32,7 +32,8 @@
 
 class GlassWindow : public BaseWnd, public ViewContainer {
 public:
-    GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated, bool isUnified, HWND parentOrOwner);
+    GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated, bool isUnified,
+                bool isCombined, HWND parentOrOwner);
     virtual ~GlassWindow();
 
     static GlassWindow* FromHandle(HWND hWnd) {
@@ -144,6 +145,7 @@ private:
     const bool m_isTransparent;
     const bool m_isDecorated;
     const bool m_isUnified;
+    const bool m_isCombined;
 
     bool m_isResizable;
 
@@ -184,6 +186,8 @@ private:
     void HandleDPIEvent(WPARAM wParam, LPARAM lParam);
     bool HandleCommand(WORD cmdID);
     void HandleFocusDisabledEvent();
+    bool HandleMouseEvents(UINT msg, WPARAM wParam, LPARAM lParam);
+    BOOL HandleNCHitTestEvent(SHORT, SHORT, LRESULT&);
 };
 
 

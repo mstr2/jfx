@@ -29,6 +29,7 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
+import javafx.scene.Parent;
 
 /**
  * MS Windows platform implementation class for Window.
@@ -114,6 +115,10 @@ class WinWindow extends Window {
                 ph = iTop + iBot + (int) Math.ceil(fx_ch * platformScaleY);
             }
             fxReqHeight = fx_ch;
+
+            int maxW = getMaximumWidth(), maxH = getMaximumHeight();
+            pw = Math.max(Math.min(pw, maxW > 0 ? maxW : Integer.MAX_VALUE), getMinimumWidth());
+            ph = Math.max(Math.min(ph, maxH > 0 ? maxH : Integer.MAX_VALUE), getMinimumHeight());
 
             long anchor = _getAnchor(getRawHandle());
             int resizeMode = (anchor == ANCHOR_NO_CAPTURE)
@@ -255,6 +260,29 @@ class WinWindow extends Window {
         return true;
     }
 
+    /**
+     * Classifies the window area at the specified physical coordinate.
+     * This method is called from native code.
+     */
+    private int nonClientHitTest(int x, int y) {
+        double wx = x / platformScaleX;
+        double wy = y / platformScaleY;
+
+        if (minMaxCloseOverlay != null) {
+            var result = minMaxCloseOverlay.hitTest(wx, wy);
+            if (result != HitTestResult.CLIENT) {
+                return result.value();
+            }
+        }
+
+        View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
+        if (eventHandler != null && eventHandler.isViewDragArea(wx, wy)) {
+            return HitTestResult.TITLE.value();
+        }
+
+        return HitTestResult.CLIENT.value();
+    }
+
     native private long _getInsets(long ptr);
     native private long _getAnchor(long ptr);
     @Override native protected long _createWindow(long ownerPtr, long screenPtr, int mask);
@@ -320,5 +348,16 @@ class WinWindow extends Window {
             closingRequested = true;
             setVisible(false);
         }
+    }
+
+    private MinMaxCloseOverlay minMaxCloseOverlay;
+
+    @Override
+    public Parent getWindowOverlay() {
+        if (minMaxCloseOverlay == null) {
+            minMaxCloseOverlay = new MinMaxCloseOverlay();
+        }
+
+        return minMaxCloseOverlay;
     }
 }

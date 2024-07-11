@@ -66,5 +66,7 @@ public enum StageStyle {
      * NOTE: To see the effect, the {@code Scene} covering the {@code Stage} should have {@code Color.TRANSPARENT}
      * @since JavaFX 8.0
      */
-    UNIFIED
+    UNIFIED,
+
+    COMBINED
 }

@@ -430,7 +430,7 @@ static jlong _createWindowCommonDo(JNIEnv *env, jobject jWindow, jlong jOwnerPtr
             }
 
             if ((jStyleMask&com_sun_glass_ui_Window_UNIFIED) != 0) {
-                styleMask = styleMask|NSWindowStyleMaskTexturedBackground;
+                styleMask = styleMask|NSWindowStyleMaskFullSizeContentView;
             }
 
             if (isUtility)

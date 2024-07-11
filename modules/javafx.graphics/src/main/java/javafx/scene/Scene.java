@@ -75,6 +75,7 @@ import javafx.event.*;
 import javafx.geometry.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.*;
+import javafx.scene.layout.CaptionBar;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.stage.PopupWindow;
@@ -588,12 +589,20 @@ public class Scene implements EventTarget {
             sceneRoot.clearDirty(com.sun.javafx.scene.DirtyBits.NODE_CSS);
             sceneRoot.processCSS();
         }
+
+        if (peer instanceof TKSceneOverlaySupport overlay) {
+            overlay.processOverlayCSS();
+        }
     }
 
     void doLayoutPass() {
         final Parent r = getRoot();
         if (r != null) {
             r.layout();
+        }
+
+        if (peer instanceof TKSceneOverlaySupport overlay) {
+            overlay.layoutOverlay();
         }
     }
 
@@ -2634,6 +2643,10 @@ public class Scene implements EventTarget {
                         Scene.this.mouseHandler.pulse();
                         // Tell the scene peer that it needs to repaint
                         peer.markDirty();
+
+                        if (peer instanceof TKSceneOverlaySupport overlay) {
+                            overlay.synchronizeOverlay();
+                        }
                     } finally {
                         peer.releaseSynchronization(true);
                     }
@@ -2989,6 +3002,21 @@ public class Scene implements EventTarget {
         @Override
         public Accessible getSceneAccessible() {
             return getAccessible();
+        }
+
+        private final PickRay pickRay = new PickRay();
+
+        @Override
+        public boolean isViewDragArea(double x, double y) {
+            Node root = Scene.this.getRoot();
+            if (root != null) {
+                pickRay.set(x, y, 1, 0, Double.POSITIVE_INFINITY);
+                var pickResultChooser = new PickResultChooser();
+                root.pickNode(pickRay, pickResultChooser);
+                return pickResultChooser.getIntersectedNode() instanceof CaptionBar;
+            }
+
+            return false;
         }
     }
 

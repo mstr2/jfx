@@ -32,24 +32,28 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
 import com.sun.javafx.cursor.CursorFrame;
-import com.sun.javafx.scene.NodeHelper;
 import com.sun.javafx.sg.prism.NGNode;
+import com.sun.javafx.tk.TKSceneOverlaySupport;
 import com.sun.javafx.tk.Toolkit;
 import com.sun.prism.GraphicsPipeline;
+import javafx.scene.Parent;
 
-class ViewScene extends GlassScene {
+class ViewScene extends GlassScene implements TKSceneOverlaySupport {
 
     private static final String UNSUPPORTED_FORMAT =
         "Transparent windows only supported for BYTE_BGRA_PRE format on LITTLE_ENDIAN machines";
 
+    private final javafx.scene.Scene fxScene;
     private View platformView;
     private ViewPainter painter;
-
     private PaintRenderJob paintRenderJob;
+    private ViewSceneOverlay viewSceneOverlay;
+    private Parent overlayRoot;
 
-    public ViewScene(boolean depthBuffer, boolean msaa) {
+    public ViewScene(javafx.scene.Scene fxScene, boolean depthBuffer, boolean msaa) {
         super(depthBuffer, msaa);
 
+        this.fxScene = fxScene;
         this.platformView = Application.GetApplication().createView();
         this.platformView.setEventHandler(new GlassViewEventHandler(this));
     }
@@ -81,6 +85,14 @@ class ViewScene extends GlassScene {
             } else {
                 painter = new PresentingPainter(this);
             }
+
+            if (fxScene != null) {
+                viewSceneOverlay = new ViewSceneOverlay(fxScene, painter);
+                viewSceneOverlay.setRoot(overlayRoot);
+            } else {
+                viewSceneOverlay = null;
+            }
+
             painter.setRoot(getRoot());
             paintRenderJob = new PaintRenderJob(this, PaintCollector.getInstance().getRendered(), painter);
         }
@@ -101,6 +113,7 @@ class ViewScene extends GlassScene {
                 updateSceneState();
                 painter = null;
                 paintRenderJob = null;
+                viewSceneOverlay = null;
                 return null;
             });
         }
@@ -152,26 +165,46 @@ class ViewScene extends GlassScene {
         platformView.finishInputMethodComposition();
     }
 
+    @Override
+    public void processOverlayCSS() {
+        if (viewSceneOverlay != null) {
+            viewSceneOverlay.processCSS();
+        }
+    }
+
+    @Override
+    public void layoutOverlay() {
+        if (viewSceneOverlay != null) {
+            viewSceneOverlay.layout();
+        }
+    }
+
+    @Override
+    public void synchronizeOverlay() {
+        if (viewSceneOverlay != null) {
+            viewSceneOverlay.synchronize();
+        }
+    }
+
+    public void setViewSize(float width, float height) {
+        sceneListener.changedSize(width, height);
+
+        if (viewSceneOverlay != null) {
+            viewSceneOverlay.resize(width, height);
+        }
+    }
+
+    public void setOverlay(Parent root) {
+        overlayRoot = root;
+
+        if (viewSceneOverlay != null) {
+            viewSceneOverlay.setRoot(root);
+        }
+    }
+
     @Override public String toString() {
         View view = getPlatformView();
         return (" scene: " + hashCode() + " @ (" + view.getWidth() + "," + view.getHeight() + ")");
-    }
-
-    void synchroniseOverlayWarning() {
-        try {
-            waitForSynchronization();
-            OverlayWarning warning = getWindowStage().getWarning();
-            if (warning == null) {
-                painter.setOverlayRoot(null);
-            } else {
-                painter.setOverlayRoot(NodeHelper.getPeer(warning));
-                warning.updateBounds();
-                NodeHelper.updatePeer(warning);
-            }
-        } finally {
-            releaseSynchronization(true);
-            entireSceneNeedsRepaint();
-        }
     }
 }
 

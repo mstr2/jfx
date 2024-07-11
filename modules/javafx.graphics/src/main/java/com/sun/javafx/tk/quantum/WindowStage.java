@@ -156,7 +156,10 @@ public class WindowStage extends GlassStage {
             } else {
                 switch (style) {
                     case UNIFIED:
-                        if (app.supportsUnifiedWindows()) {
+                    case COMBINED:
+                        if (style == StageStyle.COMBINED) {
+                            windowMask |= Window.COMBINED;
+                        } else if (app.supportsUnifiedWindows()) {
                             windowMask |= Window.UNIFIED;
                         }
                         // fall through
@@ -244,8 +247,13 @@ public class WindowStage extends GlassStage {
     }
 
     @Override public TKScene createTKScene(boolean depthBuffer, boolean msaa, @SuppressWarnings("removal") AccessControlContext acc) {
-        ViewScene scene = new ViewScene(depthBuffer, msaa);
+        ViewScene scene = new ViewScene(fxStage != null ? fxStage.getScene() : null, depthBuffer, msaa);
         scene.setSecurityContext(acc);
+
+        if (style == StageStyle.COMBINED) {
+            scene.setOverlay(platformWindow.getWindowOverlay());
+        }
+
         return scene;
     }
 
@@ -707,11 +715,11 @@ public class WindowStage extends GlassStage {
 
     void setWarning(OverlayWarning newWarning) {
         this.warning = newWarning;
-        getViewScene().synchroniseOverlayWarning();
-    }
-
-    OverlayWarning getWarning() {
-        return warning;
+        if (newWarning != null) {
+            getViewScene().setOverlay(newWarning);
+        } else if (style == StageStyle.COMBINED) {
+            getViewScene().setOverlay(platformWindow.getWindowOverlay());
+        }
     }
 
     @Override public void setFullScreen(boolean fullScreen) {

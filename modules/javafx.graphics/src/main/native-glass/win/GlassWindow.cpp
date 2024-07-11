@@ -62,7 +62,8 @@ HHOOK GlassWindow::sm_hCBTFilter = NULL;
 HWND GlassWindow::sm_grabWindow = NULL;
 static HWND activeTouchWindow = NULL;
 
-GlassWindow::GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated, bool isUnified, HWND parentOrOwner)
+GlassWindow::GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated, bool isUnified,
+                         bool isCombined, HWND parentOrOwner)
     : BaseWnd(parentOrOwner),
     ViewContainer(),
     m_winChangingReason(Unknown),
@@ -74,6 +75,7 @@ GlassWindow::GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated,
     m_isTransparent(isTransparent),
     m_isDecorated(isDecorated),
     m_isUnified(isUnified),
+    m_isCombined(isCombined),
     m_hMenu(NULL),
     m_alpha(255),
     m_isEnabled(true),
@@ -452,7 +454,35 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
 //                p->rgrc[0].bottom++;
 //                return WVR_VALIDRECTS;
 //            }
+
+            if (BOOL(wParam) && m_isCombined) {
+                NCCALCSIZE_PARAMS *p = (NCCALCSIZE_PARAMS*)lParam;
+                LONG originalTop = p->rgrc[0].top;
+                RECT originalSize = p->rgrc[0];
+                LRESULT res = DefWindowProc(GetHWND(), msg, wParam, lParam);
+                if (res != 0) {
+                    return res;
+                }
+
+                RECT newSize = p->rgrc[0];
+                newSize.top = originalTop;
+
+                bool maximized = (::GetWindowLong(GetHWND(), GWL_STYLE) & WS_MAXIMIZE) != 0;
+                if (maximized && !m_isInFullScreen) {
+                    newSize.top += ::GetSystemMetrics(SM_CXPADDEDBORDER) + ::GetSystemMetrics(SM_CYSIZEFRAME);
+                }
+
+                p->rgrc[0] = newSize;
+                return 0;
+            }
             break;
+        case WM_NCHITTEST: {
+            LRESULT res;
+            if (m_isCombined && HandleNCHitTestEvent(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), res)) {
+                return res;
+            }
+            break;
+        }
         case WM_PAINT:
             HandleViewPaintEvent(GetHWND(), msg, wParam, lParam);
             break;
@@ -477,24 +507,10 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEHWHEEL:
         case WM_MOUSELEAVE:
         case WM_MOUSEMOVE:
-            if (IsEnabled()) {
-                if (msg == WM_MOUSELEAVE && GetDelegateWindow()) {
-                    // Skip generating MouseEvent.EXIT when entering FullScreen
-                    return 0;
-                }
-                BOOL handled = HandleViewMouseEvent(GetHWND(), msg, wParam, lParam);
-                if (handled && msg == WM_RBUTTONUP) {
-                    // By default, DefWindowProc() sends WM_CONTEXTMENU from WM_LBUTTONUP
-                    // Since DefWindowProc() is not called, call the mouse menu handler directly
-                    HandleViewMenuEvent(GetHWND(), WM_CONTEXTMENU, (WPARAM) GetHWND(), ::GetMessagePos ());
-                    //::DefWindowProc(GetHWND(), msg, wParam, lParam);
-                }
-                if (handled) {
-                    // Do not call the DefWindowProc() for mouse events that were handled
-                    return 0;
-                }
-            } else {
+            if (!IsEnabled()) {
                 HandleFocusDisabledEvent();
+                return 0;
+            } else if (HandleMouseEvents(msg, wParam, lParam)) {
                 return 0;
             }
             break;
@@ -544,9 +560,32 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCMBUTTONDOWN:
         case WM_NCRBUTTONDOWN:
         case WM_NCXBUTTONDOWN:
+            if (wParam == HTCAPTION) {
+                break;
+            }
+
             UngrabFocus(); // ungrab itself
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
+
+            if (m_isCombined && (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE)) {
+                return 0; // if we don't handle this message, min/max/close buttons will be drawn
+            }
+
             // Pass the event to DefWindowProc()
+            break;
+        case WM_NCLBUTTONUP:
+        case WM_NCLBUTTONDBLCLK:
+        case WM_NCRBUTTONUP:
+        case WM_NCRBUTTONDBLCLK:
+        case WM_NCMBUTTONUP:
+        case WM_NCMBUTTONDBLCLK:
+        case WM_NCXBUTTONUP:
+        case WM_NCXBUTTONDBLCLK:
+        case WM_NCMOUSELEAVE:
+        case WM_NCMOUSEMOVE:
+//            if (m_isCombined && m_currentHitTestValue != HTCAPTION /*&& HandleMouseEvents(msg, wParam, lParam)*/) {
+//                return 0;
+//            }
             break;
         case WM_TOUCH:
             if (IsEnabled()) {
@@ -571,6 +610,29 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
     }
 
     return ::DefWindowProc(GetHWND(), msg, wParam, lParam);
+}
+
+bool GlassWindow::HandleMouseEvents(UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (msg == WM_MOUSELEAVE && GetDelegateWindow()) {
+        // Skip generating MouseEvent.EXIT when entering FullScreen
+        return true;
+    }
+
+    BOOL handled = HandleViewMouseEvent(GetHWND(), msg, wParam, lParam);
+    if (handled && msg == WM_RBUTTONUP) {
+        // By default, DefWindowProc() sends WM_CONTEXTMENU from WM_LBUTTONUP
+        // Since DefWindowProc() is not called, call the mouse menu handler directly
+        HandleViewMenuEvent(GetHWND(), WM_CONTEXTMENU, (WPARAM) GetHWND(), ::GetMessagePos ());
+        //::DefWindowProc(GetHWND(), msg, wParam, lParam);
+    }
+
+    if (handled) {
+        // Do not call the DefWindowProc() for mouse events that were handled
+        return true;
+    }
+
+    return false;
 }
 
 void GlassWindow::HandleCloseEvent()
@@ -761,6 +823,26 @@ void GlassWindow::HandleFocusDisabledEvent()
 
     env->CallVoidMethod(m_grefThis, javaIDs.Window.notifyFocusDisabled);
     CheckAndClearException(env);
+}
+
+BOOL GlassWindow::HandleNCHitTestEvent(SHORT x, SHORT y, LRESULT& result)
+{
+    if (::DefWindowProc(GetHWND(), WM_NCHITTEST, 0, MAKELONG(x, y)) != HTCLIENT) {
+        return FALSE;
+    }
+
+    POINT pt = { x, y };
+
+    if (!::ScreenToClient(GetHWND(), &pt)) {
+        return FALSE;
+    }
+
+    JNIEnv* env = GetEnv();
+    jint res = env->CallIntMethod(m_grefThis, javaIDs.WinWindow.nonClientHitTest, pt.x, pt.y);
+    CheckAndClearException(env);
+    result = LRESULT(res);
+
+    return TRUE;
 }
 
 bool GlassWindow::HandleCommand(WORD cmdID) {
@@ -1145,6 +1227,10 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinWindow__1initIDs
      javaIDs.Window.notifyDelegatePtr = env->GetMethodID(cls, "notifyDelegatePtr", "(J)V");
      ASSERT(javaIDs.Window.notifyDelegatePtr);
      if (env->ExceptionCheck()) return;
+
+     javaIDs.WinWindow.nonClientHitTest = env->GetMethodID(cls, "nonClientHitTest", "(II)I");
+     ASSERT(javaIDs.WinWindow.nonClientHitTest);
+     if (env->ExceptionCheck()) return;
 }
 
 /*
@@ -1206,6 +1292,7 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
                 (mask & com_sun_glass_ui_Window_TRANSPARENT) != 0,
                 (mask & com_sun_glass_ui_Window_TITLED) != 0,
                 (mask & com_sun_glass_ui_Window_UNIFIED) != 0,
+                (mask & com_sun_glass_ui_Window_COMBINED) != 0,
                 owner);
 
         HWND hWnd = pWindow->Create(dwStyle, dwExStyle, hMonitor, owner);

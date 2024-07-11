@@ -52,6 +52,7 @@ import javafx.event.EventHandler;
 import javafx.event.EventTarget;
 import javafx.event.EventType;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 
 import com.sun.javafx.util.Utils;
@@ -215,6 +216,23 @@ public class Window implements EventTarget {
                         return window.acc;
                     }
                 });
+    }
+
+    private static final Object WINDOW_AREA_KEY = new Object() {
+        @Override
+        public String toString() {
+            return "WindowArea";
+        }
+    };
+
+    public static void setWindowArea(Node node, WindowArea region) {
+        if (node.hasProperties() || region != null) {
+            node.getProperties().put(WINDOW_AREA_KEY, region);
+        }
+    }
+
+    public static WindowArea getWindowArea(Node node) {
+        return node.hasProperties() ? (WindowArea)node.getProperties().get(WINDOW_AREA_KEY) : null;
     }
 
     /**
