@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -401,7 +401,7 @@ public abstract class View {
      */
     private volatile long ptr; // Native handle (NSView*, or internal structure pointer)
     private Window window; // parent window
-    private MoveResizeHelper moveResizeHelper;
+    private NonClientHelper nonClientHelper;
     private EventHandler eventHandler;
 
     private int width = -1;     // not set
@@ -503,18 +503,18 @@ public abstract class View {
         this.isValid = this.ptr != 0 && window != null;
 
         if (this.isValid) {
-            this.moveResizeHelper = getMoveResizeHelper();
+            this.nonClientHelper = getNonClientHelper();
         } else {
-            this.moveResizeHelper = null;
+            this.nonClientHelper = null;
         }
     }
 
     /**
-     * Returns a new move-resize helper for the window.
-     * This method can be overridden by subclasses to return {@code null} to disable the move-resize helper.
+     * Returns a new non-client helper for the window.
+     * This method can be overridden by subclasses to return {@code null} to disable the helper.
      */
-    protected MoveResizeHelper getMoveResizeHelper() {
-        return new MoveResizeHelper(this, window);
+    protected NonClientHelper getNonClientHelper() {
+        return new NonClientHelper(this, window);
     }
 
     // package private
@@ -924,11 +924,6 @@ public abstract class View {
     protected void notifyMouse(int type, int button, int x, int y, int xAbs,
                                int yAbs, int modifiers, boolean isPopupTrigger,
                                boolean isSynthesized) {
-        // If we have a move-resize helper, we give it the first chance to handle the event.
-        if (moveResizeHelper != null && moveResizeHelper.handleMouseEvent(type, button, x, y, xAbs, yAbs)) {
-            return;
-        }
-
         long now = System.nanoTime();
         if (type == MouseEvent.DOWN) {
             View lastClickedView = View.lastClickedView == null ? null : View.lastClickedView.get();
@@ -950,6 +945,11 @@ public abstract class View {
             }
 
             lastClickedTime = now;
+        }
+
+        // If we have a non-client helper, we give it the first chance to handle the event.
+        if (nonClientHelper != null && nonClientHelper.handleMouseEvent(type, button, x, y, xAbs, yAbs, clickCount)) {
+            return;
         }
 
         handleMouseEvent(now, type, button, x, y, xAbs, yAbs,

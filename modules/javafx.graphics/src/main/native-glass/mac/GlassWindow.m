@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -429,8 +429,12 @@ static jlong _createWindowCommonDo(JNIEnv *env, jobject jWindow, jlong jOwnerPtr
                 styleMask = styleMask|NSWindowStyleMaskMiniaturizable;
             }
 
-            if ((jStyleMask&com_sun_glass_ui_Window_UNIFIED) != 0) {
+            if ((jStyleMask&com_sun_glass_ui_Window_COMBINED) != 0) {
                 styleMask = styleMask|NSWindowStyleMaskFullSizeContentView;
+            }
+
+            if ((jStyleMask&com_sun_glass_ui_Window_UNIFIED) != 0) {
+                styleMask = styleMask|NSTexturedBackgroundWindowMask;
             }
 
             if (isUtility)
@@ -453,6 +457,10 @@ static jlong _createWindowCommonDo(JNIEnv *env, jobject jWindow, jlong jOwnerPtr
 
         NSScreen *screen = (NSScreen*)jlong_to_ptr(jScreenPtr);
         window = [[GlassWindow alloc] _initWithContentRect:NSMakeRect(x, y, w, h) styleMask:styleMask screen:screen jwindow:jWindow];
+
+        if ((jStyleMask & com_sun_glass_ui_Window_COMBINED) != 0) {
+            [window->nsWindow setTitlebarAppearsTransparent:YES];
+        }
 
         if ((jStyleMask & com_sun_glass_ui_Window_UNIFIED) != 0) {
             //Prevent the textured effect from disappearing on border thickness recalculation

@@ -24,7 +24,7 @@
  */
 package com.sun.glass.ui.win;
 
-import com.sun.glass.ui.MoveResizeHelper;
+import com.sun.glass.ui.NonClientHelper;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.View;
 import java.util.Map;
@@ -98,8 +98,9 @@ final class WinView extends View {
     }
 
     @Override
-    protected MoveResizeHelper getMoveResizeHelper() {
-        // We don't use a move-resize helper on Windows, but handle the WM_NCHITTEST message instead.
+    protected NonClientHelper getNonClientHelper() {
+        // We don't use a non-client helper on Windows, because Windows does all the
+        // work for us if we handle the WM_NCHITTEST message.
         return null;
     }
 }

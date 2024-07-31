@@ -75,7 +75,6 @@ import javafx.event.*;
 import javafx.geometry.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.*;
-import javafx.scene.layout.CaptionBar;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.stage.PopupWindow;
@@ -3013,7 +3012,7 @@ public class Scene implements EventTarget {
                 pickRay.set(x, y, 1, 0, Double.POSITIVE_INFINITY);
                 var pickResultChooser = new PickResultChooser();
                 root.pickNode(pickRay, pickResultChooser);
-                return pickResultChooser.getIntersectedNode() instanceof CaptionBar;
+                return Stage.isDraggable(pickResultChooser.getIntersectedNode());
             }
 
             return false;

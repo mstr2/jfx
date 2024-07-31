@@ -218,23 +218,6 @@ public class Window implements EventTarget {
                 });
     }
 
-    private static final Object WINDOW_AREA_KEY = new Object() {
-        @Override
-        public String toString() {
-            return "WindowArea";
-        }
-    };
-
-    public static void setWindowArea(Node node, WindowArea region) {
-        if (node.hasProperties() || region != null) {
-            node.getProperties().put(WINDOW_AREA_KEY, region);
-        }
-    }
-
-    public static WindowArea getWindowArea(Node node) {
-        return node.hasProperties() ? (WindowArea)node.getProperties().get(WINDOW_AREA_KEY) : null;
-    }
-
     /**
      * Returns a list containing a reference to the currently showing JavaFX windows. The list is unmodifiable -
      * attempting to modify this list will result in an {@link UnsupportedOperationException} being thrown at runtime.

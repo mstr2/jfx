@@ -36,6 +36,7 @@ import javafx.beans.property.StringPropertyBase;
 import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.geometry.NodeOrientation;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCombination;
@@ -260,6 +261,23 @@ public class Stage extends Window {
         // Set the style
         initStyle(style);
         StageHelper.initHelper(this);
+    }
+
+    private static final Object DRAGGABLE_KEY = new Object() {
+        @Override
+        public String toString() {
+            return "StageDraggable";
+        }
+    };
+
+    public static void setDraggable(Node node, boolean value) {
+        if (node.hasProperties() || value) {
+            node.getProperties().put(DRAGGABLE_KEY, value);
+        }
+    }
+
+    public static boolean isDraggable(Node node) {
+        return node.hasProperties() ? (Boolean)node.getProperties().get(DRAGGABLE_KEY) : false;
     }
 
     /**
