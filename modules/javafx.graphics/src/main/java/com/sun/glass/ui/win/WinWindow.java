@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
 package com.sun.glass.ui.win;
 
 import com.sun.glass.ui.Cursor;
+import com.sun.glass.ui.NonClientHelper;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import javafx.scene.Parent;
 
 /**
  * MS Windows platform implementation class for Window.
@@ -261,7 +261,7 @@ class WinWindow extends Window {
     }
 
     /**
-     * Classifies the window area at the specified physical coordinate.
+     * Classifies the window region at the specified physical coordinate.
      * This method is called from native code.
      */
     private int nonClientHitTest(int x, int y) {
@@ -271,16 +271,16 @@ class WinWindow extends Window {
         if (minMaxCloseOverlay != null) {
             var result = minMaxCloseOverlay.hitTest(wx, wy);
             if (result != HitTestResult.CLIENT) {
-                return result.value();
+                return result.nativeValue();
             }
         }
 
         View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
-        if (eventHandler != null && eventHandler.isViewDragArea(wx, wy)) {
-            return HitTestResult.TITLE.value();
+        if (eventHandler != null && eventHandler.isNonClientRegion(wx, wy)) {
+            return HitTestResult.TITLE.nativeValue();
         }
 
-        return HitTestResult.CLIENT.value();
+        return HitTestResult.CLIENT.nativeValue();
     }
 
     native private long _getInsets(long ptr);
@@ -353,11 +353,16 @@ class WinWindow extends Window {
     private MinMaxCloseOverlay minMaxCloseOverlay;
 
     @Override
-    public Parent getWindowOverlay() {
+    public MinMaxCloseOverlay getWindowOverlay() {
         if (minMaxCloseOverlay == null) {
-            minMaxCloseOverlay = new MinMaxCloseOverlay();
+            minMaxCloseOverlay = new MinMaxCloseOverlay(this);
         }
 
         return minMaxCloseOverlay;
+    }
+
+    @Override
+    public NonClientHelper getNonClientHelper() {
+        return new WinNonClientHelper(getWindowOverlay());
     }
 }

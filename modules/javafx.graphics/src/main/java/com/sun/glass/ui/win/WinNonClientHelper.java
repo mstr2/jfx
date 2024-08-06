@@ -25,20 +25,18 @@
 
 package com.sun.glass.ui.win;
 
-public enum HitTestResult {
-    CLIENT(1),
-    TITLE(2),
-    MIN_BUTTON(8),
-    MAX_BUTTON(9),
-    CLOSE_BUTTON(20);
+import com.sun.glass.ui.NonClientHelper;
 
-    HitTestResult(int nativeValue) {
-        this.nativeValue = nativeValue;
+class WinNonClientHelper implements NonClientHelper {
+
+    private final MinMaxCloseOverlay overlay;
+
+    WinNonClientHelper(MinMaxCloseOverlay overlay) {
+        this.overlay = overlay;
     }
 
-    private final int nativeValue;
-
-    public int nativeValue() {
-        return nativeValue;
+    @Override
+    public boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount) {
+        return overlay.handleMouseEvent(type, button, x, y);
     }
 }

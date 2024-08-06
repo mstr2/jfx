@@ -368,10 +368,7 @@ public abstract class View {
             return null;
         }
 
-        /**
-         * Returns the window area at the specified coordinate.
-         */
-        public boolean isViewDragArea(double x, double y) {
+        public boolean isNonClientRegion(double x, double y) {
             return false;
         }
     }
@@ -502,19 +499,11 @@ public abstract class View {
         _setParent(this.ptr, window == null ? 0L : window.getNativeHandle());
         this.isValid = this.ptr != 0 && window != null;
 
-        if (this.isValid) {
-            this.nonClientHelper = getNonClientHelper();
+        if (this.isValid && window.isExtendedWindow()) {
+            this.nonClientHelper = window.getNonClientHelper();
         } else {
             this.nonClientHelper = null;
         }
-    }
-
-    /**
-     * Returns a new non-client helper for the window.
-     * This method can be overridden by subclasses to return {@code null} to disable the helper.
-     */
-    protected NonClientHelper getNonClientHelper() {
-        return new NonClientHelper(this, window);
     }
 
     // package private
@@ -949,6 +938,11 @@ public abstract class View {
 
         // If we have a non-client helper, we give it the first chance to handle the event.
         if (nonClientHelper != null && nonClientHelper.handleMouseEvent(type, button, x, y, xAbs, yAbs, clickCount)) {
+            return;
+        }
+
+        // We never send non-client events to FX.
+        if (MouseEvent.isNonClientEvent(type)) {
             return;
         }
 

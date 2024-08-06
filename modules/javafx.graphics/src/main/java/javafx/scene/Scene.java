@@ -3006,13 +3006,14 @@ public class Scene implements EventTarget {
         private final PickRay pickRay = new PickRay();
 
         @Override
-        public boolean isViewDragArea(double x, double y) {
+        public boolean isNonClientRegion(double x, double y) {
             Node root = Scene.this.getRoot();
             if (root != null) {
                 pickRay.set(x, y, 1, 0, Double.POSITIVE_INFINITY);
                 var pickResultChooser = new PickResultChooser();
                 root.pickNode(pickRay, pickResultChooser);
-                return Stage.isDraggable(pickResultChooser.getIntersectedNode());
+                var node = pickResultChooser.getIntersectedNode();
+                return node != null && Stage.isNonClient(node);
             }
 
             return false;

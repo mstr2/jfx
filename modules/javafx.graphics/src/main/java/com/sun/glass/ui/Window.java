@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -116,7 +116,6 @@ public abstract class Window {
     public static final int UNTITLED        = 0;
     public static final int TITLED          = 1 << 0;
     public static final int TRANSPARENT     = 1 << 1;
-    public static final int COMBINED        = 1 << 2;
 
     // functional type: mutually exclusive
     /**
@@ -161,9 +160,15 @@ public abstract class Window {
     @Native public static final int UNIFIED = 1 << 9;
 
     /**
+     * Indicates that the client area is combined with the non-client platform decorations,
+     * covering the entire window.
+     */
+    @Native public static final int EXTENDED = 1 << 10;
+
+    /**
      * Indicates that the window is modal which affects whether the window is minimizable.
      */
-    @Native public static final int MODAL = 1 << 10;
+    @Native public static final int MODAL = 1 << 11;
 
     final static public class State {
         @Native public static final int NORMAL = 1;
@@ -253,8 +258,8 @@ public abstract class Window {
                 throw new RuntimeException("The functional type should be NORMAL, POPUP, or UTILITY, but not a combination of these");
         }
 
-        if ((styleMask & UNIFIED) != 0 && (styleMask & COMBINED) != 0) {
-            throw new RuntimeException("UNIFIED and COMBINED cannot be used at the same time");
+        if ((styleMask & UNIFIED) != 0 && (styleMask & EXTENDED) != 0) {
+            throw new RuntimeException("UNIFIED and EXTENDED cannot be used at the same time");
         }
 
         if (((styleMask & UNIFIED) != 0)
@@ -424,6 +429,10 @@ public abstract class Window {
 
     public Parent getWindowOverlay() {
         return null;
+    }
+
+    public NonClientHelper getNonClientHelper() {
+        return new NonClientHelper.SyntheticMoveAndResize(view, this);
     }
 
     public boolean isDecorated() {
@@ -678,8 +687,8 @@ public abstract class Window {
         return (this.styleMask & Window.UNIFIED) != 0;
     }
 
-    public boolean isCombinedWindow() {
-        return (this.styleMask & Window.COMBINED) != 0;
+    public boolean isExtendedWindow() {
+        return (this.styleMask & Window.EXTENDED) != 0;
     }
 
     public boolean isTransparentWindow() {

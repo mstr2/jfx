@@ -263,21 +263,30 @@ public class Stage extends Window {
         StageHelper.initHelper(this);
     }
 
-    private static final Object DRAGGABLE_KEY = new Object() {
+    private static final Object NON_CLIENT_KEY = new Object() {
         @Override
         public String toString() {
-            return "StageDraggable";
+            return "NonClient";
         }
     };
 
-    public static void setDraggable(Node node, boolean value) {
+    /**
+     *
+     * @param node
+     * @param value
+     */
+    public static void setNonClient(Node node, boolean value) {
         if (node.hasProperties() || value) {
-            node.getProperties().put(DRAGGABLE_KEY, value);
+            node.getProperties().put(NON_CLIENT_KEY, value);
         }
     }
 
-    public static boolean isDraggable(Node node) {
-        return node.hasProperties() ? (Boolean)node.getProperties().get(DRAGGABLE_KEY) : false;
+    public static boolean isNonClient(Node node) {
+        if (!node.hasProperties()) {
+            return false;
+        }
+
+        return node.getProperties().get(NON_CLIENT_KEY) instanceof Boolean value ? value : false;
     }
 
     /**

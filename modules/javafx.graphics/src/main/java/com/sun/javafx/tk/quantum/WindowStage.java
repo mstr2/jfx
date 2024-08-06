@@ -156,9 +156,9 @@ public class WindowStage extends GlassStage {
             } else {
                 switch (style) {
                     case UNIFIED:
-                    case COMBINED:
-                        if (style == StageStyle.COMBINED) {
-                            windowMask |= Window.COMBINED;
+                    case EXTENDED:
+                        if (style == StageStyle.EXTENDED) {
+                            windowMask |= Window.EXTENDED;
                         } else if (app.supportsUnifiedWindows()) {
                             windowMask |= Window.UNIFIED;
                         }
@@ -250,7 +250,7 @@ public class WindowStage extends GlassStage {
         ViewScene scene = new ViewScene(fxStage != null ? fxStage.getScene() : null, depthBuffer, msaa);
         scene.setSecurityContext(acc);
 
-        if (style == StageStyle.COMBINED) {
+        if (style == StageStyle.EXTENDED) {
             scene.setOverlay(platformWindow.getWindowOverlay());
         }
 
@@ -717,7 +717,7 @@ public class WindowStage extends GlassStage {
         this.warning = newWarning;
         if (newWarning != null) {
             getViewScene().setOverlay(newWarning);
-        } else if (style == StageStyle.COMBINED) {
+        } else if (style == StageStyle.EXTENDED) {
             getViewScene().setOverlay(platformWindow.getWindowOverlay());
         }
     }

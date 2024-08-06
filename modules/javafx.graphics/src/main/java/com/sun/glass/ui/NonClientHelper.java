@@ -27,84 +27,88 @@ package com.sun.glass.ui;
 
 import com.sun.glass.events.MouseEvent;
 
-public final class NonClientHelper {
+public interface NonClientHelper {
 
-    private final Window window;
-    private final View view;
-    private int mouseDownX, mouseDownY;
-    private int mouseDownWindowX, mouseDownWindowY;
-    private boolean toggleMaximizedOnRelease;
-    private boolean dragging;
+    boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount);
 
-    public NonClientHelper(View view, Window window) {
-        this.view = view;
-        this.window = window;
-    }
+    class SyntheticMoveAndResize implements NonClientHelper {
+        private final Window window;
+        private final View view;
+        private int mouseDownX, mouseDownY;
+        private int mouseDownWindowX, mouseDownWindowY;
+        private boolean toggleMaximizedOnRelease;
+        private boolean dragging;
 
-    public boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount) {
-        return switch (type) {
-            case MouseEvent.UP -> handleMouseUp(button);
-            case MouseEvent.DOWN -> handleMouseDown(button, x, y, xAbs, yAbs, clickCount);
-            case MouseEvent.DRAG -> handleMouseDrag(xAbs, yAbs);
-            default -> false;
-        };
-    }
-
-    private boolean handleMouseDown(int button, int x, int y, int xAbs, int yAbs, int clickCount) {
-        if (button == MouseEvent.BUTTON_LEFT) {
-            mouseDownX = xAbs;
-            mouseDownY = yAbs;
-            mouseDownWindowX = window.getX();
-            mouseDownWindowY = window.getY();
-            dragging = isViewDragArea(x, y);
-
-            if (dragging && clickCount == 2 && !view.isInFullscreen()) {
-                toggleMaximizedOnRelease = true;
-            }
-
-            return dragging;
+        public SyntheticMoveAndResize(View view, Window window) {
+            this.view = view;
+            this.window = window;
         }
 
-        return false;
-    }
+        public boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount) {
+            return switch (type) {
+                case MouseEvent.UP -> handleMouseUp(button);
+                case MouseEvent.DOWN -> handleMouseDown(button, x, y, xAbs, yAbs, clickCount);
+                case MouseEvent.DRAG -> handleMouseDrag(xAbs, yAbs);
+                default -> false;
+            };
+        }
 
-    private boolean handleMouseUp(int button) {
-        if (dragging && button == MouseEvent.BUTTON_LEFT) {
-            dragging = false;
+        private boolean handleMouseDown(int button, int x, int y, int xAbs, int yAbs, int clickCount) {
+            if (button == MouseEvent.BUTTON_LEFT) {
+                mouseDownX = xAbs;
+                mouseDownY = yAbs;
+                mouseDownWindowX = window.getX();
+                mouseDownWindowY = window.getY();
+                dragging = isNonClientRegion(x, y);
 
-            if (toggleMaximizedOnRelease) {
+                if (dragging && clickCount == 2 && !view.isInFullscreen()) {
+                    toggleMaximizedOnRelease = true;
+                }
+
+                return dragging;
+            }
+
+            return false;
+        }
+
+        private boolean handleMouseUp(int button) {
+            if (dragging && button == MouseEvent.BUTTON_LEFT) {
+                dragging = false;
+
+                if (toggleMaximizedOnRelease) {
+                    toggleMaximizedOnRelease = false;
+                    window.maximize(!window.isMaximized());
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean handleMouseDrag(int xAbs, int yAbs) {
+            if (dragging) {
                 toggleMaximizedOnRelease = false;
-                window.maximize(!window.isMaximized());
+
+                // We always handle mouse interactions in the non-client drag area for consistency,
+                // but only interfere with the window position if we're not in full-screen mode.
+                if (!view.isInFullscreen()) {
+                    window.setPosition(
+                        mouseDownWindowX + xAbs - mouseDownX,
+                        mouseDownWindowY + yAbs - mouseDownY);
+                }
+
+                return true;
             }
 
-            return true;
+            return false;
         }
 
-        return false;
-    }
-
-    private boolean handleMouseDrag(int xAbs, int yAbs) {
-        if (dragging) {
-            toggleMaximizedOnRelease = false;
-
-            // We always handle mouse interactions in the non-client drag area for consistency,
-            // but only interfere with the window position if we're not in full-screen mode.
-            if (!view.isInFullscreen()) {
-                window.setPosition(
-                    mouseDownWindowX + xAbs - mouseDownX,
-                    mouseDownWindowY + yAbs - mouseDownY);
-            }
-
-            return true;
+        private boolean isNonClientRegion(int x, int y) {
+            View.EventHandler eventHandler = view.getEventHandler();
+            return eventHandler != null && eventHandler.isNonClientRegion(
+                (int)(x / window.getPlatformScaleX()),
+                (int)(y / window.getPlatformScaleY()));
         }
-
-        return false;
-    }
-
-    private boolean isViewDragArea(int x, int y) {
-        View.EventHandler eventHandler = view.getEventHandler();
-        return eventHandler != null && eventHandler.isViewDragArea(
-            (int)(x / window.getPlatformScaleX()),
-            (int)(y / window.getPlatformScaleY()));
     }
 }

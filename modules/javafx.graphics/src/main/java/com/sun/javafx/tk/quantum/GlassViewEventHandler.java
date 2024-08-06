@@ -269,6 +269,12 @@ class GlassViewEventHandler extends View.EventHandler {
                 throw new IllegalArgumentException("WHEEL event cannot "
                         + "be translated to MouseEvent, must be translated to "
                         + "ScrollEvent");
+            case com.sun.glass.events.MouseEvent.NC_UP:
+            case com.sun.glass.events.MouseEvent.NC_DOWN:
+            case com.sun.glass.events.MouseEvent.NC_MOVE:
+            case com.sun.glass.events.MouseEvent.NC_ENTER:
+            case com.sun.glass.events.MouseEvent.NC_EXIT:
+                throw new IllegalArgumentException("NC events cannot be processed");
             default:
                 if (QuantumToolkit.verbose) {
                     System.err.println("Unknown Glass mouse event type: " + glassType);
@@ -1406,11 +1412,11 @@ class GlassViewEventHandler extends View.EventHandler {
 
     @SuppressWarnings("removal")
     @Override
-    public boolean isViewDragArea(double x, double y) {
+    public boolean isNonClientRegion(double x, double y) {
         return QuantumToolkit.runWithoutRenderLock(() -> {
             return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
                 if (scene.sceneListener != null) {
-                    return scene.sceneListener.isViewDragArea(x, y);
+                    return scene.sceneListener.isNonClientRegion(x, y);
                 }
                 return false;
             });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@
 #include "com_sun_glass_ui_Window_Level.h"
 #include "com_sun_glass_ui_win_WinWindow.h"
 
+#define ABM_GETAUTOHIDEBAREX 0x0000000b // multimon aware autohide bars
 
 // Helper LEAVE_MAIN_THREAD for GlassWindow
 #define LEAVE_MAIN_THREAD_WITH_hWnd  \
@@ -63,7 +64,7 @@ HWND GlassWindow::sm_grabWindow = NULL;
 static HWND activeTouchWindow = NULL;
 
 GlassWindow::GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated, bool isUnified,
-                         bool isCombined, HWND parentOrOwner)
+                         bool isExtended, HWND parentOrOwner)
     : BaseWnd(parentOrOwner),
     ViewContainer(),
     m_winChangingReason(Unknown),
@@ -75,7 +76,7 @@ GlassWindow::GlassWindow(jobject jrefThis, bool isTransparent, bool isDecorated,
     m_isTransparent(isTransparent),
     m_isDecorated(isDecorated),
     m_isUnified(isUnified),
-    m_isCombined(isCombined),
+    m_isExtended(isExtended),
     m_hMenu(NULL),
     m_alpha(255),
     m_isEnabled(true),
@@ -455,30 +456,13 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
 //                return WVR_VALIDRECTS;
 //            }
 
-            if (BOOL(wParam) && m_isCombined) {
-                NCCALCSIZE_PARAMS *p = (NCCALCSIZE_PARAMS*)lParam;
-                LONG originalTop = p->rgrc[0].top;
-                RECT originalSize = p->rgrc[0];
-                LRESULT res = DefWindowProc(GetHWND(), msg, wParam, lParam);
-                if (res != 0) {
-                    return res;
-                }
-
-                RECT newSize = p->rgrc[0];
-                newSize.top = originalTop;
-
-                bool maximized = (::GetWindowLong(GetHWND(), GWL_STYLE) & WS_MAXIMIZE) != 0;
-                if (maximized && !m_isInFullScreen) {
-                    newSize.top += ::GetSystemMetrics(SM_CXPADDEDBORDER) + ::GetSystemMetrics(SM_CYSIZEFRAME);
-                }
-
-                p->rgrc[0] = newSize;
-                return 0;
+            if (BOOL(wParam) && m_isExtended) {
+                return HandleNCCalcSizeEvent(msg, wParam, lParam);
             }
             break;
         case WM_NCHITTEST: {
             LRESULT res;
-            if (m_isCombined && HandleNCHitTestEvent(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), res)) {
+            if (m_isExtended && HandleNCHitTestEvent(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), res)) {
                 return res;
             }
             break;
@@ -566,9 +550,12 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
 
             UngrabFocus(); // ungrab itself
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
+            HandleMouseEvents(msg, wParam, lParam);
 
-            if (m_isCombined && (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE)) {
-                return 0; // if we don't handle this message, min/max/close buttons will be drawn
+            // We need to handle clicks on the min/max/close regions, as otherwise Windows will
+            // draw very ugly buttons on top of our window.
+            if (m_isExtended && wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE) {
+                return 0;
             }
 
             // Pass the event to DefWindowProc()
@@ -583,9 +570,11 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCXBUTTONDBLCLK:
         case WM_NCMOUSELEAVE:
         case WM_NCMOUSEMOVE:
-//            if (m_isCombined && m_currentHitTestValue != HTCAPTION /*&& HandleMouseEvents(msg, wParam, lParam)*/) {
-//                return 0;
-//            }
+            HandleMouseEvents(msg, wParam, lParam);
+
+            if (m_isExtended && (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE)) {
+                return 0;
+            }
             break;
         case WM_TOUCH:
             if (IsEnabled()) {
@@ -825,6 +814,65 @@ void GlassWindow::HandleFocusDisabledEvent()
     CheckAndClearException(env);
 }
 
+LRESULT GlassWindow::HandleNCCalcSizeEvent(UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    // Capture the top and size before DefWindowProc applies the default frame.
+    NCCALCSIZE_PARAMS *p = (NCCALCSIZE_PARAMS*)lParam;
+    LONG originalTop = p->rgrc[0].top;
+    RECT originalSize = p->rgrc[0];
+
+    // Apply the default window frame.
+    LRESULT res = DefWindowProc(GetHWND(), msg, wParam, lParam);
+    if (res != 0) {
+        return res;
+    }
+
+    // Restore the original top, which might have been overwritten by DefWindowProc.
+    RECT newSize = p->rgrc[0];
+    newSize.top = originalTop;
+
+    // A maximized window extends slightly beyond the screen, so we need to account for that
+    // by adding the border width to the top.
+    bool maximized = (::GetWindowLong(GetHWND(), GWL_STYLE) & WS_MAXIMIZE) != 0;
+    if (maximized && !m_isInFullScreen) {
+        newSize.top += ::GetSystemMetrics(SM_CXPADDEDBORDER) + ::GetSystemMetrics(SM_CYSIZEFRAME);
+    }
+
+    // If we have an auto-hide taskbar, we need to reduce the size of a maximized or fullscreen
+    // window a little bit where the taskbar is located, as otherwise the taskbar cannot be
+    // summoned.
+    HMONITOR monitor = ::MonitorFromWindow(GetHWND(), MONITOR_DEFAULTTONEAREST);
+    if (monitor && (maximized || m_isInFullScreen)) {
+        MONITORINFO monitorInfo = { 0 };
+        monitorInfo.cbSize = sizeof(MONITORINFO);
+        ::GetMonitorInfo(monitor, &monitorInfo);
+
+        APPBARDATA data = { 0 };
+        data.cbSize = sizeof(data);
+
+        if ((::SHAppBarMessage(ABM_GETSTATE, &data) & ABS_AUTOHIDE) == ABS_AUTOHIDE) {
+            data.rc = monitorInfo.rcMonitor;
+            DWORD appBarMsg = ::IsWindows8OrGreater() ? ABM_GETAUTOHIDEBAREX : ABM_GETAUTOHIDEBAR;
+
+            // Reduce the window size by one pixel on the taskbar side.
+            if ((data.uEdge = ABE_TOP), ::SHAppBarMessage(appBarMsg, &data) != NULL) {
+                newSize.top += 1;
+            } else if ((data.uEdge = ABE_BOTTOM), ::SHAppBarMessage(appBarMsg, &data) != NULL) {
+                newSize.bottom -= 1;
+            } else if ((data.uEdge = ABE_LEFT), ::SHAppBarMessage(appBarMsg, &data) != NULL) {
+                newSize.left += 1;
+            } else if ((data.uEdge = ABE_RIGHT), ::SHAppBarMessage(appBarMsg, &data) != NULL) {
+                newSize.right -= 1;
+            }
+        }
+    }
+
+    p->rgrc[0] = newSize;
+    return 0;
+}
+
+// Handling this message tells Windows which parts of the window are non-client regions.
+// This enables window behaviors like dragging or snap layouts.
 BOOL GlassWindow::HandleNCHitTestEvent(SHORT x, SHORT y, LRESULT& result)
 {
     if (::DefWindowProc(GetHWND(), WM_NCHITTEST, 0, MAKELONG(x, y)) != HTCLIENT) {
@@ -1292,7 +1340,7 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
                 (mask & com_sun_glass_ui_Window_TRANSPARENT) != 0,
                 (mask & com_sun_glass_ui_Window_TITLED) != 0,
                 (mask & com_sun_glass_ui_Window_UNIFIED) != 0,
-                (mask & com_sun_glass_ui_Window_COMBINED) != 0,
+                (mask & com_sun_glass_ui_Window_EXTENDED) != 0,
                 owner);
 
         HWND hWnd = pWindow->Create(dwStyle, dwExStyle, hMonitor, owner);

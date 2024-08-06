@@ -121,5 +121,5 @@ public interface TKSceneListener {
 
     public Accessible getSceneAccessible();
 
-    public boolean isViewDragArea(double x, double y);
+    public boolean isNonClientRegion(double x, double y);
 }
