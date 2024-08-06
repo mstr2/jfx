@@ -31,6 +31,19 @@ public interface NonClientHelper {
 
     boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount);
 
+    class DelegateToWindowControls implements NonClientHelper {
+        private final WindowControlsOverlay overlay;
+
+        public DelegateToWindowControls(WindowControlsOverlay overlay) {
+            this.overlay = overlay;
+        }
+
+        @Override
+        public boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount) {
+            return overlay.handleMouseEvent(type, button, x, y);
+        }
+    }
+
     class SyntheticMoveAndResize implements NonClientHelper {
         private final Window window;
         private final View view;
@@ -106,7 +119,7 @@ public interface NonClientHelper {
 
         private boolean isNonClientRegion(int x, int y) {
             View.EventHandler eventHandler = view.getEventHandler();
-            return eventHandler != null && eventHandler.isNonClientRegion(
+            return eventHandler != null && eventHandler.handleNonClientHitTestEvent(
                 (int)(x / window.getPlatformScaleX()),
                 (int)(y / window.getPlatformScaleY()));
         }

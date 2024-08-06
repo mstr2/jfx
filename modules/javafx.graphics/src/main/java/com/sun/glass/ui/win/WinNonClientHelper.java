@@ -25,13 +25,14 @@
 
 package com.sun.glass.ui.win;
 
+import com.sun.glass.ui.WindowControlsOverlay;
 import com.sun.glass.ui.NonClientHelper;
 
 class WinNonClientHelper implements NonClientHelper {
 
-    private final MinMaxCloseOverlay overlay;
+    private final WindowControlsOverlay overlay;
 
-    WinNonClientHelper(MinMaxCloseOverlay overlay) {
+    WinNonClientHelper(WindowControlsOverlay overlay) {
         this.overlay = overlay;
     }
 

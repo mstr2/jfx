@@ -119,7 +119,7 @@ public interface TKSceneListener {
 
     public void touchEventEnd();
 
-    public Accessible getSceneAccessible();
+    public boolean nonClientHitTest(double x, double y);
 
-    public boolean isNonClientRegion(double x, double y);
+    public Accessible getSceneAccessible();
 }

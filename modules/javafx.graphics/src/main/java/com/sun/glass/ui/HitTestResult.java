@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.sun.glass.ui.win;
+package com.sun.glass.ui;
 
 public enum HitTestResult {
     CLIENT(1),

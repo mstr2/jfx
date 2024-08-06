@@ -116,6 +116,7 @@ public abstract class Window {
     public static final int UNTITLED        = 0;
     public static final int TITLED          = 1 << 0;
     public static final int TRANSPARENT     = 1 << 1;
+    public static final int EXTENDED        = 1 << 2;
 
     // functional type: mutually exclusive
     /**
@@ -160,15 +161,9 @@ public abstract class Window {
     @Native public static final int UNIFIED = 1 << 9;
 
     /**
-     * Indicates that the client area is combined with the non-client platform decorations,
-     * covering the entire window.
-     */
-    @Native public static final int EXTENDED = 1 << 10;
-
-    /**
      * Indicates that the window is modal which affects whether the window is minimizable.
      */
-    @Native public static final int MODAL = 1 << 11;
+    @Native public static final int MODAL = 1 << 10;
 
     final static public class State {
         @Native public static final int NORMAL = 1;
@@ -241,13 +236,14 @@ public abstract class Window {
     protected abstract long _createWindow(long ownerPtr, long screenPtr, int mask);
     protected Window(Window owner, Screen screen, int styleMask) {
         Application.checkEventThread();
-        switch (styleMask & (TITLED | TRANSPARENT)) {
+        switch (styleMask & (TITLED | TRANSPARENT | EXTENDED)) {
             case UNTITLED:
             case TITLED:
             case TRANSPARENT:
+            case EXTENDED:
                 break;
             default:
-                throw new RuntimeException("The visual kind should be UNTITLED, TITLED, or TRANSPARENT, but not a combination of these");
+                throw new RuntimeException("The visual kind should be UNTITLED, TITLED, TRANSPARENT, or EXTENDED, but not a combination of these");
         }
         switch (styleMask & (POPUP | UTILITY)) {
             case NORMAL:
@@ -259,7 +255,7 @@ public abstract class Window {
         }
 
         if ((styleMask & UNIFIED) != 0 && (styleMask & EXTENDED) != 0) {
-            throw new RuntimeException("UNIFIED and EXTENDED cannot be used at the same time");
+            throw new RuntimeException("UNIFIED and EXTENDED cannot be combined");
         }
 
         if (((styleMask & UNIFIED) != 0)
@@ -1076,8 +1072,6 @@ public abstract class Window {
         _setIcon(this.ptr, pixels);
     }
 
-    private Cursor cursor;
-
     protected abstract void _setCursor(long ptr, Cursor cursor);
 
     /**
@@ -1088,12 +1082,7 @@ public abstract class Window {
      */
     public void setCursor(Cursor cursor) {
         Application.checkEventThread();
-        this.cursor = cursor;
         _setCursor(this.ptr, cursor);
-    }
-
-    public Cursor getCursor() {
-        return cursor;
     }
 
     protected abstract void _toFront(long ptr);

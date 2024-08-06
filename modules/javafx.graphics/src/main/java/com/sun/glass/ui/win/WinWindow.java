@@ -25,11 +25,14 @@
 package com.sun.glass.ui.win;
 
 import com.sun.glass.ui.Cursor;
+import com.sun.glass.ui.HitTestResult;
+import com.sun.glass.ui.WindowControlsOverlay;
 import com.sun.glass.ui.NonClientHelper;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
+import java.util.ResourceBundle;
 
 /**
  * MS Windows platform implementation class for Window.
@@ -260,29 +263,6 @@ class WinWindow extends Window {
         return true;
     }
 
-    /**
-     * Classifies the window region at the specified physical coordinate.
-     * This method is called from native code.
-     */
-    private int nonClientHitTest(int x, int y) {
-        double wx = x / platformScaleX;
-        double wy = y / platformScaleY;
-
-        if (minMaxCloseOverlay != null) {
-            var result = minMaxCloseOverlay.hitTest(wx, wy);
-            if (result != HitTestResult.CLIENT) {
-                return result.nativeValue();
-            }
-        }
-
-        View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
-        if (eventHandler != null && eventHandler.isNonClientRegion(wx, wy)) {
-            return HitTestResult.TITLE.nativeValue();
-        }
-
-        return HitTestResult.CLIENT.nativeValue();
-    }
-
     native private long _getInsets(long ptr);
     native private long _getAnchor(long ptr);
     @Override native protected long _createWindow(long ownerPtr, long screenPtr, int mask);
@@ -350,19 +330,43 @@ class WinWindow extends Window {
         }
     }
 
-    private MinMaxCloseOverlay minMaxCloseOverlay;
+    private WindowControlsOverlay windowControlsOverlay;
 
     @Override
-    public MinMaxCloseOverlay getWindowOverlay() {
-        if (minMaxCloseOverlay == null) {
-            minMaxCloseOverlay = new MinMaxCloseOverlay(this);
+    public WindowControlsOverlay getWindowOverlay() {
+        if (windowControlsOverlay == null) {
+            windowControlsOverlay = new WindowControlsOverlay(
+                this, ResourceBundle.getBundle("com/sun/glass/ui/win/WindowControls"));
         }
 
-        return minMaxCloseOverlay;
+        return windowControlsOverlay;
     }
 
     @Override
     public NonClientHelper getNonClientHelper() {
-        return new WinNonClientHelper(getWindowOverlay());
+        return new NonClientHelper.DelegateToWindowControls(getWindowOverlay());
+    }
+
+    /**
+     * Classifies the window region at the specified physical coordinate.
+     * This method is called from native code.
+     */
+    private int nonClientHitTest(int x, int y) {
+        double wx = x / platformScaleX;
+        double wy = y / platformScaleY;
+
+        if (windowControlsOverlay != null) {
+            var result = windowControlsOverlay.hitTest(wx, wy);
+            if (result != HitTestResult.CLIENT) {
+                return result.nativeValue();
+            }
+        }
+
+        View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
+        if (eventHandler != null && eventHandler.handleNonClientHitTestEvent(wx, wy)) {
+            return HitTestResult.TITLE.nativeValue();
+        }
+
+        return HitTestResult.CLIENT.nativeValue();
     }
 }

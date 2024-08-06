@@ -2998,15 +2998,10 @@ public class Scene implements EventTarget {
             }
         }
 
-        @Override
-        public Accessible getSceneAccessible() {
-            return getAccessible();
-        }
-
         private final PickRay pickRay = new PickRay();
 
         @Override
-        public boolean isNonClientRegion(double x, double y) {
+        public boolean nonClientHitTest(double x, double y) {
             Node root = Scene.this.getRoot();
             if (root != null) {
                 pickRay.set(x, y, 1, 0, Double.POSITIVE_INFINITY);
@@ -3017,6 +3012,11 @@ public class Scene implements EventTarget {
             }
 
             return false;
+        }
+
+        @Override
+        public Accessible getSceneAccessible() {
+            return getAccessible();
         }
     }
 

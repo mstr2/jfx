@@ -23,10 +23,9 @@
  * questions.
  */
 
-package com.sun.glass.ui.win;
+package com.sun.glass.ui;
 
 import com.sun.glass.events.MouseEvent;
-import com.sun.glass.ui.Window;
 import com.sun.javafx.scene.DirtyBits;
 import com.sun.javafx.scene.NodeHelper;
 import com.sun.javafx.util.Utils;
@@ -43,36 +42,32 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
-public class MinMaxCloseOverlay extends Parent {
+public class WindowControlsOverlay extends Parent {
 
-    private static final String CLOSE_GLYPH;
-    private static final String MINIMIZE_GLYPH;
-    private static final String MAXIMIZE_GLYPH;
-    private static final String RESTORE_GLYPH;
-    private static final double BUTTON_WIDTH = 46;
-    private static final double BUTTON_HEIGHT = 29;
-    private static final double GLYPH_OFFSET_X = -5;
-    private static final double GLYPH_OFFSET_Y = 11;
-    private static final String RESOURCE_BUNDLE_NAME = "com/sun/glass/ui/win/minmaxclose";
     private static final PseudoClass HOVER_PSEUDOCLASS = PseudoClass.getPseudoClass("hover");
     private static final PseudoClass PRESSED_PSEUDOCLASS = PseudoClass.getPseudoClass("pressed");
 
     private final Window window;
     private final Rectangle minimizeButton, maximizeButton, closeButton;
     private final SVGPath minimizeGlyph, maximizeGlyph, closeGlyph;
+    private final double buttonWidth, buttonHeight, glyphOffsetX, glyphOffsetY;
+    private final String stylesheet;
     private Node mouseDownButton;
     private double width;
 
-    static {
-        var bundle = ResourceBundle.getBundle(RESOURCE_BUNDLE_NAME);
-        MINIMIZE_GLYPH = bundle.getString("minimize");
-        MAXIMIZE_GLYPH = bundle.getString("maximize");
-        RESTORE_GLYPH = bundle.getString("restore");
-        CLOSE_GLYPH = bundle.getString("close");
-    }
-
-    public MinMaxCloseOverlay(Window window) {
+    public WindowControlsOverlay(Window window, ResourceBundle resources) {
         this.window = window;
+
+        buttonWidth = Double.parseDouble(resources.getString("buttonWidth"));
+        buttonHeight = Double.parseDouble(resources.getString("buttonHeight"));
+        glyphOffsetX = Double.parseDouble(resources.getString("glyphOffsetX"));
+        glyphOffsetY = Double.parseDouble(resources.getString("glyphOffsetY"));
+        stylesheet = resources.getString("stylesheet");
+
+        String minimizeSvg = resources.getString("minimize");
+        String maximizeSvg = resources.getString("maximize");
+        String restoreSvg = resources.getString("restore");
+        String closeSvg = resources.getString("close");
 
         sceneProperty().flatMap(Scene::fillProperty).map(paint -> {
             if (paint instanceof Color color) {
@@ -82,33 +77,33 @@ public class MinMaxCloseOverlay extends Parent {
             return false;
         }).subscribe(this::updateStylesheet);
 
-        minimizeButton = new Rectangle(BUTTON_WIDTH, BUTTON_HEIGHT);
+        minimizeButton = new Rectangle(buttonWidth, buttonHeight);
         minimizeButton.setId("minimize");
 
-        maximizeButton = new Rectangle(BUTTON_WIDTH, BUTTON_HEIGHT);
+        maximizeButton = new Rectangle(buttonWidth, buttonHeight);
         maximizeButton.setId("maximize");
 
-        closeButton = new Rectangle(BUTTON_WIDTH, BUTTON_HEIGHT);
+        closeButton = new Rectangle(buttonWidth, buttonHeight);
         closeButton.setId("close");
 
         minimizeGlyph = new SVGPath();
         minimizeGlyph.setId("minimize-glyph");
-        minimizeGlyph.setLayoutY(GLYPH_OFFSET_Y);
-        minimizeGlyph.setContent(MINIMIZE_GLYPH);
+        minimizeGlyph.setLayoutY(glyphOffsetY);
+        minimizeGlyph.setContent(minimizeSvg);
 
         maximizeGlyph = new SVGPath();
         maximizeGlyph.setId("maximize-glyph");
-        maximizeGlyph.setLayoutY(GLYPH_OFFSET_Y);
+        maximizeGlyph.setLayoutY(glyphOffsetY);
         maximizeGlyph.contentProperty().bind(
             sceneProperty()
                 .flatMap(Scene::windowProperty)
                 .flatMap(w -> ((Stage)w).maximizedProperty())
-                .map(maximized -> maximized ? RESTORE_GLYPH : MAXIMIZE_GLYPH));
+                .map(maximized -> maximized ? restoreSvg : maximizeSvg));
 
         closeGlyph = new SVGPath();
         closeGlyph.setId("close-glyph");
-        closeGlyph.setLayoutY(GLYPH_OFFSET_Y);
-        closeGlyph.setContent(CLOSE_GLYPH);
+        closeGlyph.setLayoutY(glyphOffsetY);
+        closeGlyph.setContent(closeSvg);
 
         getChildren().addAll(minimizeButton, maximizeButton, closeButton, minimizeGlyph, maximizeGlyph, closeGlyph);
     }
@@ -207,7 +202,6 @@ public class MinMaxCloseOverlay extends Parent {
 
     private void updateStylesheet(Boolean oldDarkMode, Boolean newDarkMode) {
         String color = newDarkMode ? "white" : "black";
-        String stylesheet = ResourceBundle.getBundle(RESOURCE_BUNDLE_NAME).getString("stylesheet");
         getStylesheets().add("data:text/css;base64," + Base64.getEncoder().encodeToString(
             stylesheet.formatted(color, color, color).getBytes(StandardCharsets.UTF_8)));
     }
@@ -229,12 +223,12 @@ public class MinMaxCloseOverlay extends Parent {
 
     @Override
     protected void layoutChildren() {
-        minimizeButton.setLayoutX(width - BUTTON_WIDTH * 3);
-        maximizeButton.setLayoutX(width - BUTTON_WIDTH * 2);
-        closeButton.setLayoutX(width - BUTTON_WIDTH);
-        minimizeGlyph.setLayoutX(width - (BUTTON_WIDTH * 2 + BUTTON_WIDTH / 2) + GLYPH_OFFSET_X);
-        maximizeGlyph.setLayoutX(width - (BUTTON_WIDTH + BUTTON_WIDTH / 2) + GLYPH_OFFSET_X);
-        closeGlyph.setLayoutX(width - BUTTON_WIDTH / 2 + GLYPH_OFFSET_X);
+        minimizeButton.setLayoutX(width - buttonWidth * 3);
+        maximizeButton.setLayoutX(width - buttonWidth * 2);
+        closeButton.setLayoutX(width - buttonWidth);
+        minimizeGlyph.setLayoutX(width - (buttonWidth * 2 + buttonWidth / 2) + glyphOffsetX);
+        maximizeGlyph.setLayoutX(width - (buttonWidth + buttonWidth / 2) + glyphOffsetX);
+        closeGlyph.setLayoutX(width - buttonWidth / 2 + glyphOffsetX);
     }
 
     public HitTestResult hitTest(double x, double y) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -315,6 +315,19 @@ void WindowContextBase::process_mouse_button(GdkEventButton* event) {
     }
 
     jint button = gtk_button_number_to_mouse_button(event->button);
+
+    if (jwindow && button == com_sun_glass_events_MouseEvent_BUTTON_LEFT) {
+        bool nonClient = mainEnv->CallBooleanMethod(
+            jwindow, jGtkWindowNonClientHitTest, (jint)event->x, (jint)event->y);
+        CHECK_JNI_EXCEPTION(mainEnv);
+
+        if (nonClient) {
+            gint rx = 0, ry = 0;
+            gdk_window_get_root_coords(get_gdk_window(), event->x, event->y, &rx, &ry);
+            gtk_window_begin_move_drag(get_gtk_window(), 1, rx, ry, GDK_CURRENT_TIME);
+            return;
+        }
+    }
 
     if (jview && button != com_sun_glass_events_MouseEvent_BUTTON_NONE) {
         mainEnv->CallVoidMethod(jview, jViewNotifyMouse,

@@ -156,10 +156,7 @@ public class WindowStage extends GlassStage {
             } else {
                 switch (style) {
                     case UNIFIED:
-                    case EXTENDED:
-                        if (style == StageStyle.EXTENDED) {
-                            windowMask |= Window.EXTENDED;
-                        } else if (app.supportsUnifiedWindows()) {
+                        if (app.supportsUnifiedWindows()) {
                             windowMask |= Window.UNIFIED;
                         }
                         // fall through
@@ -167,10 +164,10 @@ public class WindowStage extends GlassStage {
                         windowMask |=
                             Window.TITLED | Window.CLOSABLE |
                             Window.MINIMIZABLE | Window.MAXIMIZABLE;
-                        if (ownerWindow != null || modality != Modality.NONE) {
-                            windowMask &=
-                                ~(Window.MINIMIZABLE | Window.MAXIMIZABLE);
-                        }
+                        resizable = true;
+                        break;
+                    case EXTENDED:
+                        windowMask |= Window.EXTENDED | Window.CLOSABLE | Window.MINIMIZABLE | Window.MAXIMIZABLE;
                         resizable = true;
                         break;
                     case UTILITY:
@@ -180,6 +177,10 @@ public class WindowStage extends GlassStage {
                         windowMask |=
                                 (transparent ? Window.TRANSPARENT : Window.UNTITLED) | Window.CLOSABLE;
                         break;
+                }
+
+                if (ownerWindow != null || modality != Modality.NONE) {
+                    windowMask &= ~(Window.MINIMIZABLE | Window.MAXIMIZABLE);
                 }
             }
             if (modality != Modality.NONE) {

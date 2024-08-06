@@ -364,12 +364,12 @@ public abstract class View {
                                             int yAbs) {
         }
 
-        public Accessible getSceneAccessible() {
-            return null;
+        public boolean handleNonClientHitTestEvent(double x, double y) {
+            return false;
         }
 
-        public boolean isNonClientRegion(double x, double y) {
-            return false;
+        public Accessible getSceneAccessible() {
+            return null;
         }
     }
 

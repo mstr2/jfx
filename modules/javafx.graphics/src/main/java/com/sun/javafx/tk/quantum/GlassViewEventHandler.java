@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1412,11 +1412,11 @@ class GlassViewEventHandler extends View.EventHandler {
 
     @SuppressWarnings("removal")
     @Override
-    public boolean isNonClientRegion(double x, double y) {
+    public boolean handleNonClientHitTestEvent(double x, double y) {
         return QuantumToolkit.runWithoutRenderLock(() -> {
             return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
                 if (scene.sceneListener != null) {
-                    return scene.sceneListener.isNonClientRegion(x, y);
+                    return scene.sceneListener.nonClientHitTest(x, y);
                 }
                 return false;
             });
