@@ -25,10 +25,8 @@
 
 package javafx.css.converter;
 
-import javafx.css.Size;
 import javafx.css.StyleConverter;
-import javafx.css.ParsedValue;
-import javafx.scene.paint.Color;
+import javafx.css.syntax.Block;
 import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 
@@ -37,35 +35,52 @@ import javafx.scene.text.Font;
  *
  * @since 9
  */
-public final class StopConverter extends StyleConverter<ParsedValue[], Stop> {
+public final class StopConverter extends StyleConverter<Stop> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final StopConverter INSTANCE = new StopConverter();
-    }
+    private static final StopConverter instance = new StopConverter();
 
-    /**
-     * Gets the {@code StopConverter} instance.
-     * @return the {@code StopConverter} instance
-     */
     public static StopConverter getInstance() {
-        return Holder.INSTANCE;
+        return instance;
     }
 
     private StopConverter() {
-        super();
+        super(Stop.class);
     }
 
     @Override
-    public Stop convert(ParsedValue<ParsedValue[], Stop> value, Font font) {
-        ParsedValue[] values = value.getValue();
-        final Double offset = ((Size) values[0].convert(font)).pixels(font);
-        final Color color = (Color) values[1].convert(font);
-        return new Stop(offset, color);
-    }
-
-    @Override
-    public String toString() {
-        return "StopConverter";
+    public Stop convert(Block value, Font font) {
+        return null;
     }
 }
+//public final class StopConverter extends StyleConverter<ParsedValue[], Stop> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final StopConverter INSTANCE = new StopConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code StopConverter} instance.
+//     * @return the {@code StopConverter} instance
+//     */
+//    public static StopConverter getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private StopConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Stop convert(ParsedValue<ParsedValue[], Stop> value, Font font) {
+//        ParsedValue[] values = value.getValue();
+//        final Double offset = ((Size) values[0].convert(font)).pixels(font);
+//        final Color color = (Color) values[1].convert(font);
+//        return new Stop(offset, color);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "StopConverter";
+//    }
+//}

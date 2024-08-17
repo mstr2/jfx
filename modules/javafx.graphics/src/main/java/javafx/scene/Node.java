@@ -66,6 +66,8 @@ import javafx.css.StyleableBooleanProperty;
 import javafx.css.StyleableDoubleProperty;
 import javafx.css.StyleableObjectProperty;
 import javafx.css.StyleableProperty;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.IdentToken;
 import javafx.event.Event;
 import javafx.event.EventDispatchChain;
 import javafx.event.EventDispatcher;
@@ -9433,13 +9435,16 @@ public abstract class Node implements EventTarget, Styleable {
                  };
         private static final CssMetaData<Node,Boolean> VISIBILITY =
             new CssMetaData<>("visibility",
-                new StyleConverter<String,Boolean>() {
+                new StyleConverter<Boolean>(Boolean.class) {
 
                     @Override
                     // [ visible | hidden | collapse | inherit ]
-                    public Boolean convert(ParsedValue<String, Boolean> value, Font font) {
-                        final String sval = value != null ? value.getValue() : null;
-                        return "visible".equalsIgnoreCase(sval);
+                    public Boolean convert(Block value, Font font) {
+                        if (value.size() != 1 || !(value.getFirst() instanceof IdentToken ident)) {
+                            return false;
+                        }
+
+                        return "visible".equalsIgnoreCase(ident.value());
                     }
 
                 },

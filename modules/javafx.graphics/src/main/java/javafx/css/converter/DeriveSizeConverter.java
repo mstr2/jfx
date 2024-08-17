@@ -26,9 +26,8 @@
 package javafx.css.converter;
 
 import javafx.css.Size;
-import javafx.css.SizeUnits;
 import javafx.css.StyleConverter;
-import javafx.css.ParsedValue;
+import javafx.css.syntax.Block;
 import javafx.scene.text.Font;
 
 /**
@@ -37,35 +36,52 @@ import javafx.scene.text.Font;
  *
  * @since 9
  */
-public final class DeriveSizeConverter extends StyleConverter<ParsedValue<Size, Size>[], Size> {
+public final class DeriveSizeConverter extends StyleConverter<Size> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final DeriveSizeConverter INSTANCE = new DeriveSizeConverter();
-    }
+    private static final DeriveSizeConverter instance = new DeriveSizeConverter();
 
-    /**
-     * Gets the {@code DeriveSizeConverter} instance.
-     * @return the {@code DeriveSizeConverter} instance
-     */
     public static DeriveSizeConverter getInstance() {
-        return Holder.INSTANCE;
+        return instance;
     }
 
     private DeriveSizeConverter() {
-        super();
+        super(Size.class);
     }
 
     @Override
-    public Size convert(ParsedValue<ParsedValue<Size, Size>[], Size> value, Font font) {
-        final ParsedValue<Size, Size>[] sizes = value.getValue();
-        final double px1 = sizes[0].convert(font).pixels(font);
-        final double px2 = sizes[1].convert(font).pixels(font);
-        return new Size(px1 + px2, SizeUnits.PX);
-    }
-
-    @Override
-    public String toString() {
-        return "DeriveSizeConverter";
+    public Size convert(Block value, Font font) {
+        return null;
     }
 }
+//public final class DeriveSizeConverter extends StyleConverter<ParsedValue<Size, Size>[], Size> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final DeriveSizeConverter INSTANCE = new DeriveSizeConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code DeriveSizeConverter} instance.
+//     * @return the {@code DeriveSizeConverter} instance
+//     */
+//    public static DeriveSizeConverter getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private DeriveSizeConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Size convert(ParsedValue<ParsedValue<Size, Size>[], Size> value, Font font) {
+//        final ParsedValue<Size, Size>[] sizes = value.getValue();
+//        final double px1 = sizes[0].convert(font).pixels(font);
+//        final double px2 = sizes[1].convert(font).pixels(font);
+//        return new Size(px1 + px2, SizeUnits.PX);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "DeriveSizeConverter";
+//    }
+//}

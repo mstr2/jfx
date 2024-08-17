@@ -25,9 +25,12 @@
 
 package javafx.css.converter;
 
-import javafx.css.Size;
-import javafx.css.ParsedValue;
+import javafx.css.SizeUnits;
 import javafx.css.StyleConverter;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.ComponentValue;
+import javafx.css.syntax.DimensionToken;
+import javafx.css.syntax.NumberToken;
 import javafx.scene.text.Font;
 
 /**
@@ -35,69 +38,123 @@ import javafx.scene.text.Font;
  *
  * @since 9
  */
-public final class SizeConverter extends StyleConverter<ParsedValue<?, Size>, Number> {
+public final class SizeConverter extends StyleConverter<Number> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final SizeConverter INSTANCE = new SizeConverter();
-        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
-    }
+    private static final SizeConverter instance = new SizeConverter();
 
-    /**
-     * Gets the {@code SizeConverter} instance.
-     * @return the {@code SizeConverter} instance
-     */
-    public static StyleConverter<ParsedValue<?, Size>, Number> getInstance() {
-        return Holder.INSTANCE;
+    public static SizeConverter getInstance() {
+        return instance;
     }
 
     private SizeConverter() {
-        super();
+        super(Number.class);
     }
 
     @Override
-    public Number convert(ParsedValue<ParsedValue<?, Size>, Number> value, Font font) {
-        ParsedValue<?, Size> size = value.getValue();
-        return size.convert(font).pixels(font);
+    public Number convert(Block value, Font font) {
+        return convert(value.getFirst(), font);
     }
 
-    @Override
-    public String toString() {
-        return "SizeConverter";
-    }
+    public static Number convert(ComponentValue value, Font font) {
+        return switch (value) {
+            case NumberToken number -> number.value();
 
-    /**
-     * Converter to convert a sequence of sizes to an array of {@code Number}.
-     * @since 9
-     */
-    public static final class SequenceConverter extends StyleConverter<ParsedValue[], Number[]> {
+            case DimensionToken dimension -> {
+                var sizeUnits = switch (dimension.unit()) {
+                    case "%" -> SizeUnits.PERCENT;
+                    case "em" -> SizeUnits.EM;
+                    case "ex" -> SizeUnits.EX;
+                    case "px" -> SizeUnits.PX;
+                    case "cm" -> SizeUnits.CM;
+                    case "mm" -> SizeUnits.MM;
+                    case "in" -> SizeUnits.IN;
+                    case "pt" -> SizeUnits.PT;
+                    case "pc" -> SizeUnits.PC;
+                    case "deg" -> SizeUnits.DEG;
+                    case "grad" -> SizeUnits.GRAD;
+                    case "rad" -> SizeUnits.RAD;
+                    case "turn" -> SizeUnits.TURN;
+                    case "s" -> SizeUnits.S;
+                    case "ms" -> SizeUnits.MS;
+                    default -> null;
+                };
 
-        /**
-         * Gets the {@code SequenceConverter} instance.
-         * @return the {@code SequenceConverter} instance
-         */
-        public static SequenceConverter getInstance() {
-            return Holder.SEQUENCE_INSTANCE;
-        }
+                if (sizeUnits == null) {
+                    // TODO: error
+                    yield null;
+                }
 
-        private SequenceConverter() {
-            super();
-        }
-
-        @Override
-        public Number[] convert(ParsedValue<ParsedValue[], Number[]> value, Font font) {
-            ParsedValue[] sizes = value.getValue();
-            Number[] doubles = new Number[sizes.length];
-            for (int i = 0; i < sizes.length; i++) {
-                doubles[i] = ((Size)sizes[i].convert(font)).pixels(font);
+                yield sizeUnits.pixels(1, dimension.value().doubleValue(), font);
             }
-            return doubles;
-        }
 
-        @Override
-        public String toString() {
-            return "Size.SequenceConverter";
-        }
+            default -> null;
+        };
     }
-
 }
+
+//public final class SizeConverter extends StyleConverter<ParsedValue<?, Size>, Number> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final SizeConverter INSTANCE = new SizeConverter();
+//        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code SizeConverter} instance.
+//     * @return the {@code SizeConverter} instance
+//     */
+//    public static StyleConverter<ParsedValue<?, Size>, Number> getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private SizeConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Number convert(ParsedValue<ParsedValue<?, Size>, Number> value, Font font) {
+//        ParsedValue<?, Size> size = value.getValue();
+//        return size.convert(font).pixels(font);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "SizeConverter";
+//    }
+//
+//    /**
+//     * Converter to convert a sequence of sizes to an array of {@code Number}.
+//     * @since 9
+//     */
+//    public static final class SequenceConverter extends StyleConverter<ParsedValue[], Number[]> {
+//
+//        /**
+//         * Gets the {@code SequenceConverter} instance.
+//         * @return the {@code SequenceConverter} instance
+//         */
+//        public static SequenceConverter getInstance() {
+//            return Holder.SEQUENCE_INSTANCE;
+//        }
+//
+//        private SequenceConverter() {
+//            super();
+//        }
+//
+//        @Override
+//        public Number[] convert(ParsedValue<ParsedValue[], Number[]> value, Font font) {
+//            ParsedValue[] sizes = value.getValue();
+//            Number[] doubles = new Number[sizes.length];
+//            for (int i = 0; i < sizes.length; i++) {
+//                doubles[i] = ((Size)sizes[i].convert(font)).pixels(font);
+//            }
+//            return doubles;
+//        }
+//
+//        @Override
+//        public String toString() {
+//            return "Size.SequenceConverter";
+//        }
+//    }
+//
+//}

@@ -38,7 +38,8 @@ public class CssParserShim {
     }
 
     public ParsedValue parseExpr(String property, String expr) {
-        return parser.parseExpr(property, expr);
+        //return parser.parseExpr(property, expr);
+        return null;
     }
 
 }

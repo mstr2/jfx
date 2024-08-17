@@ -169,13 +169,13 @@ public abstract class CssMetaData<S extends Styleable, V> {
         return property;
     }
 
-    private final StyleConverter<?,V> converter;
+    private final StyleConverter<V> converter;
 
     /**
      * Gets the CSS converter that handles conversion from a CSS value to a Java Object.
      * @return the CSS converter
      */
-    public final StyleConverter<?,V> getConverter() {
+    public final StyleConverter<V> getConverter() {
         return converter;
     }
 
@@ -220,6 +220,12 @@ public abstract class CssMetaData<S extends Styleable, V> {
         return inherits;
     }
 
+    private final Class<V> type;
+
+    public final Class<V> getType() {
+        return type;
+    }
+
     /**
      * Construct a CssMetaData with the given parameters and no sub-properties.
      * @param property the CSS property
@@ -232,12 +238,13 @@ public abstract class CssMetaData<S extends Styleable, V> {
      */
     protected CssMetaData(
             final String property,
-            final StyleConverter<?,V> converter,
+            final StyleConverter<V> converter,
             final V initialValue,
             boolean inherits,
             final List<CssMetaData<? extends Styleable, ?>> subProperties) {
 
         this.property = property;
+        this.type = converter.convertedType();
         this.converter = converter;
         this.initialValue = initialValue;
         this.inherits = inherits;
@@ -257,7 +264,7 @@ public abstract class CssMetaData<S extends Styleable, V> {
      */
     protected CssMetaData(
             final String property,
-            final StyleConverter<?,V> converter,
+            final StyleConverter<V> converter,
             final V initialValue,
             boolean inherits) {
         this(property, converter, initialValue, inherits, null);
@@ -272,7 +279,7 @@ public abstract class CssMetaData<S extends Styleable, V> {
      */
     protected CssMetaData(
             final String property,
-            final StyleConverter<?,V> converter,
+            final StyleConverter<V> converter,
             final V initialValue) {
         this(property, converter, initialValue, false, null);
     }
@@ -285,7 +292,7 @@ public abstract class CssMetaData<S extends Styleable, V> {
      */
     protected CssMetaData(
             final String property,
-            final StyleConverter<?,V> converter) {
+            final StyleConverter<V> converter) {
         this(property, converter, null, false, null);
     }
 

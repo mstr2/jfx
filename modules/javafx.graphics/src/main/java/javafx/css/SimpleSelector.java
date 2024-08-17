@@ -181,8 +181,8 @@ final public class SimpleSelector extends Selector {
     }
 
     // TODO: The parser passes styleClasses as a List. Should be array?
-    SimpleSelector(final String name, final List<String> styleClasses,
-            final List<String> pseudoClasses, final String id)
+    public SimpleSelector(final String name, final List<String> styleClasses,
+                          final List<String> pseudoClasses, final String id)
     {
         this.name = name == null ? "*" : name;
         // if name is not null and not empty or wildcard,

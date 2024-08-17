@@ -1223,7 +1223,7 @@ public class StyleablePropertyFactory<S extends Styleable> {
         @SuppressWarnings("unchecked") // getCssMetaData checks and will throw a ClassCastException
         CssMetaData<S, Boolean> cssMetaData =
                 (CssMetaData<S, Boolean>)getCssMetaData(Boolean.class, property, key -> {
-                    final StyleConverter<String, Boolean> converter = StyleConverter.getBooleanConverter();
+                    final var converter = StyleConverter.getBooleanConverter();
                     return new SimpleCssMetaData<>(key, function, converter, initialValue, inherits);
                 });
         return cssMetaData;
@@ -1285,7 +1285,7 @@ public class StyleablePropertyFactory<S extends Styleable> {
         @SuppressWarnings("unchecked") // getCssMetaData checks and will throw a ClassCastException
         CssMetaData<S, Color> cssMetaData =
                 (CssMetaData<S, Color>)getCssMetaData(Color.class, property, key -> {
-                    final StyleConverter<String,Color> converter = StyleConverter.getColorConverter();
+                    final var converter = StyleConverter.getColorConverter();
                     return new SimpleCssMetaData<>(property, function, converter, initialValue, inherits);
                 });
         return cssMetaData;
@@ -1598,7 +1598,7 @@ public class StyleablePropertyFactory<S extends Styleable> {
         @SuppressWarnings("unchecked") // getCssMetaData checks and will throw a ClassCastException
         CssMetaData<S,Insets> cssMetaData =
                 (CssMetaData<S,Insets>)getCssMetaData(Insets.class, property, key -> {
-                    final StyleConverter<ParsedValue[],Insets> converter = StyleConverter.getInsetsConverter();
+                    final var converter = StyleConverter.getInsetsConverter();
                     return new SimpleCssMetaData<>(property, function, converter, initialValue, inherits);
                 });
         return cssMetaData;
@@ -1780,7 +1780,7 @@ public class StyleablePropertyFactory<S extends Styleable> {
         @SuppressWarnings("unchecked") // getCssMetaData checks and will throw a ClassCastException
         CssMetaData<S,String> cssMetaData =
                 (CssMetaData<S,String>)getCssMetaData(String.class, property, key -> {
-                    final StyleConverter<String,String> converter = StyleConverter.getStringConverter();
+                    final var converter = StyleConverter.getStringConverter();
                     return new SimpleCssMetaData<>(property, function, converter, initialValue, inherits);
                 });
         return cssMetaData;

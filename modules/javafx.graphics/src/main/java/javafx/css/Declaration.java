@@ -25,8 +25,7 @@
 
 package javafx.css;
 
-import com.sun.javafx.css.ParsedValueImpl;
-import javafx.css.converter.URLConverter;
+import javafx.css.syntax.Block;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -37,27 +36,27 @@ import java.io.IOException;
  * @since 9
  */
 final public class Declaration {
-    final String property;
-    final ParsedValue parsedValue;
-    final boolean important;
+    private final String property;
+    private final Block declaredValue;
+    private final boolean important;
     // The Rule to which this Declaration belongs.
     Rule rule;
 
     /**
      * Constructs a {@code Declaration} object.
      * @param propertyName name of the CSS property
-     * @param parsedValue value of the CSS property
+     * @param declaredValue value of the CSS property
      * @param important importance of the Declaration
      */
-    Declaration(final String propertyName, final ParsedValue parsedValue,
+    Declaration(final String propertyName, final Block declaredValue,
                 final boolean important) {
         this.property = propertyName;
-        this.parsedValue = parsedValue;
+        this.declaredValue = declaredValue;
         this.important = important;
         if (propertyName == null) {
             throw new IllegalArgumentException("propertyName cannot be null");
         }
-        if (parsedValue == null) {
+        if (declaredValue == null) {
             throw new IllegalArgumentException("parsedValue cannot be null");
         }
     }
@@ -66,8 +65,12 @@ final public class Declaration {
      * Gets the parsed value.
      * @return the parsed value
      */
+    public Block getValue() {
+        return declaredValue;
+    }
+
     public ParsedValue getParsedValue() {
-        return parsedValue;
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -134,7 +137,7 @@ final public class Declaration {
         if ((this.property == null) ? (other.property != null) : !this.property.equals(other.property)) {
             return false;
         }
-        if (this.parsedValue != other.parsedValue && (this.parsedValue == null || !this.parsedValue.equals(other.parsedValue))) {
+        if (this.declaredValue != other.declaredValue && (this.declaredValue == null || !this.declaredValue.equals(other.declaredValue))) {
             return false;
         }
         return true;
@@ -143,7 +146,7 @@ final public class Declaration {
     @Override public int hashCode() {
         int hash = 5;
         hash = 89 * hash + (this.property != null ? this.property.hashCode() : 0);
-        hash = 89 * hash + (this.parsedValue != null ? this.parsedValue.hashCode() : 0);
+        hash = 89 * hash + (this.declaredValue != null ? this.declaredValue.hashCode() : 0);
         hash = 89 * hash + (this.important ? 1 : 0);
         return hash;
     }
@@ -151,7 +154,7 @@ final public class Declaration {
     @Override public String toString() {
         StringBuilder sbuf = new StringBuilder(property);
         sbuf.append(": ");
-        sbuf.append(parsedValue);
+        sbuf.append(declaredValue);
         if (important) sbuf.append(" !important");
         return sbuf.toString();
     }
@@ -167,48 +170,48 @@ final public class Declaration {
     //
     void fixUrl(String stylesheetUrl) {
 
-        if (stylesheetUrl == null) return;
-
-        final StyleConverter converter = parsedValue.getConverter();
-
-        // code is tightly coupled to the way URLConverter works
-        if (converter == URLConverter.getInstance()) {
-
-            final ParsedValue[] values = (ParsedValue[])parsedValue.getValue();
-            values[1] = new ParsedValueImpl<String,String>(stylesheetUrl, null);
-
-        } else if (converter == URLConverter.SequenceConverter.getInstance()) {
-
-            final ParsedValue<ParsedValue[], String>[] layers =
-                (ParsedValue<ParsedValue[], String>[])parsedValue.getValue();
-
-            for (int layer = 0; layer < layers.length; layer++) {
-                final ParsedValue[] values = layers[layer].getValue();
-                values[1] = new ParsedValueImpl<String,String>(stylesheetUrl, null);
-            }
-
-        }
+//        if (stylesheetUrl == null) return;
+//
+//        final StyleConverter converter = parsedValue.getConverter();
+//
+//        // code is tightly coupled to the way URLConverter works
+//        if (converter == URLConverter.getInstance()) {
+//
+//            final ParsedValue[] values = (ParsedValue[])parsedValue.getValue();
+//            values[1] = new ParsedValueImpl<String,String>(stylesheetUrl, null);
+//
+//        } else if (converter == URLConverter.SequenceConverter.getInstance()) {
+//
+//            final ParsedValue<ParsedValue[], String>[] layers =
+//                (ParsedValue<ParsedValue[], String>[])parsedValue.getValue();
+//
+//            for (int layer = 0; layer < layers.length; layer++) {
+//                final ParsedValue[] values = layers[layer].getValue();
+//                values[1] = new ParsedValueImpl<String,String>(stylesheetUrl, null);
+//            }
+//
+//        }
 
     }
 
     final void writeBinary(final DataOutputStream os, final StyleConverter.StringStore stringStore)
         throws IOException
     {
-        if (parsedValue instanceof ParsedValueImpl) {
-            os.writeShort(stringStore.addString(getProperty()));
-            ((ParsedValueImpl)parsedValue).writeBinary(os,stringStore);
-            os.writeBoolean(isImportant());
-        }
+//        if (declaredValue instanceof ParsedValueImpl) {
+//            os.writeShort(stringStore.addString(getProperty()));
+//            ((ParsedValueImpl) declaredValue).writeBinary(os,stringStore);
+//            os.writeBoolean(isImportant());
+//        }
     }
 
     static Declaration readBinary(int bssVersion, DataInputStream is, String[] strings)
         throws IOException
     {
-        final String propertyName = strings[is.readShort()];
-        final ParsedValueImpl parsedValue = ParsedValueImpl.readBinary(bssVersion,is,strings);
-        final boolean important = is.readBoolean();
-        return new Declaration(propertyName, parsedValue, important);
-
+//        final String propertyName = strings[is.readShort()];
+//        final ParsedValueImpl parsedValue = ParsedValueImpl.readBinary(bssVersion,is,strings);
+//        final boolean important = is.readBoolean();
+//        return new Declaration(propertyName, parsedValue, important);
+        return null;
     }
 }
 

@@ -106,11 +106,11 @@ public final class Border {
 
     static final CssMetaData<Node,Insets[]> BORDER_INSETS =
             new SubCssMetaData<>("-fx-border-insets",
-                    InsetsConverter.SequenceConverter.getInstance());
+                    InsetsConverter.getInstance().getSequenceConverter());
 
     static final CssMetaData<Node,String[]> BORDER_IMAGE_SOURCE =
             new SubCssMetaData<>("-fx-border-image-source",
-                    URLConverter.SequenceConverter.getInstance());
+                    URLConverter.getInstance().getSequenceConverter());
 
     static final CssMetaData<Node,RepeatStruct[]> BORDER_IMAGE_REPEAT =
             new SubCssMetaData<>("-fx-border-image-repeat",
@@ -129,7 +129,7 @@ public final class Border {
 
     static final CssMetaData<Node,Insets[]> BORDER_IMAGE_INSETS =
             new SubCssMetaData<>("-fx-border-image-insets",
-                    InsetsConverter.SequenceConverter.getInstance(),
+                    InsetsConverter.getInstance().getSequenceConverter(),
                     new Insets[] {Insets.EMPTY});
 
     private static final List<CssMetaData<? extends Styleable, ?>> STYLEABLES =

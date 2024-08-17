@@ -27,39 +27,63 @@ package javafx.css.converter;
 
 import javafx.css.ParsedValue;
 import javafx.css.StyleConverter;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.IdentToken;
 import javafx.scene.text.Font;
 
 /**
  * Converter to convert a {@code String} to a {@code Boolean}.
  * @since 9
  */
-public final class BooleanConverter extends StyleConverter<String, Boolean> {
+public final class BooleanConverter extends StyleConverter<Boolean> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final BooleanConverter INSTANCE = new BooleanConverter();
-    }
+    private static final BooleanConverter instance = new BooleanConverter();
 
-    /**
-     * Get the {@code BooleanConverter} instance.
-     * @return the {@code BooleanConverter} instance
-     */
-    public static StyleConverter<String, Boolean> getInstance() {
-        return Holder.INSTANCE;
+    public static BooleanConverter getInstance() {
+        return instance;
     }
 
     private BooleanConverter() {
-        super();
+        super(Boolean.class);
     }
 
     @Override
-    public Boolean convert(ParsedValue<String, Boolean> value, Font not_used) {
-        String str = value.getValue();
-        return Boolean.valueOf(str);
-    }
+    public Boolean convert(Block value, Font font) {
+        if (value.getFirst() instanceof IdentToken ident) {
+            return Boolean.valueOf(ident.value());
+        }
 
-    @Override
-    public String toString() {
-        return "BooleanConverter";
+        // TODO: error
+        return null;
     }
 }
+//public final class BooleanConverter extends StyleConverter<String, Boolean> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final BooleanConverter INSTANCE = new BooleanConverter();
+//    }
+//
+//    /**
+//     * Get the {@code BooleanConverter} instance.
+//     * @return the {@code BooleanConverter} instance
+//     */
+//    public static StyleConverter<String, Boolean> getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private BooleanConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Boolean convert(ParsedValue<String, Boolean> value, Font not_used) {
+//        String str = value.getValue();
+//        return Boolean.valueOf(str);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "BooleanConverter";
+//    }
+//}

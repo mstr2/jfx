@@ -3418,7 +3418,7 @@ public class Region extends Parent {
 
          private static final CssMetaData<Region,Background> BACKGROUND =
              new CssMetaData<>("-fx-region-background",
-                 BackgroundConverter.INSTANCE,
+                 BackgroundConverter.getInstance(),
                  null,
                  false,
                  Background.getClassCssMetaData()) {

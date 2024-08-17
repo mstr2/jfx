@@ -26,14 +26,14 @@
 package com.sun.javafx.css;
 
 import javafx.css.Declaration;
-import javafx.css.Match;
 import javafx.css.ParsedValue;
+import javafx.css.Match;
 import javafx.css.PseudoClass;
 import javafx.css.Rule;
 import javafx.css.Selector;
 import javafx.css.Style;
 import javafx.css.StyleOrigin;
-
+import javafx.css.syntax.Block;
 import java.util.Set;
 
 /** A marriage of pseudo-classes (potentially empty) to property and value
@@ -100,8 +100,12 @@ public class CascadingStyle implements Comparable<CascadingStyle> {
     }
 
     // Wrapper to make StyleHelper's life a little easier
+    public Block getDeclaredValue() {
+        return style.getDeclaration().getValue();
+    }
+
     public ParsedValue getParsedValue() {
-        return style.getDeclaration().getParsedValue();
+        throw new UnsupportedOperationException();
     }
 
     @Override public String toString() { return getProperty(); }

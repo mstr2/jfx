@@ -25,9 +25,8 @@
 
 package javafx.css.converter;
 
-import javafx.css.Size;
 import javafx.css.StyleConverter;
-import javafx.css.ParsedValue;
+import javafx.css.syntax.Block;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
@@ -36,35 +35,52 @@ import javafx.scene.text.Font;
  *
  * @since 9
  */
-public final class DeriveColorConverter extends StyleConverter<ParsedValue[], Color> {
+public final class DeriveColorConverter extends StyleConverter<Color> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final DeriveColorConverter INSTANCE = new DeriveColorConverter();
-    }
+    private static final DeriveColorConverter instance = new DeriveColorConverter();
 
-    /**
-     * Gets the {@code DeriveColorConverter} instance.
-     * @return the {@code DeriveColorConverter} instance
-     */
     public static DeriveColorConverter getInstance() {
-        return Holder.INSTANCE;
+        return instance;
     }
 
     private DeriveColorConverter() {
-        super();
+        super(Color.class);
     }
 
     @Override
-    public Color convert(ParsedValue<ParsedValue[], Color> value, Font font) {
-        ParsedValue[] values = value.getValue();
-        final Color color = (Color) values[0].convert(font);
-        final Size brightness = (Size) values[1].convert(font);
-        return com.sun.javafx.util.Utils.deriveColor(color, brightness.pixels(font));
-    }
-
-    @Override
-    public String toString() {
-        return "DeriveColorConverter";
+    public Color convert(Block value, Font font) {
+        return null;
     }
 }
+//public final class DeriveColorConverter extends StyleConverter<ParsedValue[], Color> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final DeriveColorConverter INSTANCE = new DeriveColorConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code DeriveColorConverter} instance.
+//     * @return the {@code DeriveColorConverter} instance
+//     */
+//    public static DeriveColorConverter getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private DeriveColorConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Color convert(ParsedValue<ParsedValue[], Color> value, Font font) {
+//        ParsedValue[] values = value.getValue();
+//        final Color color = (Color) values[0].convert(font);
+//        final Size brightness = (Size) values[1].convert(font);
+//        return com.sun.javafx.util.Utils.deriveColor(color, brightness.pixels(font));
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "DeriveColorConverter";
+//    }
+//}

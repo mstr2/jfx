@@ -720,7 +720,7 @@ public abstract class Shape extends Node {
         */
         private static final CssMetaData<Shape,Number[]> STROKE_DASH_ARRAY =
             new CssMetaData<>("-fx-stroke-dash-array",
-                SizeConverter.SequenceConverter.getInstance(),
+                SizeConverter.getInstance().getSequenceConverter(),
                 new Double[0]) {
 
             @Override

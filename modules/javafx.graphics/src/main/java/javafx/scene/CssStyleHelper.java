@@ -25,6 +25,7 @@
 package javafx.scene;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,8 +36,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import com.sun.javafx.css.parser.CssDeclaredValue;
 import javafx.beans.value.WritableValue;
 import com.sun.javafx.css.CascadingStyle;
 import com.sun.javafx.css.ImmutablePseudoClassSetsCache;
@@ -48,18 +48,26 @@ import javafx.css.ParsedValue;
 import javafx.css.PseudoClass;
 import javafx.css.Rule;
 import javafx.css.Selector;
+import javafx.css.StyleCompositor;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.BracketBlock;
+import javafx.css.syntax.CommaToken;
+import javafx.css.syntax.CurlyBlock;
 import javafx.css.Style;
 import javafx.css.StyleConverter;
 import javafx.css.StyleOrigin;
 import javafx.css.Styleable;
 import javafx.css.StyleableProperty;
 import javafx.css.Stylesheet;
+import javafx.css.syntax.ComponentValue;
+import javafx.css.syntax.Function;
+import javafx.css.syntax.IdentToken;
+import javafx.css.syntax.ParenBlock;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 
 import com.sun.javafx.css.CalculatedValue;
-import com.sun.javafx.css.ParsedValueImpl;
 import com.sun.javafx.css.PseudoClassState;
 import com.sun.javafx.css.StyleCache;
 import com.sun.javafx.css.StyleCacheEntry;
@@ -667,9 +675,9 @@ final class CssStyleHelper {
 
             CascadingStyle style = getStyle(node, property, styleMap, transitionStates[0]);
             if (style != null) {
-                final ParsedValue cssValue = style.getParsedValue();
-                ParsedValue resolved = resolveLookups(node, cssValue, styleMap, transitionStates[0], new HashSet<>());
-                boolean isRelative = ParsedValueImpl.containsFontRelativeSize(resolved, false);
+                final Block cssValue = style.getDeclaredValue();
+                Block resolved = resolveDeclaredValue(node, cssMetaData, cssValue, styleMap, transitionStates[0], new HashSet<>());
+                boolean isRelative = false;//ParsedValueImpl.containsFontRelativeSize(resolved, false);
                 if (!isRelative) {
                     continue;
                 }
@@ -1159,7 +1167,10 @@ final class CssStyleHelper {
 
                 try {
                     final StyleConverter keyType = cssMetaData.getConverter();
-                    Object ret = keyType.convert(subs);
+                    Object ret = switch (keyType) {
+                        case StyleCompositor compositor -> compositor.compose(subs);
+                        default -> null;
+                    };
                     return new CalculatedValue(ret, origin, isRelative);
                 } catch (ClassCastException cce) {
                     final String msg = formatExceptionMessage(styleable, cssMetaData, null, cce);
@@ -1193,8 +1204,8 @@ final class CssStyleHelper {
 
         // If there was a style found, then we want to check whether the
         // value was "inherit". If so, then we will simply inherit.
-        final ParsedValue cssValue = style.getParsedValue();
-        if (cssValue != null && "inherit".equals(cssValue.getValue())) {
+        final Block cssValue = style.getDeclaredValue();
+        if (cssValue != null && isInherit(cssValue)) {
             style = getInheritedStyle(styleable, property);
             if (style == null) return SKIP;
         }
@@ -1260,9 +1271,9 @@ final class CssStyleHelper {
 
             if (cascadingStyle != null) {
 
-                final ParsedValue cssValue = cascadingStyle.getParsedValue();
+                final Block cssValue = cascadingStyle.getDeclaredValue();
 
-                if ("inherit".equals(cssValue.getValue())) {
+                if (isInherit(cssValue)) {
                     return getInheritedStyle(parent, property);
                 }
                 return cascadingStyle;
@@ -1313,92 +1324,228 @@ final class CssStyleHelper {
         }
     }
 
-    // to resolve a lookup, we just need to find the parsed value.
-    private ParsedValue resolveLookups(
-            final Styleable styleable,
-            final ParsedValue parsedValue,
-            final StyleMap styleMap, Set<PseudoClass> states,
-            Set<ParsedValue> resolves) {
+    private Block resolveVar(
+            Styleable styleable,
+            CssMetaData<?, ?> metadata,
+            Function function,
+            StyleMap styleMap,
+            Set<PseudoClass> states,
+            Set<Block> resolves) {
+        if (function.isEmpty()) {
+            throw new IllegalArgumentException("var(): Function must specify custom property name");
+        }
 
-        //
-        // either the value itself is a lookup, or the value contain a lookup
-        //
-        if (parsedValue.isLookup()) {
+        ComponentValue arg = function.getFirst();
+        if (!(arg instanceof IdentToken ident)) {
+            throw new IllegalArgumentException("var(): Invalid custom property name");
+        }
 
-            // The value we're looking for should be a Paint, one of the
-            // containers for linear, radial or ladder, or a derived color.
-            final Object val = parsedValue.getValue();
-            if (val instanceof String) {
+        Block resolvedValue;
+        CascadingStyle resolved = resolveRef(styleable, ident.value(), styleMap, states);
 
-                final String sval = ((String) val).toLowerCase(Locale.ROOT);
+        if (resolved == null) {
+            // No fallback value specified.
+            if (function.size() == 1) {
+                return null;
+            }
 
-                CascadingStyle resolved =
-                    resolveRef(styleable, sval, styleMap, states);
+            if (!(function.get(1) instanceof CommaToken)) {
+                throw new IllegalArgumentException("var(): Unexpected token: " + function.get(2));
+            }
 
-                if (resolved != null) {
-                    ParsedValue<?, ?> resolvedParsedValue = resolved.getParsedValue();
+            resolvedValue = switch (function.size()) {
+                case 2 -> CssDeclaredValue.of();
 
-                    if (!resolves.add(resolvedParsedValue)) {
-                        if (LOGGER.isLoggable(Level.WARNING)) {
-                            LOGGER.warning("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
-                        }
-
-                        throw new IllegalArgumentException("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
+                case 3 -> {
+                    if (function.get(2) instanceof Function func && "var".equals(func.name())) {
+                        yield resolveVar(styleable, metadata, func, styleMap, states, resolves);
                     }
 
-                    // the resolved value may itself need to be resolved.
-                    // For example, if the value "color" resolves to "base",
-                    // then "base" will need to be resolved as well.
-                    ParsedValue<?, ?> pv = resolveLookups(styleable, resolvedParsedValue, styleMap, states, resolves);
-
-                    resolves.remove(resolvedParsedValue);
-
-                    return pv;
-
+                    yield CssDeclaredValue.of(function.get(2));
                 }
-            }
-        }
 
-        // If the value doesn't contain any values that need lookup, then bail
-        if (!parsedValue.isContainsLookups()) {
-            return parsedValue;
-        }
+                default -> {
+                    var result = new ArrayList<ComponentValue>(function.size() - 2);
 
-        final Object val = parsedValue.getValue();
+                    for (int i = 2, max = function.size(); i < max; ++i) {
+                        if (function.get(i) instanceof Function func && "var".equals(func.name())) {
+                            var resolvedVar = resolveVar(styleable, metadata, func, styleMap, states, resolves);
+                            if (resolvedVar != null) {
+                                result.addAll(resolvedVar);
+                            }
+                        } else {
+                            result.add(function.get(i));
+                        }
+                    }
 
-        if (val instanceof ParsedValue[][]) {
-
-            // If ParsedValue is a layered sequence of values, resolve the lookups for each.
-            final ParsedValue[][] layers = (ParsedValue[][])val;
-            ParsedValue[][] resolved = new ParsedValue[layers.length][0];
-            for (int l=0; l<layers.length; l++) {
-                resolved[l] = new ParsedValue[layers[l].length];
-                for (int ll=0; ll<layers[l].length; ll++) {
-                    if (layers[l][ll] == null) continue;
-                    resolved[l][ll] =
-                        resolveLookups(styleable, layers[l][ll], styleMap, states, resolves);
+//                    yield CssDeclaredValue.multipleValues(result);
+                    throw new AssertionError();
                 }
-            }
-
-            return new ParsedValueImpl(resolved, parsedValue.getConverter(), false);
-
-        } else if (val instanceof ParsedValueImpl[]) {
-
-            // If ParsedValue is a sequence of values, resolve the lookups for each.
-            final ParsedValue[] layer = (ParsedValue[])val;
-            ParsedValue[] resolved = new ParsedValue[layer.length];
-            for (int l=0; l<layer.length; l++) {
-                if (layer[l] == null) continue;
-                resolved[l] =
-                    resolveLookups(styleable, layer[l], styleMap, states, resolves);
-            }
-
-            return new ParsedValueImpl(resolved, parsedValue.getConverter(), false);
-
+            };
+        } else {
+            resolvedValue = resolved.getDeclaredValue();
         }
 
-        return parsedValue;
+        if (!resolves.add(resolvedValue)) {
+            String message = "Loop detected in " + resolved.getRule().toString() +
+                             " while resolving '" + ident.value() + "'";
+            if (LOGGER.isLoggable(Level.WARNING)) {
+                LOGGER.warning(message);
+            }
 
+            throw new IllegalArgumentException(message);
+        }
+
+        // the resolved value may itself need to be resolved.
+        // For example, if the value "color" resolves to "base",
+        // then "base" will need to be resolved as well.
+        Block result = resolveDeclaredValue(styleable, metadata, resolvedValue, styleMap, states, resolves);
+        resolves.remove(resolvedValue);
+        return result;
+    }
+
+    private ComponentValue resolveBlock(
+            Styleable styleable, CssMetaData<?, ?> metadata, Block block,
+            StyleMap styleMap, Set<PseudoClass> states, Set<Block> resolves) {
+        if (!block.containsLookup()) {
+            return block;
+        }
+
+        List<ComponentValue> values = resolveComponentValues(
+            styleable, metadata, block, styleMap, states, resolves);
+
+        return switch (block) {
+            case Function f -> new Function(f.name(), values, f.line(), f.column());
+            case CurlyBlock b -> new CurlyBlock(values, b.line(), b.column());
+            case BracketBlock b -> new CurlyBlock(values, b.line(), b.column());
+            case ParenBlock b -> new CurlyBlock(values, b.line(), b.column());
+            case Block b -> block;
+        };
+    }
+
+    private List<ComponentValue> resolveComponentValues(
+            Styleable styleable, CssMetaData<?, ?> metadata, List<ComponentValue> values,
+            StyleMap styleMap, Set<PseudoClass> states, Set<Block> resolves) {
+        var resolvedValues = new ArrayList<ComponentValue>(values.size());
+
+        for (int i = 0, max = values.size(); i < max; ++i) {
+            switch (values.get(i)) {
+                case Function f when "var".equals(f.name()) -> {
+                    resolvedValues.addAll(resolveVar(styleable, metadata, f, styleMap, states, resolves));
+                }
+
+                case Block b -> {
+                    resolvedValues.add(resolveBlock(styleable, metadata, b, styleMap, states, resolves));
+                }
+
+                default -> {
+                    resolvedValues.add(values.get(i));
+                }
+            };
+        }
+
+        return resolvedValues;
+    }
+
+    // to resolve a lookup, we just need to find the parsed value.
+    private Block resolveDeclaredValue(
+            Styleable styleable,
+            CssMetaData<?, ?> metadata,
+            Block declaredValue,
+            StyleMap styleMap,
+            Set<PseudoClass> states,
+            Set<Block> resolves) {
+        if (!declaredValue.containsLookup()) {
+            return declaredValue;
+        }
+
+        if (declaredValue.size() == 1
+                && declaredValue.getFirst() instanceof Function function
+                && "var".equals(function.name())) {
+            return resolveVar(styleable, metadata, function, styleMap, states, resolves);
+        }
+
+        return CssDeclaredValue.of(resolveComponentValues(
+            styleable, metadata, declaredValue, styleMap, states, resolves));
+
+//        //
+//        // either the value itself is a lookup, or the value contain a lookup
+//        //
+//        if (useParser ? parser.isLookup(declaredValue) : declaredValue.parsedValue().isLookup()) {
+//
+//            // The value we're looking for should be a Paint, one of the
+//            // containers for linear, radial or ladder, or a derived color.
+//            final Object val = declaredValue.getValue();
+//            if (val instanceof String) {
+//
+//                final String sval = ((String) val).toLowerCase(Locale.ROOT);
+//
+//                CascadingStyle resolved =
+//                    resolveRef(styleable, sval, styleMap, states);
+//
+//                if (resolved != null) {
+//                    DeclaredValue resolvedParsedValue = resolved.getDeclaredValue();
+//
+//                    if (!resolves.add(resolvedParsedValue)) {
+//                        if (LOGGER.isLoggable(Level.WARNING)) {
+//                            LOGGER.warning("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
+//                        }
+//
+//                        throw new IllegalArgumentException("Loop detected in " + resolved.getRule().toString() + " while resolving '" + sval + "'");
+//                    }
+//
+//                    // the resolved value may itself need to be resolved.
+//                    // For example, if the value "color" resolves to "base",
+//                    // then "base" will need to be resolved as well.
+//                    DeclaredValue pv = resolveLookups(styleable, resolvedParsedValue, metadata, styleMap, states, resolves);
+//
+//                    resolves.remove(resolvedParsedValue);
+//
+//                    return pv;
+//
+//                }
+//            }
+//        }
+//
+//        // If the value doesn't contain any values that need lookup, then bail
+//        if (!(useParser ? parser.isContainsLookup(declaredValue) : declaredValue.parsedValue().isContainsLookups())) {
+//            return declaredValue;
+//        }
+//
+//        final Object val = parsedValue.getValue();
+//
+//        if (val instanceof ParsedValue[][]) {
+//
+//            // If ParsedValue is a layered sequence of values, resolve the lookups for each.
+//            final ParsedValue[][] layers = (ParsedValue[][])val;
+//            ParsedValue[][] resolved = new ParsedValue[layers.length][0];
+//            for (int l=0; l<layers.length; l++) {
+//                resolved[l] = new ParsedValue[layers[l].length];
+//                for (int ll=0; ll<layers[l].length; ll++) {
+//                    if (layers[l][ll] == null) continue;
+//                    resolved[l][ll] =
+//                        resolveLookups(styleable, layers[l][ll], metadata, styleMap, states, resolves);
+//                }
+//            }
+//
+//            return new ParsedValueImpl(resolved, parsedValue.getConverter(), false);
+//
+//        } else if (val instanceof ParsedValueImpl[]) {
+//
+//            // If ParsedValue is a sequence of values, resolve the lookups for each.
+//            final ParsedValue[] layer = (ParsedValue[])val;
+//            ParsedValue[] resolved = new ParsedValue[layer.length];
+//            for (int l=0; l<layer.length; l++) {
+//                if (layer[l] == null) continue;
+//                resolved[l] =
+//                    resolveLookups(styleable, layer[l], metadata, styleMap, states, resolves);
+//            }
+//
+//            return new ParsedValueImpl(resolved, parsedValue.getConverter(), false);
+//
+//        }
+//
+//        return parsedValue;
     }
 
     private String getUnresolvedLookup(final ParsedValue resolved) {
@@ -1517,23 +1664,22 @@ final class CssStyleHelper {
             final Styleable originatingStyleable,
             final CalculatedValue fontFromCacheEntry) {
 
-        final ParsedValue cssValue = style.getParsedValue();
-        if (cssValue != null && !("null".equals(cssValue.getValue()) || "none".equals(cssValue.getValue()))) {
+        final Block declaredValue = style.getDeclaredValue();
+        if (declaredValue != null && !(isNull(declaredValue) || isNone(declaredValue))) {
 
-            ParsedValue resolved = null;
+            Block resolved = null;
             try {
 
-                resolved = resolveLookups(styleable, cssValue, styleMap, states, new HashSet<>());
+                resolved = resolveDeclaredValue(styleable, cssMetaData, declaredValue, styleMap, states, new HashSet<>());
 
                 final String property = cssMetaData.getProperty();
 
                 // The computed value
-                Object val = null;
                 boolean isFontProperty =
                         "-fx-font".equals(property) ||
                         "-fx-font-size".equals(property);
 
-                boolean isRelative = ParsedValueImpl.containsFontRelativeSize(resolved, isFontProperty);
+                boolean isRelative = false;//ParsedValueImpl.containsFontRelativeSize(resolved, isFontProperty);
 
                 //
                 // Avoid using a font calculated from a relative size
@@ -1595,30 +1741,30 @@ final class CssStyleHelper {
                     }
                 }
 
-                final StyleConverter cssMetaDataConverter = cssMetaData.getConverter();
                 // RT-37727 - handling of properties that are insets is wonky. If the property is -fx-inset, then
                 // there isn't an issue because the converter assigns the InsetsConverter to the ParsedValue.
                 // But -my-insets will parse as an array of numbers and the parser will assign the Size sequence
                 // converter to it. So, if the CssMetaData says it uses InsetsConverter, use the InsetsConverter
                 // and not the parser assigned converter.
-                if (cssMetaDataConverter == StyleConverter.getInsetsConverter()) {
-                    if (resolved.getValue() instanceof ParsedValue) {
-                        // If you give the parser "-my-insets: 5;" you end up with a ParsedValue<ParsedValue<?,Size>, Number>
-                        // and not a ParsedValue<ParsedValue[], Number[]> so here we wrap the value into an array
-                        // to make the InsetsConverter happy.
-                        resolved = new ParsedValueImpl(new ParsedValue[] {(ParsedValue)resolved.getValue()}, null, false);
-                    }
-                    val = cssMetaDataConverter.convert(resolved, fontForFontRelativeSizes);
-                }
-                else if (resolved.getConverter() != null)
-                    val = resolved.convert(fontForFontRelativeSizes);
-                else
-                    val = cssMetaData.getConverter().convert(resolved, fontForFontRelativeSizes);
+//                else if (cssMetaDataConverter == StyleConverter.getInsetsConverter()) {
+//                    if (resolved.parsedValue().getValue() instanceof ParsedValue) {
+//                        // If you give the parser "-my-insets: 5;" you end up with a ParsedValue<ParsedValue<?,Size>, Number>
+//                        // and not a ParsedValue<ParsedValue[], Number[]> so here we wrap the value into an array
+//                        // to make the InsetsConverter happy.
+//                        resolved = new ParsedValueImpl(new ParsedValue[] {(ParsedValue)resolved.parsedValue().getValue()}, null, false);
+//                    }
+//                    val = cssMetaDataConverter.convert(resolved.parsedValue(), fontForFontRelativeSizes);
+//                } else if (resolved.parsedValue().getConverter() != null) {
+//                    val = resolved.parsedValue().convert(fontForFontRelativeSizes);
+//                } else {
+//                    val = cssMetaData.getConverter().convert(resolved.parsedValue(), fontForFontRelativeSizes);
+//                }
 
-                return new CalculatedValue(val, style.getOrigin(), isRelative);
-
+                var finalValue = cssMetaData.getConverter().convert(resolved, fontForFontRelativeSizes);
+                return new CalculatedValue(finalValue, style.getOrigin(), isRelative);
             } catch (ClassCastException cce) {
-                final String msg = formatUnresolvedLookupMessage(styleable, cssMetaData, style.getStyle(),resolved, cce);
+//                final String msg = formatUnresolvedLookupMessage(styleable, cssMetaData, style.getStyle(),resolved, cce);
+                String msg = "";
                 List<CssParser.ParseError> errors = null;
                 if ((errors = StyleManager.getErrors()) != null) {
                     final CssParser.ParseError error = new CssParser.ParseError.PropertySetError(cssMetaData, styleable, msg);
@@ -1875,9 +2021,9 @@ final class CssStyleHelper {
 
                     if (cascadingStyle != null) {
 
-                        final ParsedValue cssValue = cascadingStyle.getParsedValue();
+                        final Block cssValue = cascadingStyle.getDeclaredValue();
 
-                        if ("inherit".equals(cssValue.getValue()) == false) {
+                        if (!isInherit(cssValue)) {
                             fontShorthand = cascadingStyle;
                             break;
                         }
@@ -2133,9 +2279,9 @@ final class CssStyleHelper {
                         }
                     }
 
-                    final ParsedValue cssValue = cascadingStyle.getParsedValue();
+                    final Block cssValue = cascadingStyle.getDeclaredValue();
 
-                    if ("inherit".equals(cssValue.getValue()) == false) {
+                    if (!isInherit(cssValue)) {
                         return cascadingStyle;
                     }
                 }
@@ -2219,10 +2365,11 @@ final class CssStyleHelper {
         return matchingStyles;
     }
 
-    private void getMatchingStyles(final Styleable node, final CssMetaData styleableProperty, final List<CascadingStyle> styleList, boolean matchState) {
-
+    private void getMatchingStyles(final Styleable node,
+                                   final CssMetaData styleableProperty,
+                                   final List<CascadingStyle> styleList,
+                                   boolean matchState) {
         if (node != null) {
-
             String property = styleableProperty.getProperty();
             Node _node = node instanceof Node ? (Node)node : null;
             final StyleMap smap = getStyleMap(_node);
@@ -2232,8 +2379,8 @@ final class CssStyleHelper {
                 CascadingStyle cascadingStyle = getStyle(node, styleableProperty.getProperty(), smap, _node.pseudoClassStates);
                 if (cascadingStyle != null) {
                     styleList.add(cascadingStyle);
-                    final ParsedValue parsedValue = cascadingStyle.getParsedValue();
-                    getMatchingLookupStyles(node, parsedValue, styleList, matchState);
+                    final Block parsedValue = cascadingStyle.getDeclaredValue();
+                    getMatchingLookupStyles(node, styleableProperty, parsedValue, styleList, matchState);
                 }
             }  else {
 
@@ -2245,8 +2392,8 @@ final class CssStyleHelper {
                     styleList.addAll(styles);
                     for (int n=0, nMax=styles.size(); n<nMax; n++) {
                         final CascadingStyle style = styles.get(n);
-                        final ParsedValue parsedValue = style.getParsedValue();
-                        getMatchingLookupStyles(node, parsedValue, styleList, matchState);
+                        final Block parsedValue = style.getDeclaredValue();
+                        getMatchingLookupStyles(node, styleableProperty, parsedValue, styleList, matchState);
                     }
                 }
             }
@@ -2269,84 +2416,114 @@ final class CssStyleHelper {
     }
 
     // Pretty much a duplicate of resolveLookups, but without the state
-    private void getMatchingLookupStyles(final Styleable node, final ParsedValue parsedValue, final List<CascadingStyle> styleList, boolean matchState) {
-
-        if (parsedValue.isLookup()) {
-
-            Object value = parsedValue.getValue();
-
-            if (value instanceof String) {
-
-                final String property = (String)value;
-                // gather up any and all styles that contain this value as a property
-                Styleable parent = node;
-                do {
-
-                    final Node _parent = parent instanceof Node ? (Node)parent : null;
-                    final CssStyleHelper helper = _parent != null
-                            ? _parent.styleHelper
-                            : null;
-                    if (helper != null) {
-
-                        StyleMap styleMap = helper.getStyleMap(parent);
-                        if (styleMap == null || styleMap.isEmpty()) continue;
-
-                        final int start = styleList.size();
-
-                        if (matchState) {
-                            CascadingStyle cascadingStyle = helper.resolveRef(_parent, property, styleMap, _parent.pseudoClassStates);
-                            if (cascadingStyle != null) {
-                                styleList.add(cascadingStyle);
-                            }
-                        } else {
-                            final Map<String, List<CascadingStyle>> smap = styleMap.getCascadingStyles();
-                            // getCascadingStyles does not return null
-                            List<CascadingStyle> styles = smap.get(property);
-
-                            if (styles != null) {
-                                styleList.addAll(styles);
-                            }
-
-                        }
-
-                        final int end = styleList.size();
-
-                        for (int index=start; index<end; index++) {
-                            final CascadingStyle style = styleList.get(index);
-                            getMatchingLookupStyles(parent, style.getParsedValue(), styleList, matchState);
-                        }
-                    }
-
-                } while ((parent = parent.getStyleableParent()) != null); // This loop traverses through all ancestors till root
-
-            }
-        }
-
-        // If the value doesn't contain any values that need lookup, then bail
-        if (!parsedValue.isContainsLookups()) {
+    private void getMatchingLookupStyles(Styleable node,
+                                         CssMetaData<?, ?> metadata,
+                                         Block declaredValue,
+                                         List<CascadingStyle> styleList,
+                                         boolean matchState) {
+        if (!declaredValue.containsLookup()) {
             return;
         }
 
-        final Object val = parsedValue.getValue();
-        if (val instanceof ParsedValue[][]) {
-        // If ParsedValue is a layered sequence of values, resolve the lookups for each.
-            final ParsedValue[][] layers = (ParsedValue[][])val;
-            for (int l=0; l<layers.length; l++) {
-                for (int ll=0; ll<layers[l].length; ll++) {
-                    if (layers[l][ll] == null) continue;
-                        getMatchingLookupStyles(node, layers[l][ll], styleList, matchState);
-                }
-            }
+        for (int i = 0, max = declaredValue.size(); i < max; ++i) {
+            switch (declaredValue.get(i)) {
+                case Function function when "var".equals(function.name()) ->
+                    getMatchingLookupStyles(node, metadata, function, styleList, matchState);
 
-        } else if (val instanceof ParsedValue[]) {
-        // If ParsedValue is a sequence of values, resolve the lookups for each.
-            final ParsedValue[] layer = (ParsedValue[])val;
-            for (int l=0; l<layer.length; l++) {
-                if (layer[l] == null) continue;
-                    getMatchingLookupStyles(node, layer[l], styleList, matchState);
+                default -> {}
             }
         }
+    }
 
+    private void getMatchingLookupStyles(Styleable node,
+                                         CssMetaData<?, ?> metadata,
+                                         Function function,
+                                         List<CascadingStyle> styleList,
+                                         boolean matchState) {
+        if (function.isEmpty()) {
+            throw new IllegalArgumentException("var(): Function must specify custom property name");
+        }
+
+        if (!(function.getFirst() instanceof IdentToken property)) {
+            throw new IllegalArgumentException("var(): Invalid custom property name");
+        }
+
+        gatherCascadingStyles(node, property.value(), metadata, styleList, matchState);
+
+        if (function.size() > 2) {
+            if (!(function.get(1) instanceof CommaToken)) {
+                throw new IllegalArgumentException("var(): Unexpected token: " + function.get(2));
+            }
+
+            for (int j = 2, jmax = function.size(); j < jmax; ++j) {
+                if (function.get(j) instanceof Function func && "var".equals(func.name())) {
+                    getMatchingLookupStyles(node, metadata, func, styleList, matchState);
+                }
+            }
+        }
+    }
+
+    // Gather up any and all styles that contain this value as a property.
+    private void gatherCascadingStyles(Styleable node,
+                                       String property,
+                                       CssMetaData<?, ?> metadata,
+                                       List<CascadingStyle> styleList,
+                                       boolean matchState) {
+        Styleable parent = node;
+        do {
+            Node _parent = parent instanceof Node ? (Node)parent : null;
+            CssStyleHelper helper = _parent != null ? _parent.styleHelper : null;
+
+            if (helper != null) {
+                StyleMap styleMap = helper.getStyleMap(parent);
+
+                if (styleMap == null || styleMap.isEmpty()) {
+                    continue;
+                }
+
+                int start = styleList.size();
+
+                if (matchState) {
+                    CascadingStyle cascadingStyle = helper.resolveRef(_parent, property, styleMap, _parent.pseudoClassStates);
+                    if (cascadingStyle != null) {
+                        styleList.add(cascadingStyle);
+                    }
+                } else {
+                    Map<String, List<CascadingStyle>> smap = styleMap.getCascadingStyles();
+
+                    // getCascadingStyles does not return null
+                    List<CascadingStyle> styles = smap.get(property);
+                    if (styles != null) {
+                        styleList.addAll(styles);
+                    }
+                }
+
+                int end = styleList.size();
+
+                for (int index = start; index < end; index++) {
+                    final CascadingStyle style = styleList.get(index);
+                    getMatchingLookupStyles(parent, metadata, style.getDeclaredValue(), styleList, matchState);
+                }
+            }
+        } while ((parent = parent.getStyleableParent()) != null); // This loop traverses through all ancestors till root
+    }
+
+    private static boolean isInherit(Block value) {
+        return value.size() == 1
+            && value.getFirst() instanceof IdentToken ident
+            && "inherit".equals(ident.value());
+    }
+
+    private static boolean isNull(Block value) {
+        return value.size() == 1
+            && value.getFirst() instanceof IdentToken ident
+            && "null".equals(ident.value());
+    }
+
+    private static boolean isNone(Block value) {
+        return value.size() == 1
+            && value.getFirst() instanceof IdentToken ident
+            && "none".equals(ident.value());
     }
 
 }

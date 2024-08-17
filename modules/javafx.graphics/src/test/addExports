@@ -10,6 +10,8 @@
 --add-exports javafx.graphics/com.sun.javafx.application.preferences=ALL-UNNAMED
 --add-exports javafx.graphics/com.sun.javafx.css=ALL-UNNAMED
 --add-exports javafx.graphics/com.sun.javafx.css.parser=ALL-UNNAMED
+--add-exports javafx.graphics/com.sun.javafx.css.selectors=ALL-UNNAMED
+--add-exports javafx.graphics/com.sun.javafx.css.syntax=ALL-UNNAMED
 --add-exports javafx.graphics/com.sun.javafx.embed=ALL-UNNAMED
 --add-exports javafx.graphics/com.sun.javafx.font=ALL-UNNAMED
 --add-exports javafx.graphics/com.sun.javafx.geom=ALL-UNNAMED

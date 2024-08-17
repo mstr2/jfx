@@ -34,6 +34,7 @@ import javafx.collections.ListChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.css.CssParser;
 import javafx.css.FontFace;
+import javafx.css.NewCssParser;
 import javafx.css.PseudoClass;
 import javafx.css.Rule;
 import javafx.css.Selector;
@@ -1121,7 +1122,7 @@ final public class StyleManager {
                     DataURI dataUri = null;
 
                     if (url != null) {
-                        stylesheet = new CssParser().parse(url);
+                        stylesheet = NewCssParser.parse(url);
                     } else {
                         dataUri = DataURI.tryParse(fname);
                     }
@@ -1158,7 +1159,7 @@ final public class StyleManager {
                             }
 
                             var stylesheetText = new String(dataUri.getData(), charset);
-                            stylesheet = new CssParser().parse(stylesheetText);
+                            stylesheet = NewCssParser.parse(stylesheetText);
                         } else if (isBinary) {
                             try (InputStream stream = new ByteArrayInputStream(dataUri.getData())) {
                                 stylesheet = Stylesheet.loadBinary(stream);
@@ -2073,7 +2074,7 @@ final public class StyleManager {
             }
 
             final Stylesheet inlineStylesheet =
-                    new CssParser().parse("*{"+inlineStyle+"}");
+                    NewCssParser.parse("*{"+inlineStyle+"}");
 
             if (inlineStylesheet != null) {
 

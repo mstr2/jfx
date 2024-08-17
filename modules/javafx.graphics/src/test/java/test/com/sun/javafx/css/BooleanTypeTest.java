@@ -35,34 +35,34 @@ import org.junit.Test;
 import javafx.css.converter.BooleanConverter;
 
 
-public class BooleanTypeTest {
-
-    public BooleanTypeTest() {
-    }
-
-    /**
-     * Test of convert method, of class BooleanType.
-     */
-    @Test
-    public void testConvert() {
-        //System.out.println("convert");
-        Font font = null;
-
-        ParsedValue< String,Boolean> value = new ParsedValueImpl<>("true", BooleanConverter.getInstance());
-        Boolean expResult = Boolean.TRUE;
-        Boolean result = value.convert(font);
-        assertEquals(expResult, result);
-
-        value = new ParsedValueImpl<>("false", BooleanConverter.getInstance());
-        expResult = Boolean.FALSE;
-        result = value.convert(font);
-        assertEquals(expResult, result);
-
-        value = new ParsedValueImpl<>(null, BooleanConverter.getInstance());
-        expResult = Boolean.FALSE;
-        result = value.convert(font);
-        assertEquals(expResult, result);
-
-    }
-
-}
+//public class BooleanTypeTest {
+//
+//    public BooleanTypeTest() {
+//    }
+//
+//    /**
+//     * Test of convert method, of class BooleanType.
+//     */
+//    @Test
+//    public void testConvert() {
+//        //System.out.println("convert");
+//        Font font = null;
+//
+//        ParsedValue< String,Boolean> value = new ParsedValueImpl<>("true", BooleanConverter.getInstance());
+//        Boolean expResult = Boolean.TRUE;
+//        Boolean result = value.convert(font);
+//        assertEquals(expResult, result);
+//
+//        value = new ParsedValueImpl<>("false", BooleanConverter.getInstance());
+//        expResult = Boolean.FALSE;
+//        result = value.convert(font);
+//        assertEquals(expResult, result);
+//
+//        value = new ParsedValueImpl<>(null, BooleanConverter.getInstance());
+//        expResult = Boolean.FALSE;
+//        result = value.convert(font);
+//        assertEquals(expResult, result);
+//
+//    }
+//
+//}

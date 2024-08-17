@@ -25,8 +25,9 @@
 
 package javafx.css.converter;
 
-import javafx.css.ParsedValue;
 import javafx.css.StyleConverter;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.IdentToken;
 import javafx.scene.Cursor;
 import javafx.scene.text.Font;
 
@@ -34,37 +35,33 @@ import javafx.scene.text.Font;
  * Converter to convert a {@code String} to a {@code Cursor}.
  * @since 9
  */
-public final class CursorConverter extends StyleConverter<String, Cursor> {
+public final class CursorConverter extends StyleConverter<Cursor> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final CursorConverter INSTANCE = new CursorConverter();
-    }
+    private static final CursorConverter instance = new CursorConverter();
 
-    /**
-     * Gets the {@code CursorConverter} instance.
-     * @return the {@code CursorConverter} instance
-     */
-    public static StyleConverter<String, Cursor> getInstance() {
-        return Holder.INSTANCE;
+    public static CursorConverter getInstance() {
+        return instance;
     }
 
     private CursorConverter() {
-        super();
+        super(Cursor.class);
     }
 
     @Override
-    public Cursor convert(ParsedValue<String, Cursor> value, Font not_used) {
+    public Cursor convert(Block value, Font font) {
+        if (value.size() != 1 || !(value.getFirst() instanceof IdentToken ident)) {
+            return Cursor.DEFAULT;
+        }
 
         // the parser doesn't covert cusor, so convert it from the raw value
-        String string = value.getValue();
+        String string = ident.value();
 
         if (string != null) {
-
             int index = string.indexOf("Cursor.");
             if (index > -1) {
-                string = string.substring(index+"Cursor.".length());
+                string = string.substring(index + "Cursor.".length());
             }
+
             string = string.replace('-','_').toUpperCase();
         }
 
@@ -74,9 +71,51 @@ public final class CursorConverter extends StyleConverter<String, Cursor> {
             return Cursor.DEFAULT;
         }
     }
-
-    @Override
-    public String toString() {
-        return "CursorConverter";
-    }
 }
+
+//public final class CursorConverter extends StyleConverter<String, Cursor> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final CursorConverter INSTANCE = new CursorConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code CursorConverter} instance.
+//     * @return the {@code CursorConverter} instance
+//     */
+//    public static StyleConverter<String, Cursor> getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private CursorConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Cursor convert(ParsedValue<String, Cursor> value, Font not_used) {
+//
+//        // the parser doesn't covert cusor, so convert it from the raw value
+//        String string = value.getValue();
+//
+//        if (string != null) {
+//
+//            int index = string.indexOf("Cursor.");
+//            if (index > -1) {
+//                string = string.substring(index+"Cursor.".length());
+//            }
+//            string = string.replace('-','_').toUpperCase();
+//        }
+//
+//        try {
+//            return Cursor.cursor(string);
+//        } catch (IllegalArgumentException | NullPointerException exception) {
+//            return Cursor.DEFAULT;
+//        }
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "CursorConverter";
+//    }
+//}

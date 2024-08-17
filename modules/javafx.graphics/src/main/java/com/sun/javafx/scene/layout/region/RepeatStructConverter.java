@@ -55,9 +55,9 @@ public final class RepeatStructConverter extends StyleConverter<ParsedValue<Stri
         final RepeatStruct[] backgroundRepeat = new RepeatStruct[layers.length];
         for (int l = 0; l < layers.length; l++) {
             final ParsedValue<String, BackgroundRepeat>[] repeats = layers[l];
-            final BackgroundRepeat horizontal = repeatConverter.convert(repeats[0],null);
-            final BackgroundRepeat vertical = repeatConverter.convert(repeats[1],null);
-            backgroundRepeat[l] = new RepeatStruct(horizontal, vertical);
+//            final BackgroundRepeat horizontal = repeatConverter.convert(repeats[0],null);
+//            final BackgroundRepeat vertical = repeatConverter.convert(repeats[1],null);
+//            backgroundRepeat[l] = new RepeatStruct(horizontal, vertical);
         }
         return backgroundRepeat;
     }

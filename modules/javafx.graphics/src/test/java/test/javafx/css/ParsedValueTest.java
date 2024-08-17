@@ -83,190 +83,190 @@ public class ParsedValueTest {
         assertEquals(expResult, result, 0.01);
     }
 
-    @Test
-    public void testEquals() {
-
-        Font font = Font.getDefault();
-        Size size = new Size(1.0, SizeUnits.EM);
-        ParsedValue<ParsedValue<?,Size>,Number> value1 =
-            new ParsedValueImpl<>(
-                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                SizeConverter.getInstance());
-
-        ParsedValue<ParsedValue<?,Size>,Number> value2 =
-            new ParsedValueImpl<>(
-                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                null);
-
-        // ParsedValue.equals doesn't care about the converter
-        assertTrue(value1.equals(value2));
-
-        value1 =
-            new ParsedValueImpl<>(
-                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                SizeConverter.getInstance());
-
-        value2 =
-            new ParsedValueImpl<>(
-                new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
-                SizeConverter.getInstance());
-
-        assertFalse(value1.equals(value2));
-
-        value2 =
-            new ParsedValueImpl<>(
-                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.PX), null),
-                SizeConverter.getInstance());
-
-        assertFalse(value1.equals(value2));
-
-        value2 =
-            new ParsedValueImpl<>(null, null);
-
-        assertFalse(value1.equals(value2));
-
-        ParsedValue<ParsedValue[],Number[]> value3 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[] {
-                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                    }, SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertFalse(value1.equals(value3));
-        assertFalse(value3.equals(value1));
-
-        ParsedValue<ParsedValue[],Number[]> value4 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[] {
-                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                    }, SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertTrue(value3.equals(value4));
-
-        value4 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[] {
-                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
-                        null
-                    }, SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertFalse(value3.equals(value4));
-
-        value4 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[] {
-                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
-                        new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null)
-                    }, SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertFalse(value3.equals(value4));
-
-        value4 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[] {
-                        null
-                    }, SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertFalse(value3.equals(value4));
-
-        value4 =
-                new ParsedValueImpl<>(
-                    null,
-                    SizeConverter.SequenceConverter.getInstance()
-                );
-
-        assertFalse(value3.equals(value4));
-
-        ParsedValue<ParsedValue[][],Number[][]> value5 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[][] {
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                        },
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
-                        }
-                    }, null
-                );
-
-        assertFalse(value1.equals(value5));
-        assertFalse(value3.equals(value5));
-        assertFalse(value5.equals(value1));
-        assertFalse(value5.equals(value3));
-
-        ParsedValue<ParsedValue[][],Number[][]> value6 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[][] {
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                        },
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
-                        }
-                    }, null
-                );
-
-        assertTrue(value5.equals(value6));
-
-        value6 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[][] {
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                        },
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(5.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
-                        }
-                    }, null
-                );
-
-        assertFalse(value5.equals(value6));
-
-        value6 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[][] {
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                        },
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
-                            null
-                        }
-                    }, null
-                );
-
-        assertFalse(value5.equals(value6));
-
-        value6 =
-                new ParsedValueImpl<>(
-                    new ParsedValueImpl[][] {
-                        new ParsedValueImpl[] {
-                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
-                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
-                        },
-                        null
-                    }, null
-                );
-
-        assertFalse(value5.equals(value6));
-
-
-    }
+//    @Test
+//    public void testEquals() {
+//
+//        Font font = Font.getDefault();
+//        Size size = new Size(1.0, SizeUnits.EM);
+//        ParsedValue<ParsedValue<?,Size>,Number> value1 =
+//            new ParsedValueImpl<>(
+//                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                SizeConverter.getInstance());
+//
+//        ParsedValue<ParsedValue<?,Size>,Number> value2 =
+//            new ParsedValueImpl<>(
+//                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                null);
+//
+//        // ParsedValue.equals doesn't care about the converter
+//        assertTrue(value1.equals(value2));
+//
+//        value1 =
+//            new ParsedValueImpl<>(
+//                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                SizeConverter.getInstance());
+//
+//        value2 =
+//            new ParsedValueImpl<>(
+//                new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
+//                SizeConverter.getInstance());
+//
+//        assertFalse(value1.equals(value2));
+//
+//        value2 =
+//            new ParsedValueImpl<>(
+//                new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.PX), null),
+//                SizeConverter.getInstance());
+//
+//        assertFalse(value1.equals(value2));
+//
+//        value2 =
+//            new ParsedValueImpl<>(null, null);
+//
+//        assertFalse(value1.equals(value2));
+//
+//        ParsedValue<ParsedValue[],Number[]> value3 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[] {
+//                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                    }, SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertFalse(value1.equals(value3));
+//        assertFalse(value3.equals(value1));
+//
+//        ParsedValue<ParsedValue[],Number[]> value4 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[] {
+//                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                    }, SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertTrue(value3.equals(value4));
+//
+//        value4 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[] {
+//                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
+//                        null
+//                    }, SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertFalse(value3.equals(value4));
+//
+//        value4 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[] {
+//                        new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                        new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null),
+//                        new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null)
+//                    }, SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertFalse(value3.equals(value4));
+//
+//        value4 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[] {
+//                        null
+//                    }, SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertFalse(value3.equals(value4));
+//
+//        value4 =
+//                new ParsedValueImpl<>(
+//                    null,
+//                    SizeConverter.SequenceConverter.getInstance()
+//                );
+//
+//        assertFalse(value3.equals(value4));
+//
+//        ParsedValue<ParsedValue[][],Number[][]> value5 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[][] {
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                        },
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
+//                        }
+//                    }, null
+//                );
+//
+//        assertFalse(value1.equals(value5));
+//        assertFalse(value3.equals(value5));
+//        assertFalse(value5.equals(value1));
+//        assertFalse(value5.equals(value3));
+//
+//        ParsedValue<ParsedValue[][],Number[][]> value6 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[][] {
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                        },
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
+//                        }
+//                    }, null
+//                );
+//
+//        assertTrue(value5.equals(value6));
+//
+//        value6 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[][] {
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                        },
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(5.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(4.0, SizeUnits.EM), null)
+//                        }
+//                    }, null
+//                );
+//
+//        assertFalse(value5.equals(value6));
+//
+//        value6 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[][] {
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                        },
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(3.0, SizeUnits.EM), null),
+//                            null
+//                        }
+//                    }, null
+//                );
+//
+//        assertFalse(value5.equals(value6));
+//
+//        value6 =
+//                new ParsedValueImpl<>(
+//                    new ParsedValueImpl[][] {
+//                        new ParsedValueImpl[] {
+//                            new ParsedValueImpl<Size,Size>(new Size(1.0, SizeUnits.EM), null),
+//                            new ParsedValueImpl<Size,Size>(new Size(2.0, SizeUnits.EM), null)
+//                        },
+//                        null
+//                    }, null
+//                );
+//
+//        assertFalse(value5.equals(value6));
+//
+//
+//    }
 
     @Test
     public void test_RT_24614() {

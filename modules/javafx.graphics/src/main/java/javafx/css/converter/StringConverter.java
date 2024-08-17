@@ -25,81 +25,104 @@
 
 package javafx.css.converter;
 
-import com.sun.javafx.util.Utils;
-import javafx.css.ParsedValue;
 import javafx.css.StyleConverter;
+import javafx.css.syntax.Block;
+import javafx.css.syntax.IdentToken;
+import javafx.css.syntax.StringToken;
 import javafx.scene.text.Font;
 
 /**
  * Converter for quoted strings which may have embedded unicode characters.
  * @since 9
  */
-public final class StringConverter extends StyleConverter<String, String> {
+public final class StringConverter extends StyleConverter<String> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final StringConverter INSTANCE = new StringConverter();
-        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
-    }
+    private static final StringConverter instance = new StringConverter();
 
-    /**
-     * Get the {@code StringConverter} instance.
-     * @return the {@code StringConverter} instance
-     */
-    public static StyleConverter<String, String> getInstance() {
-        return Holder.INSTANCE;
+    public static StringConverter getInstance() {
+        return instance;
     }
 
     private StringConverter() {
-        super();
+        super(String.class);
     }
 
     @Override
-    public String convert(ParsedValue<String, String> value, Font font) {
-        String string = value.getValue();
-        if (string == null) {
-            return null;
-        } // escaping for those
-        return Utils.convertUnicode(string);
+    public String convert(Block values, Font font) {
+        return switch (values.getFirst()) {
+            case IdentToken ident -> ident.value();
+            case StringToken string -> string.value();
+            default -> null;
+        };
     }
-
-    @Override
-    public String toString() {
-        return "StringConverter";
-    }
-
-    /**
-     * Converter to convert a sequence of {@code String}s to an array of {@code String}s.
-     *
-     * @since 9
-     */
-    public static final class SequenceConverter extends StyleConverter<ParsedValue<String, String>[], String[]> {
-        /**
-         * Get the {@code SequenceConverter} instance.
-         * @return the {@code SequenceConverter} instance
-         */
-        public static SequenceConverter getInstance() {
-            return Holder.SEQUENCE_INSTANCE;
-        }
-
-        private SequenceConverter() {
-            super();
-        }
-
-        @Override
-        public String[] convert(ParsedValue<ParsedValue<String, String>[], String[]> value, Font font) {
-            ParsedValue<String, String>[] layers = value.getValue();
-            String[] strings = new String[layers.length];
-            for (int layer = 0; layer < layers.length; layer++) {
-                strings[layer] = StringConverter.getInstance().convert(layers[layer], font);
-            }
-            return strings;
-        }
-
-        @Override
-        public String toString() {
-            return "String.SequenceConverter";
-        }
-    }
-
 }
+
+//public final class StringConverter extends StyleConverter<String, String> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final StringConverter INSTANCE = new StringConverter();
+//        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
+//    }
+//
+//    /**
+//     * Get the {@code StringConverter} instance.
+//     * @return the {@code StringConverter} instance
+//     */
+//    public static StyleConverter<String, String> getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private StringConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public String convert(ParsedValue<String, String> value, Font font) {
+//        String string = value.getValue();
+//        if (string == null) {
+//            return null;
+//        } // escaping for those
+//        return Utils.convertUnicode(string);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "StringConverter";
+//    }
+//
+//    /**
+//     * Converter to convert a sequence of {@code String}s to an array of {@code String}s.
+//     *
+//     * @since 9
+//     */
+//    public static final class SequenceConverter extends StyleConverter<ParsedValue<String, String>[], String[]> {
+//        /**
+//         * Get the {@code SequenceConverter} instance.
+//         * @return the {@code SequenceConverter} instance
+//         */
+//        public static SequenceConverter getInstance() {
+//            return Holder.SEQUENCE_INSTANCE;
+//        }
+//
+//        private SequenceConverter() {
+//            super();
+//        }
+//
+//        @Override
+//        public String[] convert(ParsedValue<ParsedValue<String, String>[], String[]> value, Font font) {
+//            ParsedValue<String, String>[] layers = value.getValue();
+//            String[] strings = new String[layers.length];
+//            for (int layer = 0; layer < layers.length; layer++) {
+//                strings[layer] = StringConverter.getInstance().convert(layers[layer], font);
+//            }
+//            return strings;
+//        }
+//
+//        @Override
+//        public String toString() {
+//            return "String.SequenceConverter";
+//        }
+//    }
+//
+//}

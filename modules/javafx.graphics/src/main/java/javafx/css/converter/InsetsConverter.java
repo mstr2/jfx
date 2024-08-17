@@ -25,9 +25,8 @@
 
 package javafx.css.converter;
 
-import javafx.css.Size;
-import javafx.css.ParsedValue;
 import javafx.css.StyleConverter;
+import javafx.css.syntax.Block;
 import javafx.geometry.Insets;
 import javafx.scene.text.Font;
 
@@ -41,74 +40,105 @@ import javafx.scene.text.Font;
  *
  * @since 9
  */
-public final class InsetsConverter extends StyleConverter<ParsedValue[], Insets> {
+public final class InsetsConverter extends StyleConverter<Insets> {
 
-    // lazy, thread-safe instatiation
-    private static class Holder {
-        static final InsetsConverter INSTANCE = new InsetsConverter();
-        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
-    }
+    private static final InsetsConverter instance = new InsetsConverter();
 
-    /**
-     * Gets the {@code InsetsConverter} instance.
-     * @return the {@code InsetsConverter} instance
-     */
-    public static StyleConverter<ParsedValue[], Insets> getInstance() {
-        return Holder.INSTANCE;
+    public static InsetsConverter getInstance() {
+        return instance;
     }
 
     private InsetsConverter() {
-        super();
+        super(Insets.class);
     }
 
     @Override
-    public Insets convert(ParsedValue<ParsedValue[], Insets> value, Font font) {
-        ParsedValue[] sides = value.getValue();
-        double top = ((Size)sides[0].convert(font)).pixels(font);
-        double right = (sides.length > 1) ? ((Size)sides[1].convert(font)).pixels(font) : top;
-        double bottom = (sides.length > 2) ? ((Size)sides[2].convert(font)).pixels(font) : top;
-        double left = (sides.length > 3) ? ((Size)sides[3].convert(font)).pixels(font) : right;
-        return new Insets(top, right, bottom, left);
-    }
-
-    @Override
-    public String toString() {
-        return "InsetsConverter";
-    }
-
-    /**
-     * Converter to convert an array of parsed values, each of which is an array
-     * of 1 to 4 size components, to an array of {@code Insets} objects.
-     * @since 9
-     */
-    public static final class SequenceConverter extends StyleConverter<ParsedValue<ParsedValue[], Insets>[], Insets[]> {
-
-        /**
-         * Gets the {@code SequenceConverter} instance.
-         * @return the {@code SequenceConverter} instance
-         */
-        public static SequenceConverter getInstance() {
-            return Holder.SEQUENCE_INSTANCE;
+    public Insets convert(Block values, Font font) {
+        if (values.size() != 4) {
+            return null;
         }
 
-        private SequenceConverter() {
-            super();
+        Number top = SizeConverter.convert(values.get(0), font);
+        Number left = SizeConverter.convert(values.get(1), font);
+        Number bottom = SizeConverter.convert(values.get(2), font);
+        Number right = SizeConverter.convert(values.get(3), font);
+
+        if (top != null && left != null && bottom != null && right != null) {
+            return new Insets(top.doubleValue(), left.doubleValue(), bottom.doubleValue(), right.doubleValue());
         }
 
-        @Override
-        public Insets[] convert(ParsedValue<ParsedValue<ParsedValue[], Insets>[], Insets[]> value, Font font) {
-            ParsedValue<ParsedValue[], Insets>[] layers = value.getValue();
-            Insets[] insets = new Insets[layers.length];
-            for (int layer = 0; layer < layers.length; layer++) {
-                insets[layer] = InsetsConverter.getInstance().convert(layers[layer], font);
-            }
-            return insets;
-        }
-
-        @Override
-        public String toString() {
-            return "InsetsSequenceConverter";
-        }
+        return null;
     }
 }
 
+//public final class InsetsConverter extends StyleConverter<ParsedValue[], Insets> {
+//
+//    // lazy, thread-safe instatiation
+//    private static class Holder {
+//        static final InsetsConverter INSTANCE = new InsetsConverter();
+//        static final SequenceConverter SEQUENCE_INSTANCE = new SequenceConverter();
+//    }
+//
+//    /**
+//     * Gets the {@code InsetsConverter} instance.
+//     * @return the {@code InsetsConverter} instance
+//     */
+//    public static StyleConverter<ParsedValue[], Insets> getInstance() {
+//        return Holder.INSTANCE;
+//    }
+//
+//    private InsetsConverter() {
+//        super();
+//    }
+//
+//    @Override
+//    public Insets convert(ParsedValue<ParsedValue[], Insets> value, Font font) {
+//        ParsedValue[] sides = value.getValue();
+//        double top = ((Size)sides[0].convert(font)).pixels(font);
+//        double right = (sides.length > 1) ? ((Size)sides[1].convert(font)).pixels(font) : top;
+//        double bottom = (sides.length > 2) ? ((Size)sides[2].convert(font)).pixels(font) : top;
+//        double left = (sides.length > 3) ? ((Size)sides[3].convert(font)).pixels(font) : right;
+//        return new Insets(top, right, bottom, left);
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "InsetsConverter";
+//    }
+//
+//    /**
+//     * Converter to convert an array of parsed values, each of which is an array
+//     * of 1 to 4 size components, to an array of {@code Insets} objects.
+//     * @since 9
+//     */
+//    public static final class SequenceConverter extends StyleConverter<ParsedValue<ParsedValue[], Insets>[], Insets[]> {
+//
+//        /**
+//         * Gets the {@code SequenceConverter} instance.
+//         * @return the {@code SequenceConverter} instance
+//         */
+//        public static SequenceConverter getInstance() {
+//            return Holder.SEQUENCE_INSTANCE;
+//        }
+//
+//        private SequenceConverter() {
+//            super();
+//        }
+//
+//        @Override
+//        public Insets[] convert(ParsedValue<ParsedValue<ParsedValue[], Insets>[], Insets[]> value, Font font) {
+//            ParsedValue<ParsedValue[], Insets>[] layers = value.getValue();
+//            Insets[] insets = new Insets[layers.length];
+//            for (int layer = 0; layer < layers.length; layer++) {
+//                insets[layer] = InsetsConverter.getInstance().convert(layers[layer], font);
+//            }
+//            return insets;
+//        }
+//
+//        @Override
+//        public String toString() {
+//            return "InsetsSequenceConverter";
+//        }
+//    }
+//}
+//

@@ -91,7 +91,7 @@ final public class CompoundSelector extends Selector {
      * list of <code>Combinator</code> relationships.  There must be exactly one
      * less <code>Combinator</code> than there are selectors.
      */
-    CompoundSelector(List<SimpleSelector> selectors, List<Combinator> relationships) {
+    public CompoundSelector(List<SimpleSelector> selectors, List<Combinator> relationships) {
         this.selectors =
             (selectors != null)
                 ? Collections.unmodifiableList(selectors)

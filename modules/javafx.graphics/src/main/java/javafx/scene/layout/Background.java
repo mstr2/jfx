@@ -73,7 +73,7 @@ import com.sun.javafx.tk.Toolkit;
 public final class Background {
     static final CssMetaData<Node,Paint[]> BACKGROUND_COLOR =
             new SubCssMetaData<>("-fx-background-color",
-                    PaintConverter.SequenceConverter.getInstance(),
+                    PaintConverter.getInstance().getSequenceConverter(),
                     new Paint[] {Color.TRANSPARENT});
 
     static final CssMetaData<Node,CornerRadii[]> BACKGROUND_RADIUS =
@@ -83,12 +83,12 @@ public final class Background {
 
     static final CssMetaData<Node,Insets[]> BACKGROUND_INSETS =
             new SubCssMetaData<>("-fx-background-insets",
-                    InsetsConverter.SequenceConverter.getInstance(),
+                    InsetsConverter.getInstance().getSequenceConverter(),
                     new Insets[] {Insets.EMPTY});
 
     static final CssMetaData<Node,Image[]> BACKGROUND_IMAGE =
             new SubCssMetaData<>("-fx-background-image",
-                    URLConverter.SequenceConverter.getInstance());
+                    URLConverter.getInstance().getSequenceConverter());
 
     static final CssMetaData<Node,RepeatStruct[]> BACKGROUND_REPEAT =
             new SubCssMetaData<>("-fx-background-repeat",

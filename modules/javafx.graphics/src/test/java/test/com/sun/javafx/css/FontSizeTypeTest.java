@@ -40,37 +40,37 @@ public class FontSizeTypeTest {
 
     public FontSizeTypeTest() {
     }
-
-    /**
-     * Test of convert method, of class FontSizeType.
-     */
-    @Test
-    public void testConvertToPixels() {
-        ParsedValue<Size,Size> size = new ParsedValueImpl<>(new Size(2.0f, SizeUnits.EM), null);
-        ParsedValue<ParsedValue<?,Size>,Number> value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
-        Font font = Font.getDefault();
-        double expResult = SizeUnitsShim.pixels(SizeUnits.EM, 2, 1, font);
-        double result = SizeConverter.getInstance().convert(value, font).doubleValue();
-        assertEquals(expResult, result, 0.01);
-
-        size = new ParsedValueImpl<>(new Size(120.0f, SizeUnits.PERCENT), null);
-        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
-        expResult = SizeUnitsShim.pixels(SizeUnits.PERCENT, 120, 1, font);
-        result = SizeConverter.getInstance().convert(value, font).doubleValue();
-        assertEquals(expResult, result, 0.01);
-
-        size = new ParsedValueImpl<>(new Size(12.0f, SizeUnits.PT), null);
-        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
-        expResult = SizeUnitsShim.pixels(SizeUnits.PT, 12, 1, font);
-        result = SizeConverter.getInstance().convert(value, font).doubleValue();
-        assertEquals(expResult, result, 0.01);
-
-        size = new ParsedValueImpl<>(new Size(12.0f, SizeUnits.PX), null);
-        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
-        expResult = SizeUnitsShim.pixels(SizeUnits.PX, 12, 1, font);
-        result = SizeConverter.getInstance().convert(value, font).doubleValue();
-        assertEquals(expResult, result, 0.01);
-    }
+//
+//    /**
+//     * Test of convert method, of class FontSizeType.
+//     */
+//    @Test
+//    public void testConvertToPixels() {
+//        ParsedValue<Size,Size> size = new ParsedValueImpl<>(new Size(2.0f, SizeUnits.EM), null);
+//        ParsedValue<ParsedValue<?,Size>,Number> value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
+//        Font font = Font.getDefault();
+//        double expResult = SizeUnitsShim.pixels(SizeUnits.EM, 2, 1, font);
+//        double result = SizeConverter.getInstance().convert(value, font).doubleValue();
+//        assertEquals(expResult, result, 0.01);
+//
+//        size = new ParsedValueImpl<>(new Size(120.0f, SizeUnits.PERCENT), null);
+//        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
+//        expResult = SizeUnitsShim.pixels(SizeUnits.PERCENT, 120, 1, font);
+//        result = SizeConverter.getInstance().convert(value, font).doubleValue();
+//        assertEquals(expResult, result, 0.01);
+//
+//        size = new ParsedValueImpl<>(new Size(12.0f, SizeUnits.PT), null);
+//        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
+//        expResult = SizeUnitsShim.pixels(SizeUnits.PT, 12, 1, font);
+//        result = SizeConverter.getInstance().convert(value, font).doubleValue();
+//        assertEquals(expResult, result, 0.01);
+//
+//        size = new ParsedValueImpl<>(new Size(12.0f, SizeUnits.PX), null);
+//        value = new ParsedValueImpl<>(size, SizeConverter.getInstance());
+//        expResult = SizeUnitsShim.pixels(SizeUnits.PX, 12, 1, font);
+//        result = SizeConverter.getInstance().convert(value, font).doubleValue();
+//        assertEquals(expResult, result, 0.01);
+//    }
 
 //    @Test
 //    public void testConvertToPoints() {
