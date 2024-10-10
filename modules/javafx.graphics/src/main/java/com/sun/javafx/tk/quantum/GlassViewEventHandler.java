@@ -1406,11 +1406,11 @@ class GlassViewEventHandler extends View.EventHandler {
 
     @SuppressWarnings("removal")
     @Override
-    public boolean handleNonClientHitTestEvent(double x, double y) {
+    public boolean handleDragAreaHitTestEvent(double x, double y) {
         return QuantumToolkit.runWithoutRenderLock(() -> {
             return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
                 if (scene.sceneListener != null) {
-                    return scene.sceneListener.nonClientHitTest(x, y);
+                    return scene.sceneListener.dragAreaHitTest(x, y);
                 }
                 return false;
             });

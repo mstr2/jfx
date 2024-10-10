@@ -2999,7 +2999,7 @@ public class Scene implements EventTarget {
         private final PickRay pickRay = new PickRay();
 
         @Override
-        public boolean nonClientHitTest(double x, double y) {
+        public boolean dragAreaHitTest(double x, double y) {
             Node root = Scene.this.getRoot();
             if (root != null) {
                 pickRay.set(x, y, 1, 0, Double.POSITIVE_INFINITY);

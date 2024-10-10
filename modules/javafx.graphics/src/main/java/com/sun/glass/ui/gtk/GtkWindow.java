@@ -26,14 +26,13 @@ package com.sun.glass.ui.gtk;
 
 import com.sun.glass.ui.Cursor;
 import com.sun.glass.events.WindowEvent;
-import com.sun.glass.ui.HitTestResult;
 import com.sun.glass.ui.NonClientHandler;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
+import com.sun.glass.ui.WindowControlsMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
-import com.sun.javafx.binding.StringConstant;
 
 class GtkWindow extends Window {
 
@@ -206,10 +205,15 @@ class GtkWindow extends Window {
     private WindowControlsOverlay windowControlsOverlay;
 
     @Override
+    public WindowControlsMetrics getWindowControlsMetrics() {
+        return windowControlsOverlay != null ? windowControlsOverlay.getMetrics() : null;
+    }
+
+    @Override
     public WindowControlsOverlay getWindowOverlay() {
         if (windowControlsOverlay == null) {
-            var stylesheet = StringConstant.valueOf(getClass().getResource("gtk/WindowControls.css").toExternalForm());
-            windowControlsOverlay = new WindowControlsOverlay(this, stylesheet, stylesheet);
+            windowControlsOverlay = new WindowControlsOverlay(
+                this, NonClientThemeChooser.getInstance().nonClientThemeProperty());
         }
 
         return windowControlsOverlay;
@@ -221,26 +225,28 @@ class GtkWindow extends Window {
     }
 
     /**
-     * Classifies the window region at the specified physical coordinate.
+     * Returns whether the window is draggable at the specified coordinate.
+     * <p>
      * This method is called from native code.
+     *
+     * @param x the X coordinate in physical pixels
+     * @param y the Y coordinate in physical pixels
      */
     @SuppressWarnings("unused")
-    private boolean nonClientHitTest(int x, int y) {
-        double wx = x / getPlatformScaleX();
-        double wy = y / getPlatformScaleY();
+    private boolean dragAreaHitTest(int x, int y) {
+        if (!isExtendedWindow()) {
+            return false;
+        }
 
-        if (windowControlsOverlay != null) {
-            var result = windowControlsOverlay.hitTest(wx, wy);
-            if (result != HitTestResult.CLIENT) {
-                return true;
-            }
+        if (windowControlsOverlay != null && windowControlsOverlay.hitTest(x, y) != null) {
+            return false;
         }
 
         View.EventHandler eventHandler = view.getEventHandler();
-        if (eventHandler != null && eventHandler.handleNonClientHitTestEvent(wx, wy)) {
-            return true;
+        if (eventHandler == null) {
+            return false;
         }
 
-        return false;
+        return eventHandler.handleDragAreaHitTestEvent(x / getPlatformScaleX(), y / getPlatformScaleY());
     }
 }
