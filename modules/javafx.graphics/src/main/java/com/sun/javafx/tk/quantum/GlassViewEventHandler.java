@@ -892,8 +892,7 @@ class GlassViewEventHandler extends View.EventHandler {
                     final Window w = view.getWindow();
                     float pScaleX = (w == null) ? 1.0f : w.getPlatformScaleX();
                     float pScaleY = (w == null) ? 1.0f : w.getPlatformScaleY();
-                    scene.sceneListener.changedSize(view.getWidth()  / pScaleX,
-                                                    view.getHeight() / pScaleY);
+                    scene.setViewSize(view.getWidth() / pScaleX, view.getHeight() / pScaleY);
                     scene.entireSceneNeedsRepaint();
                     QuantumToolkit.runWithRenderLock(() -> {
                         scene.updateSceneState();
@@ -1406,5 +1405,18 @@ class GlassViewEventHandler extends View.EventHandler {
             return scene.sceneListener.getSceneAccessible();
         }
         return null;
+    }
+
+    @SuppressWarnings("removal")
+    @Override
+    public boolean handleNonClientHitTestEvent(double x, double y) {
+        return QuantumToolkit.runWithoutRenderLock(() -> {
+            return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+                if (scene.sceneListener != null) {
+                    return scene.sceneListener.nonClientHitTest(x, y);
+                }
+                return false;
+            });
+        });
     }
 }
