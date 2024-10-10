@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,10 +164,10 @@ public class WindowStage extends GlassStage {
                         windowMask |=
                             Window.TITLED | Window.CLOSABLE |
                             Window.MINIMIZABLE | Window.MAXIMIZABLE;
-                        if (ownerWindow != null || modality != Modality.NONE) {
-                            windowMask &=
-                                ~(Window.MINIMIZABLE | Window.MAXIMIZABLE);
-                        }
+                        resizable = true;
+                        break;
+                    case EXTENDED:
+                        windowMask |= Window.EXTENDED | Window.CLOSABLE | Window.MINIMIZABLE | Window.MAXIMIZABLE;
                         resizable = true;
                         break;
                     case UTILITY:
@@ -177,6 +177,10 @@ public class WindowStage extends GlassStage {
                         windowMask |=
                                 (transparent ? Window.TRANSPARENT : Window.UNTITLED) | Window.CLOSABLE;
                         break;
+                }
+
+                if (ownerWindow != null || modality != Modality.NONE) {
+                    windowMask &= ~(Window.MINIMIZABLE | Window.MAXIMIZABLE);
                 }
             }
             if (modality != Modality.NONE) {
@@ -244,8 +248,13 @@ public class WindowStage extends GlassStage {
     }
 
     @Override public TKScene createTKScene(boolean depthBuffer, boolean msaa, @SuppressWarnings("removal") AccessControlContext acc) {
-        ViewScene scene = new ViewScene(depthBuffer, msaa);
+        ViewScene scene = new ViewScene(fxStage != null ? fxStage.getScene() : null, depthBuffer, msaa);
         scene.setSecurityContext(acc);
+
+        if (style == StageStyle.EXTENDED) {
+            scene.setOverlay(platformWindow.getWindowOverlay());
+        }
+
         return scene;
     }
 
@@ -707,11 +716,11 @@ public class WindowStage extends GlassStage {
 
     void setWarning(OverlayWarning newWarning) {
         this.warning = newWarning;
-        getViewScene().synchroniseOverlayWarning();
-    }
-
-    OverlayWarning getWarning() {
-        return warning;
+        if (newWarning != null) {
+            getViewScene().setOverlay(newWarning);
+        } else if (style == StageStyle.EXTENDED) {
+            getViewScene().setOverlay(platformWindow.getWindowOverlay());
+        }
     }
 
     @Override public void setFullScreen(boolean fullScreen) {

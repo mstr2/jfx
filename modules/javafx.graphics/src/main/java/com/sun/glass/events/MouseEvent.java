@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.sun.glass.events;
 
+import com.sun.glass.ui.NonClientHandler;
 import java.lang.annotation.Native;
 
 public class MouseEvent {
@@ -49,4 +50,17 @@ public class MouseEvent {
      * This identifier is required for internal purposes.
      */
     @Native final static public int WHEEL           = 228;
+
+    /**
+     * Non-client events are not sent to FX, but they may be processed by a {@link NonClientHandler}.
+     */
+    @Native final static public int NC_DOWN         = 230;
+    @Native final static public int NC_UP           = 231;
+    @Native final static public int NC_MOVE         = 232;
+    @Native final static public int NC_ENTER        = 233;
+    @Native final static public int NC_EXIT         = 234;
+
+    public static boolean isNonClientEvent(int event) {
+        return event >= NC_DOWN && event <= NC_EXIT;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,5 +66,16 @@ public enum StageStyle {
      * NOTE: To see the effect, the {@code Scene} covering the {@code Stage} should have {@code Color.TRANSPARENT}
      * @since JavaFX 8.0
      */
-    UNIFIED
+    UNIFIED,
+
+    /**
+     * Defines a {@code Stage} style in which the client area is extended into the non-client area,
+     * allowing applications to place scene graph nodes in the title bar of the stage.
+     * <p>
+     * Applications can define a custom non-client area with {@link Stage#setNonClient} to enable
+     * platform interactions like dragging, double-click to maximize, and window snapping.
+     *
+     * @since 24
+     */
+    EXTENDED
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,14 @@ package com.sun.glass.ui.gtk;
 
 import com.sun.glass.ui.Cursor;
 import com.sun.glass.events.WindowEvent;
+import com.sun.glass.ui.HitTestResult;
+import com.sun.glass.ui.NonClientHandler;
 import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
+import com.sun.glass.ui.WindowControlsOverlay;
+import com.sun.javafx.binding.StringConstant;
 
 class GtkWindow extends Window {
 
@@ -197,5 +201,46 @@ class GtkWindow extends Window {
     public long getRawHandle() {
         long ptr = super.getRawHandle();
         return ptr == 0L ? 0L : _getNativeWindowImpl(ptr);
+    }
+
+    private WindowControlsOverlay windowControlsOverlay;
+
+    @Override
+    public WindowControlsOverlay getWindowOverlay() {
+        if (windowControlsOverlay == null) {
+            var stylesheet = StringConstant.valueOf(getClass().getResource("gtk/WindowControls.css").toExternalForm());
+            windowControlsOverlay = new WindowControlsOverlay(this, stylesheet, stylesheet);
+        }
+
+        return windowControlsOverlay;
+    }
+
+    @Override
+    public NonClientHandler getNonClientHandler() {
+        return new NonClientHandler.DelegateToWindowControls(getWindowOverlay());
+    }
+
+    /**
+     * Classifies the window region at the specified physical coordinate.
+     * This method is called from native code.
+     */
+    @SuppressWarnings("unused")
+    private boolean nonClientHitTest(int x, int y) {
+        double wx = x / getPlatformScaleX();
+        double wy = y / getPlatformScaleY();
+
+        if (windowControlsOverlay != null) {
+            var result = windowControlsOverlay.hitTest(wx, wy);
+            if (result != HitTestResult.CLIENT) {
+                return true;
+            }
+        }
+
+        View.EventHandler eventHandler = view.getEventHandler();
+        if (eventHandler != null && eventHandler.handleNonClientHitTestEvent(wx, wy)) {
+            return true;
+        }
+
+        return false;
     }
 }
