@@ -83,7 +83,7 @@ jfieldID jWindowPtr;
 jfieldID jCursorPtr;
 
 jmethodID jGtkWindowNotifyStateChanged;
-jmethodID jGtkWindowNonClientHitTest;
+jmethodID jGtkWindowDragAreaHitTest;
 
 jmethodID jClipboardContentChanged;
 
@@ -277,7 +277,7 @@ JNI_OnLoad(JavaVM *jvm, void *reserved)
     if (env->ExceptionCheck()) return JNI_ERR;
     jGtkWindowNotifyStateChanged = env->GetMethodID(clazz, "notifyStateChanged", "(I)V");
     if (env->ExceptionCheck()) return JNI_ERR;
-    jGtkWindowNonClientHitTest = env->GetMethodID(clazz, "nonClientHitTest", "(II)Z");
+    jGtkWindowDragAreaHitTest = env->GetMethodID(clazz, "dragAreaHitTest", "(II)Z");
     if (env->ExceptionCheck()) return JNI_ERR;
 
     clazz = env->FindClass("com/sun/glass/ui/Clipboard");

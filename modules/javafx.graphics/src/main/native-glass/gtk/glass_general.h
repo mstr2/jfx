@@ -196,7 +196,7 @@ private:
     extern jfieldID jCursorPtr; // com.sun.glass.ui.Cursor#ptr
 
     extern jmethodID jGtkWindowNotifyStateChanged; // com.sun.glass.ui.gtk.GtkWindow#notifyStateChanged (I)V
-    extern jmethodID jGtkWindowNonClientHitTest; //com.sun.glass.ui.gtk.GtkWindow#nonClientHitTest (II)Z
+    extern jmethodID jGtkWindowDragAreaHitTest; //com.sun.glass.ui.gtk.GtkWindow#dragAreaHitTest (II)Z
 
     extern jmethodID jClipboardContentChanged; // com.sun.glass.ui.Clipboard#contentChanged ()V
 

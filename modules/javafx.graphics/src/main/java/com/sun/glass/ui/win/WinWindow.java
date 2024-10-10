@@ -26,6 +26,7 @@ package com.sun.glass.ui.win;
 
 import com.sun.glass.ui.Cursor;
 import com.sun.glass.ui.HitTestResult;
+import com.sun.glass.ui.NonClientTheme;
 import com.sun.glass.ui.WindowControlsMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
 import com.sun.glass.ui.NonClientHandler;
@@ -33,7 +34,7 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.javafx.binding.StringConstant;
+import com.sun.javafx.binding.ObjectConstant;
 import java.net.URL;
 import java.util.Optional;
 
@@ -349,14 +350,14 @@ class WinWindow extends Window {
         if (windowControlsOverlay == null) {
             windowControlsOverlay = new WindowControlsOverlay(
                 this,
-                StringConstant.valueOf(
-                    Optional.ofNullable(getClass().getResource("WindowControls.css"))
-                        .map(URL::toExternalForm)
-                        .orElse(null)),
-                StringConstant.valueOf(
-                    Optional.ofNullable(getClass().getResource("WindowControlsDark.css"))
-                        .map(URL::toExternalForm)
-                        .orElse(null)));
+                ObjectConstant.valueOf(
+                    new NonClientTheme(
+                        Optional.ofNullable(getClass().getResource("WindowControlsLight.css"))
+                            .map(URL::toExternalForm)
+                            .orElse(null),
+                        Optional.ofNullable(getClass().getResource("WindowControlsDark.css"))
+                            .map(URL::toExternalForm)
+                            .orElse(null))));
         }
 
         return windowControlsOverlay;
@@ -384,7 +385,7 @@ class WinWindow extends Window {
         }
 
         View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
-        if (eventHandler != null && eventHandler.handleNonClientHitTestEvent(wx, wy)) {
+        if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
             return HitTestResult.TITLE.winNativeValue();
         }
 

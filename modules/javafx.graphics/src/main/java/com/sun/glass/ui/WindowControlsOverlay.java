@@ -48,7 +48,7 @@ public final class WindowControlsOverlay extends Region {
 
     private final Window window;
     private final Subscription subscriptions;
-    private final ObservableValue<String> platformDarkStylesheet, platformLightStylesheet;
+    private final ObservableValue<NonClientTheme> theme;
     private final Region minimizeButton = new ButtonRegion("minimize-button");
     private final Region maximizeButton = new ButtonRegion("maximize-button");
     private final Region closeButton = new ButtonRegion("close-button");
@@ -70,12 +70,9 @@ public final class WindowControlsOverlay extends Region {
         }
     }
 
-    public WindowControlsOverlay(Window window,
-                                 ObservableValue<String> platformLightStylesheet,
-                                 ObservableValue<String> platformDarkStylesheet) {
+    public WindowControlsOverlay(Window window, ObservableValue<NonClientTheme> theme) {
         this.window = window;
-        this.platformDarkStylesheet = platformDarkStylesheet;
-        this.platformLightStylesheet = platformLightStylesheet;
+        this.theme = theme;
 
         var stage = sceneProperty()
             .flatMap(Scene::windowProperty)
@@ -107,8 +104,7 @@ public final class WindowControlsOverlay extends Region {
             resizableSubscription,
             maximizedSubscription,
             updateStylesheetSubscription,
-            platformLightStylesheet.subscribe(this::updateStylesheet),
-            platformDarkStylesheet.subscribe(this::updateStylesheet));
+            theme.subscribe(this::updateStylesheet));
 
         getChildren().addAll(minimizeButton, maximizeButton, closeButton);
     }
@@ -124,18 +120,10 @@ public final class WindowControlsOverlay extends Region {
 
     private void updateStylesheet() {
         boolean darkScene = isDarkBackground(getScene() != null ? getScene().getFill() : null);
-        String platformLightStylesheet = this.platformLightStylesheet.getValue();
-        String platformDarkStylesheet = this.platformDarkStylesheet.getValue();
-        String effectiveStylesheet = darkScene
-            ? platformDarkStylesheet != null
-                ? platformDarkStylesheet
-                : platformLightStylesheet
-            : platformLightStylesheet != null
-                ? platformLightStylesheet
-                : platformDarkStylesheet;
+        String stylesheet = theme.getValue().effectiveStylesheet(darkScene);
 
-        if (effectiveStylesheet != null) {
-            getStylesheets().setAll(effectiveStylesheet);
+        if (stylesheet != null) {
+            getStylesheets().setAll(stylesheet);
         } else {
             getStylesheets().clear();
         }
@@ -149,32 +137,41 @@ public final class WindowControlsOverlay extends Region {
         return false;
     }
 
+    /**
+     * Handles the specified mouse event.
+     *
+     * @param type the event type
+     * @param button the button type
+     * @param x the X coordinate, in physical pixels
+     * @param y the Y coordinate, in physical pixels
+     * @return {@code true} if the event was handled, {@code false} otherwise
+     */
     public boolean handleMouseEvent(int type, int button, int x, int y) {
-        if (!MouseEvent.isNonClientEvent(type)) {
-            return false;
-        }
+//        if (!MouseEvent.isNonClientEvent(type)) {
+//            return false;
+//        }
 
         double wx = x / window.getPlatformScaleX();
         double wy = y / window.getPlatformScaleY();
         HitTestResult hitTestResult = hitTest(wx, wy);
-        Node node = switch (hitTestResult) {
+        Node node = hitTestResult != null ? switch (hitTestResult) {
             case MIN_BUTTON -> minimizeButton;
             case MAX_BUTTON -> maximizeButton;
             case CLOSE_BUTTON -> closeButton;
             default -> null;
-        };
+        } : null;
 
-        if (type == MouseEvent.NC_ENTER || type == MouseEvent.NC_MOVE) {
+        if (type == MouseEvent.ENTER || type == MouseEvent.MOVE || type == MouseEvent.DRAG) {
             handleMouseOver(node);
-        } else if (type == MouseEvent.NC_EXIT) {
+        } else if (type == MouseEvent.EXIT) {
             handleMouseExit();
-        } else if (node != null && !node.isDisabled() && type == MouseEvent.NC_DOWN && button == MouseEvent.BUTTON_LEFT) {
-            handleMouseDown(node);
-        } else if (node != null && !node.isDisabled() && type == MouseEvent.NC_UP && button == MouseEvent.BUTTON_LEFT) {
+        } else if (type == MouseEvent.UP && button == MouseEvent.BUTTON_LEFT) {
             handleMouseUp(node, hitTestResult);
+        } else if (node != null && type == MouseEvent.DOWN && button == MouseEvent.BUTTON_LEFT) {
+            handleMouseDown(node);
         }
 
-        return node == null || !node.isDisabled();
+        return node != null || mouseDownButton != null;
     }
 
     private void handleMouseOver(Node button) {
@@ -184,11 +181,12 @@ public final class WindowControlsOverlay extends Region {
 
         if (mouseDownButton != null && mouseDownButton != button) {
             mouseDownButton.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, false);
-            mouseDownButton = null;
         }
     }
 
     private void handleMouseExit() {
+        mouseDownButton = null;
+
         for (var node : new Node[] {minimizeButton, maximizeButton, closeButton}) {
             node.pseudoClassStateChanged(HOVER_PSEUDOCLASS, false);
             node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, false);
@@ -205,7 +203,7 @@ public final class WindowControlsOverlay extends Region {
         mouseDownButton = null;
 
         Scene scene = getScene();
-        if (scene == null || !(scene.getWindow() instanceof Stage stage)) {
+        if (node == null || scene == null || !(scene.getWindow() instanceof Stage stage)) {
             return;
         }
 
@@ -286,6 +284,16 @@ public final class WindowControlsOverlay extends Region {
                      closeButtonWidth, closeButtonHeight, BASELINE_OFFSET_SAME_AS_HEIGHT, HPos.LEFT, VPos.TOP);
     }
 
+    /**
+     * Classifies the area at the specified coordinate.
+     *
+     * @param x the X coordinate, in pixels relative to the window
+     * @param y the Y coordinate, in pixels relative to the window
+     * @return {@link HitTestResult#MIN_BUTTON},
+     *         {@link HitTestResult#MAX_BUTTON},
+     *         {@link HitTestResult#CLOSE_BUTTON},
+     *         or {@code null}
+     */
     public HitTestResult hitTest(double x, double y) {
         if (minimizeButton.getBoundsInParent().contains(x, y)) {
             return HitTestResult.MIN_BUTTON;
@@ -299,7 +307,7 @@ public final class WindowControlsOverlay extends Region {
             return HitTestResult.CLOSE_BUTTON;
         }
 
-        return HitTestResult.CLIENT;
+        return null;
     }
 
     private static double boundedWidth(Node node) {

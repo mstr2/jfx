@@ -166,7 +166,7 @@ final class MacWindow extends Window {
                 double wy = y / platformScaleY;
 
                 View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
-                if (eventHandler != null && eventHandler.handleNonClientHitTestEvent(wx, wy)) {
+                if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
                     if (clickCount == 2) {
                         maximize(!isMaximized());
                     } else if (clickCount == 1) {

@@ -365,7 +365,7 @@ public abstract class View {
                                             int yAbs) {
         }
 
-        public boolean handleNonClientHitTestEvent(double x, double y) {
+        public boolean handleDragAreaHitTestEvent(double x, double y) {
             return false;
         }
 
