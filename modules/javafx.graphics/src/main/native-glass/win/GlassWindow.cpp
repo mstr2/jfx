@@ -550,12 +550,15 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
 
             UngrabFocus(); // ungrab itself
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
-            HandleMouseEvents(msg, wParam, lParam);
 
-            // We need to handle clicks on the min/max/close regions, as otherwise Windows will
-            // draw very ugly buttons on top of our window.
-            if (m_isExtended && (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE)) {
-                return 0;
+            if (m_isExtended) {
+                HandleViewNonClientMouseEvent(GetHWND(), msg, wParam, lParam);
+
+                // We need to handle clicks on the min/max/close regions, as otherwise Windows will
+                // draw very ugly buttons on top of our window.
+                if (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE) {
+                    return 0;
+                }
             }
 
             // Pass the event to DefWindowProc()
@@ -570,10 +573,12 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCXBUTTONDBLCLK:
         case WM_NCMOUSELEAVE:
         case WM_NCMOUSEMOVE:
-            HandleMouseEvents(msg, wParam, lParam);
+            if (m_isExtended) {
+                HandleViewNonClientMouseEvent(GetHWND(), msg, wParam, lParam);
 
-            if (m_isExtended && (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE)) {
-                return 0;
+                if (wParam == HTMINBUTTON || wParam == HTMAXBUTTON || wParam == HTCLOSE) {
+                    return 0;
+                }
             }
             break;
         case WM_TOUCH:

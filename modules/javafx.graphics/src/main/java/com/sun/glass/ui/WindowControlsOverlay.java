@@ -147,10 +147,6 @@ public final class WindowControlsOverlay extends Region {
      * @return {@code true} if the event was handled, {@code false} otherwise
      */
     public boolean handleMouseEvent(int type, int button, int x, int y) {
-//        if (!MouseEvent.isNonClientEvent(type)) {
-//            return false;
-//        }
-
         double wx = x / window.getPlatformScaleX();
         double wy = y / window.getPlatformScaleY();
         HitTestResult hitTestResult = hitTest(wx, wy);
@@ -161,13 +157,13 @@ public final class WindowControlsOverlay extends Region {
             default -> null;
         } : null;
 
-        if (type == MouseEvent.ENTER || type == MouseEvent.MOVE || type == MouseEvent.DRAG) {
+        if (type == MouseEvent.NC_ENTER || type == MouseEvent.NC_MOVE || type == MouseEvent.NC_DRAG) {
             handleMouseOver(node);
-        } else if (type == MouseEvent.EXIT) {
+        } else if (type == MouseEvent.NC_EXIT) {
             handleMouseExit();
-        } else if (type == MouseEvent.UP && button == MouseEvent.BUTTON_LEFT) {
+        } else if (type == MouseEvent.NC_UP && button == MouseEvent.BUTTON_LEFT) {
             handleMouseUp(node, hitTestResult);
-        } else if (node != null && type == MouseEvent.DOWN && button == MouseEvent.BUTTON_LEFT) {
+        } else if (node != null && type == MouseEvent.NC_DOWN && button == MouseEvent.BUTTON_LEFT) {
             handleMouseDown(node);
         }
 
@@ -185,8 +181,6 @@ public final class WindowControlsOverlay extends Region {
     }
 
     private void handleMouseExit() {
-        mouseDownButton = null;
-
         for (var node : new Node[] {minimizeButton, maximizeButton, closeButton}) {
             node.pseudoClassStateChanged(HOVER_PSEUDOCLASS, false);
             node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, false);

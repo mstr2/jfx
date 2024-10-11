@@ -33,17 +33,4 @@ package com.sun.glass.ui;
 public interface NonClientHandler {
 
     boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount);
-
-    class DelegateToWindowControls implements NonClientHandler {
-        private final WindowControlsOverlay overlay;
-
-        public DelegateToWindowControls(WindowControlsOverlay overlay) {
-            this.overlay = overlay;
-        }
-
-        @Override
-        public boolean handleMouseEvent(int type, int button, int x, int y, int xAbs, int yAbs, int clickCount) {
-            return overlay.handleMouseEvent(type, button, x, y);
-        }
-    }
 }

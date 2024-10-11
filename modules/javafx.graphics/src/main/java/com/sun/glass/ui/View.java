@@ -952,7 +952,7 @@ public abstract class View {
             return;
         }
 
-        // We never send non-client events to FX.
+        // We never send non-client events to the application.
         if (MouseEvent.isNonClientEvent(type)) {
             return;
         }

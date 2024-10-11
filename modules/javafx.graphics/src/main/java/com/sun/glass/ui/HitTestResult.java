@@ -26,11 +26,11 @@
 package com.sun.glass.ui;
 
 public enum HitTestResult {
-    CLIENT(1),
-    TITLE(2),
-    MIN_BUTTON(8),
-    MAX_BUTTON(9),
-    CLOSE_BUTTON(20);
+    CLIENT(1), // HTCLIENT
+    TITLE(2), // HTCAPTION
+    MIN_BUTTON(8), // HTMINBUTTON
+    MAX_BUTTON(9), // HTMAXBUTTON
+    CLOSE_BUTTON(20); // HTCLOSE
 
     HitTestResult(int winNativeValue) {
         this.winNativeValue = winNativeValue;

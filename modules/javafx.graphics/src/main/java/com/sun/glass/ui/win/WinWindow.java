@@ -24,6 +24,7 @@
  */
 package com.sun.glass.ui.win;
 
+import com.sun.glass.events.MouseEvent;
 import com.sun.glass.ui.Cursor;
 import com.sun.glass.ui.HitTestResult;
 import com.sun.glass.ui.NonClientTheme;
@@ -365,25 +366,33 @@ class WinWindow extends Window {
 
     @Override
     public NonClientHandler getNonClientHandler() {
-        return new NonClientHandler.DelegateToWindowControls(getWindowOverlay());
+        return (type, button, x, y, xAbs, yAbs, clickCount) ->
+            getWindowOverlay().handleMouseEvent(type, button, x, y);
     }
 
     /**
      * Classifies the window region at the specified physical coordinate.
+     * <p>
      * This method is called from native code.
+     *
+     * @param x the X coordinate in physical pixels
+     * @param y the Y coordinate in physical pixels
      */
     @SuppressWarnings("unused")
     private int nonClientHitTest(int x, int y) {
         double wx = x / platformScaleX;
         double wy = y / platformScaleY;
 
+        // If the cursor is over one of the window buttons (minimize, maximize, close), we need to
+        // report the value of HTMINBUTTON, HTMAXBUTTON, or HTCLOSE back to the native layer.
         if (windowControlsOverlay != null) {
-            var result = windowControlsOverlay.hitTest(wx, wy);
-            if (result != HitTestResult.CLIENT) {
+            HitTestResult result = windowControlsOverlay.hitTest(wx, wy);
+            if (result != null) {
                 return result.winNativeValue();
             }
         }
 
+        // Otherwise, test if the cursor is over a draggable area and return HTCAPTION.
         View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
         if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
             return HitTestResult.TITLE.winNativeValue();
