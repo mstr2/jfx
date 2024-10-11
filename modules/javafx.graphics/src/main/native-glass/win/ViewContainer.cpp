@@ -1007,6 +1007,11 @@ void ViewContainer::HandleViewNonClientMouseEvent(HWND hwnd, UINT msg, WPARAM wP
         }
     }
 
+    // Event was not handled
+    if (type == 0) {
+        return;
+    }
+
     // get screen coords
     POINT ptAbs = pt;
     ::ClientToScreen(hwnd, &ptAbs);
