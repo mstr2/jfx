@@ -113,8 +113,8 @@ public final class WindowControlsOverlay extends Region {
         subscriptions.unsubscribe();
     }
 
-    public WindowControlsMetrics getMetrics() {
-        return new WindowControlsMetrics(
+    public WindowOverlayMetrics getMetrics() {
+        return new WindowOverlayMetrics(
             HPos.RIGHT, boundedWidth(minimizeButton) + boundedWidth(maximizeButton) + boundedWidth(closeButton));
     }
 

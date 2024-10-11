@@ -948,7 +948,11 @@ public abstract class View {
         }
 
         // If we have a non-client handler, we give it the first chance to handle the event.
-        if (nonClientHandler != null && nonClientHandler.handleMouseEvent(type, button, x, y, xAbs, yAbs, clickCount)) {
+        // Note that a full-screen window has no non-client area, and thus the non-client handler
+        // is not notified.
+        if (!inFullscreen
+                && nonClientHandler != null
+                && nonClientHandler.handleMouseEvent(type, button, x, y, xAbs, yAbs, clickCount)) {
             return;
         }
 

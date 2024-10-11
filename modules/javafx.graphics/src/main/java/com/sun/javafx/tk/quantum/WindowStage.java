@@ -251,7 +251,8 @@ public class WindowStage extends GlassStage {
         ViewScene scene = new ViewScene(fxStage != null ? fxStage.getScene() : null, depthBuffer, msaa);
         scene.setSecurityContext(acc);
 
-        if (style == StageStyle.EXTENDED) {
+        // The window-provided overlay is not visible in full-screen mode.
+        if (!isInFullScreen) {
             scene.setOverlay(platformWindow.getWindowOverlay());
         }
 
@@ -705,8 +706,9 @@ public class WindowStage extends GlassStage {
             } else {
                 if (warning != null) {
                     warning.cancel();
-                    setWarning(null);
                 }
+
+                setWarning(null);
                 v.exitFullscreen(false);
             }
             // Reset flag once we are done process fullscreen
@@ -722,7 +724,7 @@ public class WindowStage extends GlassStage {
         this.warning = newWarning;
         if (newWarning != null) {
             getViewScene().setOverlay(newWarning);
-        } else if (style == StageStyle.EXTENDED) {
+        } else if (!isInFullScreen) {
             getViewScene().setOverlay(platformWindow.getWindowOverlay());
         }
     }

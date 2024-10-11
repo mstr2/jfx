@@ -422,14 +422,29 @@ public abstract class Window {
         }
     }
 
-    public WindowControlsMetrics getWindowControlsMetrics() {
+    /**
+     * Returns metrics of the window-provided overlay controls.
+     *
+     * @return the overlay metrics, or {@code null}
+     */
+    public WindowOverlayMetrics getWindowOverlayMetrics() {
         return null;
     }
 
+    /**
+     * Returns the window-provided overlay controls, which are rendered above all application content.
+     *
+     * @return the overlay controls, or {@code null}
+     */
     public Parent getWindowOverlay() {
         return null;
     }
 
+    /**
+     * Returns the window-provided non-client event handler.
+     *
+     * @return the non-client event handler, or {@code null}
+     */
     public NonClientHandler getNonClientHandler() {
         return null;
     }

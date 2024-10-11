@@ -1,6 +1,6 @@
 package javafx.scene.layout;
 
-import com.sun.glass.ui.WindowControlsMetrics;
+import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.javafx.stage.StageHelper;
 import com.sun.javafx.tk.quantum.WindowStage;
 import javafx.collections.FXCollections;
@@ -16,7 +16,7 @@ public class TitleBar extends Region {
     public final ObservableList<Node> left = FXCollections.observableArrayList();
     public final ObservableList<Node> center = FXCollections.observableArrayList();
     public final ObservableList<Node> right = FXCollections.observableArrayList();
-    private WindowControlsMetrics metrics;
+    private WindowOverlayMetrics metrics;
     private Subscription subscription;
 
     public TitleBar() {
@@ -31,7 +31,7 @@ public class TitleBar extends Region {
                             return;
                         }
 
-                        metrics = windowStage.getPlatformWindow().getWindowControlsMetrics();
+                        metrics = windowStage.getPlatformWindow().getWindowOverlayMetrics();
                         requestLayout();
                     });
             }

@@ -32,7 +32,7 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.glass.ui.WindowControlsMetrics;
+import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
 
 class GtkWindow extends Window {
@@ -206,13 +206,14 @@ class GtkWindow extends Window {
     private WindowControlsOverlay windowControlsOverlay;
 
     @Override
-    public WindowControlsMetrics getWindowControlsMetrics() {
-        return windowControlsOverlay != null ? windowControlsOverlay.getMetrics() : null;
+    public WindowOverlayMetrics getWindowOverlayMetrics() {
+        var overlay = getWindowOverlay();
+        return overlay != null ? overlay.getMetrics() : null;
     }
 
     @Override
     public WindowControlsOverlay getWindowOverlay() {
-        if (windowControlsOverlay == null) {
+        if (windowControlsOverlay == null && isExtendedWindow()) {
             windowControlsOverlay = new WindowControlsOverlay(
                 this, NonClientThemeChooser.getInstance().nonClientThemeProperty());
         }
@@ -222,12 +223,17 @@ class GtkWindow extends Window {
 
     @Override
     public NonClientHandler getNonClientHandler() {
+        var overlay = getWindowOverlay();
+        if (overlay == null) {
+            return null;
+        }
+
         return (type, button, x, y, xAbs, yAbs, clickCount) -> {
             // In contrast to Windows, GTK doesn't produce non-client events. We convert regular
             // mouse events to non-client events since that's what WindowControlsOverlay expects.
             type = MouseEvent.toNonClientEvent(type);
 
-            return getWindowOverlay().handleMouseEvent(type, button, x, y);
+            return overlay.handleMouseEvent(type, button, x, y);
         };
     }
 
@@ -241,7 +247,8 @@ class GtkWindow extends Window {
      */
     @SuppressWarnings("unused")
     private boolean dragAreaHitTest(int x, int y) {
-        if (!isExtendedWindow()) {
+        // A full-screen window has no draggable area.
+        if (view == null || view.isInFullscreen() || !isExtendedWindow()) {
             return false;
         }
 

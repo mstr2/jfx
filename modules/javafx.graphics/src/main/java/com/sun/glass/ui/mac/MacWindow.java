@@ -32,7 +32,7 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.glass.ui.WindowControlsMetrics;
+import com.sun.glass.ui.WindowOverlayMetrics;
 import javafx.geometry.HPos;
 
 import java.nio.ByteBuffer;
@@ -181,8 +181,8 @@ final class MacWindow extends Window {
     }
 
     @Override
-    public WindowControlsMetrics getWindowControlsMetrics() {
-        return new WindowControlsMetrics(HPos.LEFT, 68);
+    public WindowOverlayMetrics getWindowOverlayMetrics() {
+        return new WindowOverlayMetrics(HPos.LEFT, 68);
     }
 }
 

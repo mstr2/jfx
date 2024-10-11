@@ -24,11 +24,10 @@
  */
 package com.sun.glass.ui.win;
 
-import com.sun.glass.events.MouseEvent;
 import com.sun.glass.ui.Cursor;
 import com.sun.glass.ui.HitTestResult;
 import com.sun.glass.ui.NonClientTheme;
-import com.sun.glass.ui.WindowControlsMetrics;
+import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
 import com.sun.glass.ui.NonClientHandler;
 import com.sun.glass.ui.Pixels;
@@ -342,13 +341,14 @@ class WinWindow extends Window {
     private WindowControlsOverlay windowControlsOverlay;
 
     @Override
-    public WindowControlsMetrics getWindowControlsMetrics() {
-        return windowControlsOverlay != null ? windowControlsOverlay.getMetrics() : null;
+    public WindowOverlayMetrics getWindowOverlayMetrics() {
+        var overlay = getWindowOverlay();
+        return overlay != null ? overlay.getMetrics() : null;
     }
 
     @Override
     public WindowControlsOverlay getWindowOverlay() {
-        if (windowControlsOverlay == null) {
+        if (windowControlsOverlay == null && isExtendedWindow()) {
             windowControlsOverlay = new WindowControlsOverlay(
                 this,
                 ObjectConstant.valueOf(
@@ -366,8 +366,12 @@ class WinWindow extends Window {
 
     @Override
     public NonClientHandler getNonClientHandler() {
-        return (type, button, x, y, xAbs, yAbs, clickCount) ->
-            getWindowOverlay().handleMouseEvent(type, button, x, y);
+        var overlay = getWindowOverlay();
+        if (overlay == null) {
+            return null;
+        }
+
+        return (type, button, x, y, xAbs, yAbs, clickCount) -> overlay.handleMouseEvent(type, button, x, y);
     }
 
     /**
@@ -380,6 +384,11 @@ class WinWindow extends Window {
      */
     @SuppressWarnings("unused")
     private int nonClientHitTest(int x, int y) {
+        // A full-screen window has no non-client area.
+        if (view == null || view.isInFullscreen() || !isExtendedWindow()) {
+            return HitTestResult.CLIENT.winNativeValue();
+        }
+
         double wx = x / platformScaleX;
         double wy = y / platformScaleY;
 
@@ -393,7 +402,7 @@ class WinWindow extends Window {
         }
 
         // Otherwise, test if the cursor is over a draggable area and return HTCAPTION.
-        View.EventHandler eventHandler = view != null ? view.getEventHandler() : null;
+        View.EventHandler eventHandler = view.getEventHandler();
         if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
             return HitTestResult.TITLE.winNativeValue();
         }
