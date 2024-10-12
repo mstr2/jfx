@@ -37,8 +37,13 @@ import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Subscription;
 
+/**
+ * Contains the visuals and logic for the minimize/maximize/close buttons on an {@link StageStyle#EXTENDED}
+ * window for platforms that use client-side decorations (Windows and Linux/GTK).
+ */
 public final class WindowControlsOverlay extends Region {
 
     private static final PseudoClass HOVER_PSEUDOCLASS = PseudoClass.getPseudoClass("hover");
@@ -54,6 +59,12 @@ public final class WindowControlsOverlay extends Region {
     private final Region closeButton = new ButtonRegion("close-button");
 
     private Node mouseDownButton;
+
+    public enum ButtonType {
+        MINIMIZE,
+        MAXIMIZE,
+        CLOSE
+    }
 
     private static class ButtonRegion extends Region {
         final Region glyph = new Region();
@@ -114,27 +125,41 @@ public final class WindowControlsOverlay extends Region {
     }
 
     public WindowOverlayMetrics getMetrics() {
+        double minButtonWidth = boundedWidth(minimizeButton);
+        double maxButtonWidth = boundedWidth(maximizeButton);
+        double closeButtonWidth = boundedWidth(closeButton);
+        double minButtonHeight = boundedHeight(minimizeButton);
+        double maxButtonHeight = boundedHeight(maximizeButton);
+        double closeButtonHeight = boundedHeight(closeButton);
+
         return new WindowOverlayMetrics(
-            HPos.RIGHT, boundedWidth(minimizeButton) + boundedWidth(maximizeButton) + boundedWidth(closeButton));
+            HPos.RIGHT,
+            minButtonWidth + maxButtonWidth + closeButtonWidth,
+            minButtonHeight + maxButtonHeight + closeButtonHeight);
     }
 
-    private void updateStylesheet() {
-        boolean darkScene = isDarkBackground(getScene() != null ? getScene().getFill() : null);
-        String stylesheet = theme.getValue().effectiveStylesheet(darkScene);
-
-        if (stylesheet != null) {
-            getStylesheets().setAll(stylesheet);
-        } else {
-            getStylesheets().clear();
-        }
-    }
-
-    private boolean isDarkBackground(Paint paint) {
-        if (paint instanceof Color color) {
-            return Utils.calculateBrightness(color) < 0.5;
+    /**
+     * Classifies the button at the specified coordinate, or returns {@code null} if the
+     * specified coordinate does not intersect a button.
+     *
+     * @param x the X coordinate, in pixels relative to the window
+     * @param y the Y coordinate, in pixels relative to the window
+     * @return the {@code ButtonType} or {@code null}
+     */
+    public ButtonType buttonAt(double x, double y) {
+        if (minimizeButton.getBoundsInParent().contains(x, y)) {
+            return ButtonType.MINIMIZE;
         }
 
-        return false;
+        if (maximizeButton.getBoundsInParent().contains(x, y)) {
+            return ButtonType.MAXIMIZE;
+        }
+
+        if (closeButton.getBoundsInParent().contains(x, y)) {
+            return ButtonType.CLOSE;
+        }
+
+        return null;
     }
 
     /**
@@ -149,12 +174,11 @@ public final class WindowControlsOverlay extends Region {
     public boolean handleMouseEvent(int type, int button, int x, int y) {
         double wx = x / window.getPlatformScaleX();
         double wy = y / window.getPlatformScaleY();
-        HitTestResult hitTestResult = hitTest(wx, wy);
-        Node node = hitTestResult != null ? switch (hitTestResult) {
-            case MIN_BUTTON -> minimizeButton;
-            case MAX_BUTTON -> maximizeButton;
-            case CLOSE_BUTTON -> closeButton;
-            default -> null;
+        ButtonType buttonType = buttonAt(wx, wy);
+        Node node = buttonType != null ? switch (buttonType) {
+            case MINIMIZE -> minimizeButton;
+            case MAXIMIZE -> maximizeButton;
+            case CLOSE -> closeButton;
         } : null;
 
         if (type == MouseEvent.NC_ENTER || type == MouseEvent.NC_MOVE || type == MouseEvent.NC_DRAG) {
@@ -162,7 +186,7 @@ public final class WindowControlsOverlay extends Region {
         } else if (type == MouseEvent.NC_EXIT) {
             handleMouseExit();
         } else if (type == MouseEvent.NC_UP && button == MouseEvent.BUTTON_LEFT) {
-            handleMouseUp(node, hitTestResult);
+            handleMouseUp(node, buttonType);
         } else if (node != null && type == MouseEvent.NC_DOWN && button == MouseEvent.BUTTON_LEFT) {
             handleMouseDown(node);
         }
@@ -188,26 +212,30 @@ public final class WindowControlsOverlay extends Region {
     }
 
     private void handleMouseDown(Node node) {
-        node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, true);
         mouseDownButton = node;
+
+        if (!node.isDisabled()) {
+            node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, true);
+        }
     }
 
-    private void handleMouseUp(Node node, HitTestResult hitTestResult) {
+    private void handleMouseUp(Node node, ButtonType buttonType) {
         boolean releasedOnButton = mouseDownButton == node;
         mouseDownButton = null;
-
         Scene scene = getScene();
-        if (node == null || scene == null || !(scene.getWindow() instanceof Stage stage)) {
+
+        if (node == null || node.isDisabled()
+                || scene == null || !(scene.getWindow() instanceof Stage stage)) {
             return;
         }
 
         node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, false);
 
         if (releasedOnButton) {
-            switch (hitTestResult) {
-                case MIN_BUTTON -> stage.setIconified(true);
-                case MAX_BUTTON -> stage.setMaximized(!stage.isMaximized());
-                case CLOSE_BUTTON -> stage.close();
+            switch (buttonType) {
+                case MINIMIZE -> stage.setIconified(true);
+                case MAXIMIZE -> stage.setMaximized(!stage.isMaximized());
+                case CLOSE -> stage.close();
             }
         }
     }
@@ -226,37 +254,23 @@ public final class WindowControlsOverlay extends Region {
         maximizeButton.pseudoClassStateChanged(RESTORE_PSEUDOCLASS, maximized);
     }
 
-    @Override
-    protected double computeMinWidth(double height) {
-        return minimizeButton.minWidth(height) + maximizeButton.minWidth(height) + closeButton.minWidth(height);
+    private void updateStylesheet() {
+        boolean darkScene = isDarkBackground(getScene() != null ? getScene().getFill() : null);
+        String stylesheet = theme.getValue().effectiveStylesheet(darkScene);
+
+        if (stylesheet != null) {
+            getStylesheets().setAll(stylesheet);
+        } else {
+            getStylesheets().clear();
+        }
     }
 
-    @Override
-    protected double computeMinHeight(double width) {
-        double max = Math.max(minimizeButton.minHeight(width), maximizeButton.minHeight(width));
-        return Math.max(closeButton.minHeight(width), max);
-    }
+    private boolean isDarkBackground(Paint paint) {
+        if (paint instanceof Color color) {
+            return Utils.calculateBrightness(color) < 0.5;
+        }
 
-    @Override
-    protected double computeMaxWidth(double height) {
-        return minimizeButton.maxWidth(height) + maximizeButton.maxWidth(height) + closeButton.maxWidth(height);
-    }
-
-    @Override
-    protected double computeMaxHeight(double width) {
-        double max = Math.max(minimizeButton.maxHeight(width), maximizeButton.maxHeight(width));
-        return Math.max(closeButton.maxHeight(width), max);
-    }
-
-    @Override
-    protected double computePrefWidth(double height) {
-        return minimizeButton.prefWidth(height) + maximizeButton.prefWidth(height) + closeButton.prefWidth(height);
-    }
-
-    @Override
-    protected double computePrefHeight(double width) {
-        double max = Math.max(minimizeButton.prefHeight(width), maximizeButton.prefHeight(width));
-        return Math.max(closeButton.prefHeight(width), max);
+        return false;
     }
 
     @Override
@@ -278,38 +292,12 @@ public final class WindowControlsOverlay extends Region {
                      closeButtonWidth, closeButtonHeight, BASELINE_OFFSET_SAME_AS_HEIGHT, HPos.LEFT, VPos.TOP);
     }
 
-    /**
-     * Classifies the area at the specified coordinate.
-     *
-     * @param x the X coordinate, in pixels relative to the window
-     * @param y the Y coordinate, in pixels relative to the window
-     * @return {@link HitTestResult#MIN_BUTTON},
-     *         {@link HitTestResult#MAX_BUTTON},
-     *         {@link HitTestResult#CLOSE_BUTTON},
-     *         or {@code null}
-     */
-    public HitTestResult hitTest(double x, double y) {
-        if (minimizeButton.getBoundsInParent().contains(x, y)) {
-            return HitTestResult.MIN_BUTTON;
-        }
-
-        if (maximizeButton.getBoundsInParent().contains(x, y)) {
-            return HitTestResult.MAX_BUTTON;
-        }
-
-        if (closeButton.getBoundsInParent().contains(x, y)) {
-            return HitTestResult.CLOSE_BUTTON;
-        }
-
-        return null;
-    }
-
     private static double boundedWidth(Node node) {
-        return boundedSize(node.minWidth(-1), node.prefWidth(-1), node.maxWidth(-1));
+        return node.isManaged() ? boundedSize(node.minWidth(-1), node.prefWidth(-1), node.maxWidth(-1)) : 0;
     }
 
     private static double boundedHeight(Node node) {
-        return boundedSize(node.minHeight(-1), node.prefHeight(-1), node.maxHeight(-1));
+        return node.isManaged() ? boundedSize(node.minHeight(-1), node.prefHeight(-1), node.maxHeight(-1)) : 0;
     }
 
     private static double boundedSize(double min, double pref, double max) {

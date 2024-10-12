@@ -182,7 +182,7 @@ final class MacWindow extends Window {
 
     @Override
     public WindowOverlayMetrics getWindowOverlayMetrics() {
-        return new WindowOverlayMetrics(HPos.LEFT, 68);
+        return new WindowOverlayMetrics(HPos.LEFT, 68, 0);
     }
 }
 

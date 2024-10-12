@@ -23,22 +23,22 @@
  * questions.
  */
 
-package com.sun.glass.ui;
+package com.sun.glass.ui.win;
 
-public enum HitTestResult {
-    CLIENT(1), // HTCLIENT
-    TITLE(2), // HTCAPTION
-    MIN_BUTTON(8), // HTMINBUTTON
-    MAX_BUTTON(9), // HTMAXBUTTON
-    CLOSE_BUTTON(20); // HTCLOSE
+public enum WinHitTestResult {
+    CLIENT(1),    // HTCLIENT
+    CAPTION(2),   // HTCAPTION
+    MINBUTTON(8), // HTMINBUTTON
+    MAXBUTTON(9), // HTMAXBUTTON
+    CLOSE(20);    // HTCLOSE
 
-    HitTestResult(int winNativeValue) {
-        this.winNativeValue = winNativeValue;
+    WinHitTestResult(int value) {
+        this.value = value;
     }
 
-    private final int winNativeValue;
+    private final int value;
 
-    public int winNativeValue() {
-        return winNativeValue;
+    public int value() {
+        return value;
     }
 }

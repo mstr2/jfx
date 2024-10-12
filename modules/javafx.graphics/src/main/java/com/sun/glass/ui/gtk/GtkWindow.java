@@ -252,7 +252,7 @@ class GtkWindow extends Window {
             return false;
         }
 
-        if (windowControlsOverlay != null && windowControlsOverlay.hitTest(x, y) != null) {
+        if (windowControlsOverlay != null && windowControlsOverlay.buttonAt(x, y) != null) {
             return false;
         }
 

@@ -25,7 +25,6 @@
 package com.sun.glass.ui.win;
 
 import com.sun.glass.ui.Cursor;
-import com.sun.glass.ui.HitTestResult;
 import com.sun.glass.ui.NonClientTheme;
 import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
@@ -386,7 +385,7 @@ class WinWindow extends Window {
     private int nonClientHitTest(int x, int y) {
         // A full-screen window has no non-client area.
         if (view == null || view.isInFullscreen() || !isExtendedWindow()) {
-            return HitTestResult.CLIENT.winNativeValue();
+            return WinHitTestResult.CLIENT.value();
         }
 
         double wx = x / platformScaleX;
@@ -394,19 +393,19 @@ class WinWindow extends Window {
 
         // If the cursor is over one of the window buttons (minimize, maximize, close), we need to
         // report the value of HTMINBUTTON, HTMAXBUTTON, or HTCLOSE back to the native layer.
-        if (windowControlsOverlay != null) {
-            HitTestResult result = windowControlsOverlay.hitTest(wx, wy);
-            if (result != null) {
-                return result.winNativeValue();
-            }
+        switch (windowControlsOverlay != null ? windowControlsOverlay.buttonAt(wx, wy) : null) {
+            case MINIMIZE: return WinHitTestResult.MINBUTTON.value();
+            case MAXIMIZE: return WinHitTestResult.MAXBUTTON.value();
+            case CLOSE: return WinHitTestResult.CLOSE.value();
+            case null: break;
         }
 
         // Otherwise, test if the cursor is over a draggable area and return HTCAPTION.
         View.EventHandler eventHandler = view.getEventHandler();
         if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
-            return HitTestResult.TITLE.winNativeValue();
+            return WinHitTestResult.CAPTION.value();
         }
 
-        return HitTestResult.CLIENT.winNativeValue();
+        return WinHitTestResult.CLIENT.value();
     }
 }
