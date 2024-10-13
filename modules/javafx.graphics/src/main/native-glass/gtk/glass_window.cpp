@@ -1399,10 +1399,11 @@ void WindowContextTop::notify_window_move() {
 
 /*
  * Handles mouse button events of EXTENDED windows and adds the window behaviors for non-client
- * regions that are usually provided by the window manager.
+ * regions that are usually provided by the window manager. Note that a full-screen window has
+ * no non-client regions.
  */
 void WindowContextTop::process_mouse_button(GdkEventButton* event) {
-    if (frame_type != EXTENDED || jwindow == NULL) {
+    if (is_fullscreen || frame_type != EXTENDED || jwindow == NULL) {
         WindowContextBase::process_mouse_button(event);
         return;
     }
@@ -1421,7 +1422,7 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
     if (event->button == 1 && event->type == GDK_BUTTON_PRESS) {
         GdkWindowEdge edge;
-        bool shouldStartResizeDrag = get_window_edge(event->x, event->y, &edge);
+        bool shouldStartResizeDrag = !is_maximized && get_window_edge(event->x, event->y, &edge);
 
         // Clicking on a window edge starts a move-resize operation.
         if (shouldStartResizeDrag) {
@@ -1450,13 +1451,17 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
 /*
  * Handles mouse motion events of EXTENDED windows and changes the cursor when it is on top
- * of the internal resize border.
+ * of the internal resize border. Note that a full-screen window or maximized window has no
+ * resize border.
  */
 void WindowContextTop::process_mouse_motion(GdkEventMotion* event) {
     GdkWindowEdge edge;
 
     // Call the base implementation for client area events.
-    if (frame_type != EXTENDED || !get_window_edge(event->x, event->y, &edge)) {
+    if (is_fullscreen
+            || is_maximized
+            || frame_type != EXTENDED
+            || !get_window_edge(event->x, event->y, &edge)) {
         set_cursor_override(NULL);
         WindowContextBase::process_mouse_motion(event);
         return;

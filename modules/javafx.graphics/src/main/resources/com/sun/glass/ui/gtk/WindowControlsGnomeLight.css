@@ -1,5 +1,5 @@
 .minimize-button, .maximize-button, .close-button {
-    -fx-background-color: #ffffff09;
+    -fx-background-color: #00000009;
     -fx-background-radius: 15;
     -fx-background-insets: 6;
     -fx-pref-width: 36;
@@ -7,15 +7,15 @@
 }
 
 .minimize-button:focused, .maximize-button:focused, .close-button:focused {
-    -fx-background-color: #ffffff15;
+    -fx-background-color: #00000015;
 }
 
 .minimize-button:focused:hover, .maximize-button:focused:hover, .close-button:focused:hover {
-    -fx-background-color: #ffffff25;
+    -fx-background-color: #00000025;
 }
 
 .minimize-button:pressed, .maximize-button:pressed, .close-button:pressed {
-    -fx-background-color: #ffffff35 !important;
+    -fx-background-color: #00000035 !important;
 }
 
 .minimize-button > .glyph, .maximize-button > .glyph, .close-button > .glyph {
@@ -26,7 +26,7 @@
 }
 
 .minimize-button:focused > .glyph, .maximize-button:focused > .glyph, .close-button:focused > .glyph {
-    -fx-background-color: white;
+    -fx-background-color: #333;
 }
 
 .maximize-button:disabled {
