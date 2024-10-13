@@ -163,6 +163,7 @@ public:
     virtual void increment_events_counter() = 0;
     virtual void decrement_events_counter() = 0;
     virtual size_t get_events_count() = 0;
+    virtual bool get_window_edge(int x, int y, GdkWindowEdge*) = 0;
     virtual bool is_dead() = 0;
     virtual ~WindowContext() {}
 };
@@ -183,6 +184,8 @@ protected:
     jobject jview;
     GtkWidget* gtk_widget;
     GdkWindow* gdk_window = NULL;
+    GdkCursor* gdk_cursor = NULL;
+    GdkCursor* gdk_cursor_override = NULL;
     GdkWMFunction gdk_windowManagerFunctions;
 
     bool is_iconified;
@@ -229,6 +232,7 @@ public:
     void ungrab_focus();
     void ungrab_mouse_drag_focus();
     void set_cursor(GdkCursor*);
+    void set_cursor_override(GdkCursor*);
     void set_level(int) {}
     void set_background(float, float, float);
 
@@ -248,6 +252,7 @@ public:
     void increment_events_counter();
     void decrement_events_counter();
     size_t get_events_count();
+    bool get_window_edge(int x, int y, GdkWindowEdge*);
     bool is_dead();
 
     ~WindowContextBase();
@@ -285,6 +290,8 @@ public:
     void process_state(GdkEventWindowState*);
     void process_configure(GdkEventConfigure*);
     void process_destroy();
+    void process_mouse_motion(GdkEventMotion*);
+    void process_mouse_button(GdkEventButton*);
     void work_around_compiz_state();
 
     WindowFrameExtents get_frame_extents();
@@ -332,6 +339,7 @@ private:
     bool effective_on_top();
     void notify_window_move();
     void notify_window_resize();
+    bool get_window_edge(int x, int y, GdkWindowEdge*);
     WindowContextTop(WindowContextTop&);
     WindowContextTop& operator= (const WindowContextTop&);
 };
