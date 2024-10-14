@@ -1063,7 +1063,6 @@ void ViewContainer::NotifyCaptureChanged(HWND hwnd, HWND to)
 
 void ViewContainer::ResetMouseTracking(HWND hwnd)
 {
-return;
     if (!m_bTrackingMouse) {
         return;
     }
