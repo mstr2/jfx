@@ -25,41 +25,48 @@
 
 package com.sun.glass.ui.gtk;
 
-import com.sun.glass.ui.NonClientTheme;
+import com.sun.glass.ui.Window;
 import com.sun.javafx.application.PlatformImpl;
 import java.util.Locale;
 import java.util.Map;
 
-enum WindowControlsTheme {
+/**
+ * The client-side window decoration theme used for {@link Window#EXTENDED} windows.
+ */
+enum WindowDecorationTheme {
 
-    GNOME("WindowControlsGnomeLight.css", "WindowControlsGnomeDark.css"),
-    KDE("WindowControlsKdeLight.css", "WindowControlsKdeDark.css");
+    GNOME("WindowDecorationGnome.css"),
+    KDE("WindowDecorationKDE.css");
 
-    WindowControlsTheme(String lightStylesheet, String darkStylesheet) {
-        this.lightStylesheet = lightStylesheet;
-        this.darkStylesheet = darkStylesheet;
+    WindowDecorationTheme(String stylesheet) {
+        this.stylesheet = stylesheet;
     }
 
     private static final String THEME_NAME_KEY = "GTK.theme_name";
 
-    private static final Map<String, WindowControlsTheme> SIMILAR_THEMES = Map.of(
-        "adwaita", WindowControlsTheme.GNOME,
-        "yaru", WindowControlsTheme.GNOME,
-        "breeze", WindowControlsTheme.KDE
+    /**
+     * A mapping of platform theme names to the most similar window decoration theme.
+     */
+    private static final Map<String, WindowDecorationTheme> SIMILAR_THEMES = Map.of(
+        "adwaita", WindowDecorationTheme.GNOME,
+        "yaru", WindowDecorationTheme.GNOME,
+        "breeze", WindowDecorationTheme.KDE
     );
 
-    private final String lightStylesheet;
-    private final String darkStylesheet;
+    private final String stylesheet;
 
-    public static WindowControlsTheme getDefault() {
-        return GNOME;
-    }
-
-    public static WindowControlsTheme findBestFit() {
+    /**
+     * Determines the best window decoration theme for the current window manager theme.
+     * <p>
+     * Since we can't ship decorations for all possible window manager themes, we need to choose the
+     * theme most similar to the native window manager theme. If we can't choose a theme by name, we
+     * fall back to choosing a theme by determining the current window manager.
+     */
+    public static WindowDecorationTheme findBestTheme() {
         return PlatformImpl.getPlatformPreferences()
             .getString(THEME_NAME_KEY)
             .map(name -> {
-                for (Map.Entry<String, WindowControlsTheme> entry : SIMILAR_THEMES.entrySet()) {
+                for (Map.Entry<String, WindowDecorationTheme> entry : SIMILAR_THEMES.entrySet()) {
                     if (name.toLowerCase(Locale.ROOT).startsWith(entry.getKey())) {
                         return entry.getValue();
                     }
@@ -68,23 +75,18 @@ enum WindowControlsTheme {
                 return null;
             })
             .orElse(switch (WindowManager.current()) {
-                case GNOME -> WindowControlsTheme.GNOME;
-                case KDE -> WindowControlsTheme.KDE;
-                default -> getDefault();
+                case GNOME -> WindowDecorationTheme.GNOME;
+                case KDE -> WindowDecorationTheme.KDE;
+                default -> WindowDecorationTheme.GNOME;
             });
     }
 
-    public NonClientTheme getNonClientTheme() {
-        return new NonClientTheme(getLightStylesheet(), getDarkStylesheet());
-    }
+    public String getStylesheet() {
+        var url = getClass().getResource(stylesheet);
+        if (url == null) {
+            throw new RuntimeException("Resource not found: " + stylesheet);
+        }
 
-    private String getLightStylesheet() {
-        var url = getClass().getResource(lightStylesheet);
-        return url != null ? url.toExternalForm() : null;
-    }
-
-    private String getDarkStylesheet() {
-        var url = getClass().getResource(darkStylesheet);
-        return url != null ? url.toExternalForm() : null;
+        return url.toExternalForm();
     }
 }

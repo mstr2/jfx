@@ -1,10 +1,43 @@
-.minimize-button, .maximize-button, .close-button {
+/*
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+.minimize-button,
+.maximize-button,
+.close-button {
     -fx-background-color: transparent;
     -fx-pref-width: 46;
     -fx-pref-height: 29;
 }
 
-.minimize-button:hover, .maximize-button:hover, .close-button:hover {
+.minimize-button:hover,
+.maximize-button:hover {
+    -fx-background-color: #00000015;
+}
+
+.minimize-button.dark:hover,
+.maximize-button.dark:hover {
     -fx-background-color: #ffffff15;
 }
 
@@ -12,25 +45,49 @@
     -fx-background-color: #c42b1c;
 }
 
-.minimize-button:pressed, .maximize-button:pressed, .close-button:pressed {
+.minimize-button:pressed,
+.maximize-button:pressed,
+.close-button:pressed {
     -fx-opacity: 0.8;
 }
 
-.minimize-button > .glyph, .maximize-button > .glyph, .close-button > .glyph {
+.minimize-button > .glyph,
+.maximize-button > .glyph,
+.close-button > .glyph {
     -fx-background-color: #777;
     -fx-scale-shape: false;
 }
 
-.minimize-button:focused > .glyph, .maximize-button:focused > .glyph, .close-button:focused > .glyph {
+.minimize-button:focused > .glyph,
+.maximize-button:focused > .glyph,
+.close-button:focused > .glyph {
+    -fx-background-color: black;
+}
+
+.minimize-button.dark:focused > .glyph,
+.maximize-button.dark:focused > .glyph,
+.close-button.dark:focused > .glyph {
+    -fx-background-color: white;
+}
+
+.close-button:hover > .glyph {
+    -fx-background-color: white;
+}
+
+.minimize-button.dark:pressed > .glyph {
     -fx-background-color: white;
 }
 
 .maximize-button:disabled {
-    -fx-background-color: transparent;
+    -fx-background-color: transparent !important;
 }
 
 .maximize-button:disabled > .glyph {
-    -fx-background-color: #777;
+    -fx-background-color: #00000020 !important;
+}
+
+.maximize-button.dark:disabled > .glyph {
+    -fx-background-color: #ffffff20 !important;
 }
 
 .minimize-button > .glyph {
@@ -41,7 +98,7 @@
     -fx-shape: "M 1.253418,8.5 Q 1.0043945,8.5 0.77612305,8.3983154 0.54785156,8.2966309 0.37561035,8.1243896 0.20336914,7.9521484 0.10168457,7.723877 0,7.4956055 0,7.246582 V 1.253418 Q 0,1.0043945 0.10168457,0.77612305 0.20336914,0.54785156 0.37561035,0.37561035 0.54785156,0.20336914 0.77612305,0.10168457 1.0043945,0 1.253418,0 H 7.246582 Q 7.4956055,0 7.723877,0.10168457 7.9521484,0.20336914 8.1243896,0.37561035 8.2966309,0.54785156 8.3983154,0.77612305 8.5,1.0043945 8.5,1.253418 V 7.246582 Q 8.5,7.4956055 8.3983154,7.723877 8.2966309,7.9521484 8.1243896,8.1243896 7.9521484,8.2966309 7.723877,8.3983154 7.4956055,8.5 7.246582,8.5 Z M 7.2258301,7.6491699 q 0.087158,0 0.1639404,-0.033203 0.076782,-0.033203 0.1348877,-0.091309 0.058105,-0.058105 0.091309,-0.1348877 0.033203,-0.076782 0.033203,-0.1639404 V 1.2741699 q 0,-0.087158 -0.033203,-0.1639404 Q 7.5827637,1.0334473 7.5246582,0.9753418 7.4665527,0.91723633 7.3897705,0.8840332 7.3129883,0.85083008 7.2258301,0.85083008 H 1.2741699 q -0.087158,0 -0.1639404,0.0332031 -0.076782,0.0332031 -0.1348877,0.0913086 Q 0.9172363,1.0334473 0.8840332,1.1102295 0.8508301,1.1870115 0.8508301,1.2741699 v 5.9516602 q 0,0.087158 0.0332031,0.1639404 0.0332031,0.076782 0.0913086,0.1348877 0.0581055,0.058105 0.1348877,0.091309 0.076782,0.033203 0.1639404,0.033203 z";
 }
 
-.maximize-button:restore > .glyph {
+.maximize-button.restore > .glyph {
     -fx-shape: "m 7.6491699,2.5192871 q 0,-0.3444824 -0.1369629,-0.6495361 Q 7.3752441,1.5646973 7.1407471,1.338501 6.90625,1.1123047 6.5970459,0.98156738 6.2878418,0.85083008 5.9475098,0.85083008 H 1.7722168 Q 1.838623,0.65991211 1.9589844,0.50219727 2.0793457,0.34448242 2.2370605,0.23242188 2.3947754,0.12036133 2.5836182,0.06018066 2.7724609,0 2.9758301,0 H 5.9475098 Q 6.4746094,0 6.9394531,0.20129395 7.4042969,0.40258789 7.7508545,0.74707031 8.0974121,1.0915527 8.2987061,1.5563965 8.5,2.0212402 8.5,2.5483398 V 5.5241699 Q 8.5,5.7275391 8.4398193,5.9163818 8.3796387,6.1052246 8.2675781,6.2629395 8.1555176,6.4206543 7.9978027,6.5410156 7.8400879,6.661377 7.6491699,6.7277832 Z M 1.253418,8.5 Q 1.0043945,8.5 0.77612305,8.3983154 0.54785156,8.2966309 0.37561035,8.1243896 0.20336914,7.9521484 0.10168457,7.723877 0,7.4956055 0,7.246582 V 2.9550781 Q 0,2.7019043 0.10168457,2.475708 0.20336914,2.2495117 0.37561035,2.0772705 0.54785156,1.9050293 0.77404785,1.8033447 1.0002441,1.7016602 1.253418,1.7016602 h 4.2915039 q 0.2531738,0 0.4814453,0.1016845 0.2282715,0.1016846 0.3984375,0.2718506 0.170166,0.170166 0.2718506,0.3984375 0.1016845,0.2282715 0.1016845,0.4814453 V 7.246582 q 0,0.2531739 -0.1016845,0.4793701 Q 6.5949707,7.9521484 6.4227295,8.1243896 6.2504883,8.2966309 6.024292,8.3983154 5.7980957,8.5 5.5449219,8.5 Z M 5.5241699,7.6491699 q 0.087158,0 0.1639405,-0.033203 0.076782,-0.033203 0.1369628,-0.091309 0.060181,-0.058105 0.093384,-0.1348877 0.033203,-0.076782 0.033203,-0.1639404 v -4.25 q 0,-0.087158 -0.033203,-0.1660156 Q 5.8852539,2.730957 5.8271484,2.6728516 5.769043,2.6147461 5.6901855,2.581543 5.6113281,2.5483398 5.5241699,2.5483398 h -4.25 q -0.087158,0 -0.1639404,0.033203 -0.076782,0.033203 -0.1348877,0.093384 -0.0581055,0.060181 -0.0913086,0.1369628 -0.0332031,0.076782 -0.0332031,0.1639405 v 4.25 q 0,0.087158 0.0332031,0.1639404 0.0332031,0.076782 0.0913086,0.1348877 0.0581055,0.058105 0.1348877,0.091309 0.076782,0.033203 0.1639404,0.033203 z";
 }
 

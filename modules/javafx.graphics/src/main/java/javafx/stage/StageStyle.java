@@ -70,10 +70,7 @@ public enum StageStyle {
 
     /**
      * Defines a {@code Stage} style in which the client area is extended into the non-client area,
-     * allowing applications to place scene graph nodes in the title bar of the stage.
-     * <p>
-     * Applications can define a custom non-client area with {@link Stage#setNonClient} to enable
-     * platform interactions like dragging, double-click to maximize, and window snapping.
+     * allowing applications to place scene graph nodes in the title bar area of the stage.
      *
      * @since 24
      */

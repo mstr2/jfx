@@ -48,12 +48,11 @@ public final class WindowControlsOverlay extends Region {
 
     private static final PseudoClass HOVER_PSEUDOCLASS = PseudoClass.getPseudoClass("hover");
     private static final PseudoClass PRESSED_PSEUDOCLASS = PseudoClass.getPseudoClass("pressed");
-    private static final PseudoClass RESTORE_PSEUDOCLASS = PseudoClass.getPseudoClass("restore");
     private static final PseudoClass FOCUSED_PSEUDOCLASS = PseudoClass.getPseudoClass("focused");
+    private static final String DARK_STYLE_CLASS = "dark";
+    private static final String RESTORE_STYLE_CLASS = "restore";
 
-    private final Window window;
     private final Subscription subscriptions;
-    private final ObservableValue<NonClientTheme> theme;
     private final Region minimizeButton = new ButtonRegion("minimize-button");
     private final Region maximizeButton = new ButtonRegion("maximize-button");
     private final Region closeButton = new ButtonRegion("close-button");
@@ -81,10 +80,7 @@ public final class WindowControlsOverlay extends Region {
         }
     }
 
-    public WindowControlsOverlay(Window window, ObservableValue<NonClientTheme> theme) {
-        this.window = window;
-        this.theme = theme;
-
+    public WindowControlsOverlay(ObservableValue<String> stylesheet) {
         var stage = sceneProperty()
             .flatMap(Scene::windowProperty)
             .map(w -> w instanceof Stage ? (Stage)w : null);
@@ -108,14 +104,14 @@ public final class WindowControlsOverlay extends Region {
             .flatMap(Scene::fillProperty)
             .map(this::isDarkBackground)
             .orElse(false)
-            .subscribe(this::updateStylesheet);
+            .subscribe(x -> updateStyleClass());
 
         subscriptions = Subscription.combine(
             focusedSubscription,
             resizableSubscription,
             maximizedSubscription,
             updateStylesheetSubscription,
-            theme.subscribe(this::updateStylesheet));
+            stylesheet.subscribe(this::updateStylesheet));
 
         getChildren().addAll(minimizeButton, maximizeButton, closeButton);
     }
@@ -139,27 +135,31 @@ public final class WindowControlsOverlay extends Region {
     }
 
     /**
-     * Classifies the button at the specified coordinate, or returns {@code null} if the
-     * specified coordinate does not intersect a button.
+     * Classifies and returns the button type at the specified coordinate, or returns
+     * {@code null} if the specified coordinate does not intersect a button.
      *
      * @param x the X coordinate, in pixels relative to the window
      * @param y the Y coordinate, in pixels relative to the window
      * @return the {@code ButtonType} or {@code null}
      */
     public ButtonType buttonAt(double x, double y) {
-        if (minimizeButton.getBoundsInParent().contains(x, y)) {
+        if (isVisibleNodeAt(minimizeButton, x, y)) {
             return ButtonType.MINIMIZE;
         }
 
-        if (maximizeButton.getBoundsInParent().contains(x, y)) {
+        if (isVisibleNodeAt(maximizeButton, x, y)) {
             return ButtonType.MAXIMIZE;
         }
 
-        if (closeButton.getBoundsInParent().contains(x, y)) {
+        if (isVisibleNodeAt(closeButton, x, y)) {
             return ButtonType.CLOSE;
         }
 
         return null;
+    }
+
+    private boolean isVisibleNodeAt(Node node, double x, double y) {
+        return node.isVisible() && node.getBoundsInParent().contains(x, y);
     }
 
     /**
@@ -167,14 +167,12 @@ public final class WindowControlsOverlay extends Region {
      *
      * @param type the event type
      * @param button the button type
-     * @param x the X coordinate, in physical pixels
-     * @param y the Y coordinate, in physical pixels
+     * @param x the X coordinate, in pixels relative to the window
+     * @param y the Y coordinate, in pixels relative to the window
      * @return {@code true} if the event was handled, {@code false} otherwise
      */
-    public boolean handleMouseEvent(int type, int button, int x, int y) {
-        double wx = x / window.getPlatformScaleX();
-        double wy = y / window.getPlatformScaleY();
-        ButtonType buttonType = buttonAt(wx, wy);
+    public boolean handleMouseEvent(int type, int button, double x, double y) {
+        ButtonType buttonType = buttonAt(x, y);
         Node node = buttonType != null ? switch (buttonType) {
             case MINIMIZE -> minimizeButton;
             case MAXIMIZE -> maximizeButton;
@@ -205,6 +203,8 @@ public final class WindowControlsOverlay extends Region {
     }
 
     private void handleMouseExit() {
+        mouseDownButton = null;
+
         for (var node : new Node[] {minimizeButton, maximizeButton, closeButton}) {
             node.pseudoClassStateChanged(HOVER_PSEUDOCLASS, false);
             node.pseudoClassStateChanged(PRESSED_PSEUDOCLASS, false);
@@ -251,17 +251,25 @@ public final class WindowControlsOverlay extends Region {
     }
 
     private void onMaximizedChanged(boolean maximized) {
-        maximizeButton.pseudoClassStateChanged(RESTORE_PSEUDOCLASS, maximized);
+        toggleStyleClass(maximizeButton, RESTORE_STYLE_CLASS, maximized);
     }
 
-    private void updateStylesheet() {
+    private void updateStyleClass() {
         boolean darkScene = isDarkBackground(getScene() != null ? getScene().getFill() : null);
-        String stylesheet = theme.getValue().effectiveStylesheet(darkScene);
+        toggleStyleClass(minimizeButton, DARK_STYLE_CLASS, darkScene);
+        toggleStyleClass(maximizeButton, DARK_STYLE_CLASS, darkScene);
+        toggleStyleClass(closeButton, DARK_STYLE_CLASS, darkScene);
+    }
 
-        if (stylesheet != null) {
-            getStylesheets().setAll(stylesheet);
-        } else {
-            getStylesheets().clear();
+    private void updateStylesheet(String stylesheet) {
+        getStylesheets().setAll(stylesheet);
+    }
+
+    private void toggleStyleClass(Node node, String styleClass, boolean enabled) {
+        if (enabled && !node.getStyleClass().contains(styleClass)) {
+            node.getStyleClass().add(styleClass);
+        } else if (!enabled) {
+            node.getStyleClass().remove(styleClass);
         }
     }
 

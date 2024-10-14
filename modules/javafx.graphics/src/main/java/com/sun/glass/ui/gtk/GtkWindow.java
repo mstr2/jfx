@@ -215,7 +215,7 @@ class GtkWindow extends Window {
     public WindowControlsOverlay getWindowOverlay() {
         if (windowControlsOverlay == null && isExtendedWindow()) {
             windowControlsOverlay = new WindowControlsOverlay(
-                this, NonClientThemeChooser.getInstance().nonClientThemeProperty());
+                PlatformThemeObserver.getInstance().stylesheetProperty());
         }
 
         return windowControlsOverlay;
@@ -231,9 +231,8 @@ class GtkWindow extends Window {
         return (type, button, x, y, xAbs, yAbs, clickCount) -> {
             // In contrast to Windows, GTK doesn't produce non-client events. We convert regular
             // mouse events to non-client events since that's what WindowControlsOverlay expects.
-            type = MouseEvent.toNonClientEvent(type);
-
-            return overlay.handleMouseEvent(type, button, x, y);
+            return overlay.handleMouseEvent(
+                MouseEvent.toNonClientEvent(type), button, x / platformScaleX, y / platformScaleY);
         };
     }
 

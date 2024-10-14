@@ -25,7 +25,6 @@
 package com.sun.glass.ui.win;
 
 import com.sun.glass.ui.Cursor;
-import com.sun.glass.ui.NonClientTheme;
 import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
 import com.sun.glass.ui.NonClientHandler;
@@ -33,9 +32,7 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.javafx.binding.ObjectConstant;
-import java.net.URL;
-import java.util.Optional;
+import com.sun.javafx.binding.StringConstant;
 
 /**
  * MS Windows platform implementation class for Window.
@@ -46,6 +43,8 @@ class WinWindow extends Window {
     public static final int RESIZE_TO_FX_ORIGIN = 2;
 
     public static final long ANCHOR_NO_CAPTURE = (1L << 63);
+
+    private static final String WINDOW_DECORATION_STYLESHEET = "WindowDecoration.css";
 
     private float fxReqWidth;
     private float fxReqHeight;
@@ -348,16 +347,12 @@ class WinWindow extends Window {
     @Override
     public WindowControlsOverlay getWindowOverlay() {
         if (windowControlsOverlay == null && isExtendedWindow()) {
-            windowControlsOverlay = new WindowControlsOverlay(
-                this,
-                ObjectConstant.valueOf(
-                    new NonClientTheme(
-                        Optional.ofNullable(getClass().getResource("WindowControlsLight.css"))
-                            .map(URL::toExternalForm)
-                            .orElse(null),
-                        Optional.ofNullable(getClass().getResource("WindowControlsDark.css"))
-                            .map(URL::toExternalForm)
-                            .orElse(null))));
+            var url = getClass().getResource(WINDOW_DECORATION_STYLESHEET);
+            if (url == null) {
+                throw new RuntimeException("Resource not found: " + WINDOW_DECORATION_STYLESHEET);
+            }
+
+            windowControlsOverlay = new WindowControlsOverlay(StringConstant.valueOf(url.toExternalForm()));
         }
 
         return windowControlsOverlay;
@@ -370,7 +365,11 @@ class WinWindow extends Window {
             return null;
         }
 
-        return (type, button, x, y, xAbs, yAbs, clickCount) -> overlay.handleMouseEvent(type, button, x, y);
+        return (type, button, x, y, xAbs, yAbs, clickCount) -> {
+            double wx = x / platformScaleX;
+            double wy = y / platformScaleY;
+            return overlay.handleMouseEvent(type, button, wx, wy);
+        };
     }
 
     /**
@@ -383,9 +382,16 @@ class WinWindow extends Window {
      */
     @SuppressWarnings("unused")
     private int nonClientHitTest(int x, int y) {
+        // https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-nchittest
+        enum HT {
+            CLIENT(1), CAPTION(2), MINBUTTON(8), MAXBUTTON(9), CLOSE(20);
+            HT(int value) { this.value = value; }
+            final int value;
+        }
+
         // A full-screen window has no non-client area.
         if (view == null || view.isInFullscreen() || !isExtendedWindow()) {
-            return WinHitTestResult.CLIENT.value();
+            return HT.CLIENT.value;
         }
 
         double wx = x / platformScaleX;
@@ -394,18 +400,18 @@ class WinWindow extends Window {
         // If the cursor is over one of the window buttons (minimize, maximize, close), we need to
         // report the value of HTMINBUTTON, HTMAXBUTTON, or HTCLOSE back to the native layer.
         switch (windowControlsOverlay != null ? windowControlsOverlay.buttonAt(wx, wy) : null) {
-            case MINIMIZE: return WinHitTestResult.MINBUTTON.value();
-            case MAXIMIZE: return WinHitTestResult.MAXBUTTON.value();
-            case CLOSE: return WinHitTestResult.CLOSE.value();
+            case MINIMIZE: return HT.MINBUTTON.value;
+            case MAXIMIZE: return HT.MAXBUTTON.value;
+            case CLOSE: return HT.CLOSE.value;
             case null: break;
         }
 
         // Otherwise, test if the cursor is over a draggable area and return HTCAPTION.
         View.EventHandler eventHandler = view.getEventHandler();
         if (eventHandler != null && eventHandler.handleDragAreaHitTestEvent(wx, wy)) {
-            return WinHitTestResult.CAPTION.value();
+            return HT.CAPTION.value;
         }
 
-        return WinHitTestResult.CLIENT.value();
+        return HT.CLIENT.value;
     }
 }

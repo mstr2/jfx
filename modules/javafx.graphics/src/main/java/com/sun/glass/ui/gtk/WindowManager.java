@@ -30,8 +30,7 @@ import java.util.Locale;
 enum WindowManager {
     UNKNOWN,
     GNOME,
-    KDE,
-    XFCE;
+    KDE;
 
     public static WindowManager current() {
         var result = parse(System.getenv("XDG_CURRENT_DESKTOP"));
@@ -55,16 +54,17 @@ enum WindowManager {
         if (value == null) {
             return UNKNOWN;
         }
+
         String v = value.toLowerCase(Locale.ROOT);
+
         if (v.contains("gnome")) {
             return GNOME;
         }
+
         if (v.contains("kde")) {
             return KDE;
         }
-        if (v.contains("xfce")) {
-            return XFCE;
-        }
+
         return UNKNOWN;
     }
 }

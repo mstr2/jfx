@@ -433,8 +433,10 @@ public abstract class Window {
 
     /**
      * Returns the window-provided overlay controls, which are rendered above all application content.
+     * <p>
+     * The window overlay is not shown in full-screen mode.
      *
-     * @return the overlay controls, or {@code null}
+     * @return the overlay, or {@code null}
      */
     public Parent getWindowOverlay() {
         return null;

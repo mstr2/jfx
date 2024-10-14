@@ -23,22 +23,42 @@
  * questions.
  */
 
-package com.sun.glass.ui.win;
+package com.sun.glass.ui.gtk;
 
-public enum WinHitTestResult {
-    CLIENT(1),    // HTCLIENT
-    CAPTION(2),   // HTCAPTION
-    MINBUTTON(8), // HTMINBUTTON
-    MAXBUTTON(9), // HTMAXBUTTON
-    CLOSE(20);    // HTCLOSE
+import com.sun.javafx.application.PlatformImpl;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.MapChangeListener;
 
-    WinHitTestResult(int value) {
-        this.value = value;
+final class PlatformThemeObserver {
+
+    private static final String THEME_NAME_KEY = "GTK.theme_name";
+
+    private final ReadOnlyStringWrapper stylesheet = new ReadOnlyStringWrapper(this, "stylesheet");
+
+    private PlatformThemeObserver() {
+        PlatformImpl.getPlatformPreferences().addListener((MapChangeListener<String, Object>) change -> {
+            if (THEME_NAME_KEY.equals(change.getKey())) {
+                updateThemeStylesheets();
+            }
+        });
+
+        updateThemeStylesheets();
     }
 
-    private final int value;
+    public static PlatformThemeObserver getInstance() {
+        class Holder {
+            static final PlatformThemeObserver instance = new PlatformThemeObserver();
+        }
 
-    public int value() {
-        return value;
+        return Holder.instance;
+    }
+
+    public ReadOnlyStringProperty stylesheetProperty() {
+        return stylesheet.getReadOnlyProperty();
+    }
+
+    private void updateThemeStylesheets() {
+        stylesheet.set(WindowDecorationTheme.findBestTheme().getStylesheet());
     }
 }
