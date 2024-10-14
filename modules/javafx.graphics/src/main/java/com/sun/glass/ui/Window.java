@@ -26,6 +26,7 @@ package com.sun.glass.ui;
 
 import com.sun.glass.events.WindowEvent;
 import com.sun.prism.impl.PrismSettings;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.Parent;
 
 import java.lang.annotation.Native;
@@ -425,9 +426,9 @@ public abstract class Window {
     /**
      * Returns metrics of the window-provided overlay controls.
      *
-     * @return the overlay metrics, or {@code null}
+     * @return the overlay metrics, or {@code null} if the window type does not support metrics
      */
-    public WindowOverlayMetrics getWindowOverlayMetrics() {
+    public ObservableValue<WindowOverlayMetrics> windowOverlayMetrics() {
         return null;
     }
 
@@ -436,7 +437,7 @@ public abstract class Window {
      * <p>
      * The window overlay is not shown in full-screen mode.
      *
-     * @return the overlay, or {@code null}
+     * @return the overlay, or {@code null} if the window type does not provide overlay controls
      */
     public Parent getWindowOverlay() {
         return null;

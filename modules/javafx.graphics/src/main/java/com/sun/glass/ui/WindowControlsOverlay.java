@@ -27,8 +27,12 @@ package com.sun.glass.ui;
 
 import com.sun.glass.events.MouseEvent;
 import com.sun.javafx.util.Utils;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.css.PseudoClass;
+import javafx.geometry.Dimension2D;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
@@ -56,8 +60,13 @@ public final class WindowControlsOverlay extends Region {
     private final Region minimizeButton = new ButtonRegion("minimize-button");
     private final Region maximizeButton = new ButtonRegion("maximize-button");
     private final Region closeButton = new ButtonRegion("close-button");
+    private final Runnable postLayoutListener = this::onPostLayout;
+    private final ObjectProperty<WindowOverlayMetrics> metrics = new SimpleObjectProperty<>(
+            this, "metrics", new WindowOverlayMetrics(HPos.RIGHT, new Dimension2D(0, 0)));
 
     private Node mouseDownButton;
+    private double currentTotalWidth;
+    private double currentTotalHeight;
 
     public enum ButtonType {
         MINIMIZE,
@@ -106,11 +115,22 @@ public final class WindowControlsOverlay extends Region {
             .orElse(false)
             .subscribe(x -> updateStyleClass());
 
+        var sceneSubscription = sceneProperty().subscribe((oldValue, newValue) -> {
+            if (oldValue != null) {
+                oldValue.removePostLayoutPulseListener(postLayoutListener);
+            }
+
+            if (newValue != null) {
+                newValue.addPostLayoutPulseListener(postLayoutListener);
+            }
+        });
+
         subscriptions = Subscription.combine(
             focusedSubscription,
             resizableSubscription,
             maximizedSubscription,
             updateStylesheetSubscription,
+            sceneSubscription,
             stylesheet.subscribe(this::updateStylesheet));
 
         getChildren().addAll(minimizeButton, maximizeButton, closeButton);
@@ -120,18 +140,8 @@ public final class WindowControlsOverlay extends Region {
         subscriptions.unsubscribe();
     }
 
-    public WindowOverlayMetrics getMetrics() {
-        double minButtonWidth = boundedWidth(minimizeButton);
-        double maxButtonWidth = boundedWidth(maximizeButton);
-        double closeButtonWidth = boundedWidth(closeButton);
-        double minButtonHeight = boundedHeight(minimizeButton);
-        double maxButtonHeight = boundedHeight(maximizeButton);
-        double closeButtonHeight = boundedHeight(closeButton);
-
-        return new WindowOverlayMetrics(
-            HPos.RIGHT,
-            minButtonWidth + maxButtonWidth + closeButtonWidth,
-            minButtonHeight + maxButtonHeight + closeButtonHeight);
+    public ReadOnlyObjectProperty<WindowOverlayMetrics> metricsProperty() {
+        return metrics;
     }
 
     /**
@@ -254,6 +264,18 @@ public final class WindowControlsOverlay extends Region {
         toggleStyleClass(maximizeButton, RESTORE_STYLE_CLASS, maximized);
     }
 
+    private void onPostLayout() {
+        WindowOverlayMetrics metrics = this.metrics.get();
+        if (metrics == null
+                || metrics.size().getWidth() != currentTotalWidth
+                || metrics.size().getHeight() != currentTotalHeight) {
+            var newMetrics = new WindowOverlayMetrics(
+                HPos.RIGHT, new Dimension2D(currentTotalWidth, currentTotalHeight));
+
+            this.metrics.set(newMetrics);
+        }
+    }
+
     private void updateStyleClass() {
         boolean darkScene = isDarkBackground(getScene() != null ? getScene().getFill() : null);
         toggleStyleClass(minimizeButton, DARK_STYLE_CLASS, darkScene);
@@ -289,6 +311,9 @@ public final class WindowControlsOverlay extends Region {
         double minButtonHeight = boundedHeight(minimizeButton);
         double maxButtonHeight = boundedHeight(maximizeButton);
         double closeButtonHeight = boundedHeight(closeButton);
+
+        currentTotalWidth = minButtonWidth + maxButtonWidth + closeButtonWidth;
+        currentTotalHeight = Math.max(minButtonHeight, Math.max(maxButtonHeight, closeButtonHeight));
 
         layoutInArea(minimizeButton, getWidth() - minButtonWidth - maxButtonWidth - closeButtonWidth, 0,
                      minButtonWidth, minButtonHeight, BASELINE_OFFSET_SAME_AS_HEIGHT, HPos.LEFT, VPos.TOP);

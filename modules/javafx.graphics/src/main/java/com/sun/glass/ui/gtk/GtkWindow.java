@@ -32,8 +32,9 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
-import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.glass.ui.WindowControlsOverlay;
+import com.sun.glass.ui.WindowOverlayMetrics;
+import javafx.beans.value.ObservableValue;
 
 class GtkWindow extends Window {
 
@@ -206,9 +207,9 @@ class GtkWindow extends Window {
     private WindowControlsOverlay windowControlsOverlay;
 
     @Override
-    public WindowOverlayMetrics getWindowOverlayMetrics() {
+    public ObservableValue<WindowOverlayMetrics> windowOverlayMetrics() {
         var overlay = getWindowOverlay();
-        return overlay != null ? overlay.getMetrics() : null;
+        return overlay != null ? overlay.metricsProperty() : null;
     }
 
     @Override
