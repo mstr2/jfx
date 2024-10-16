@@ -544,10 +544,6 @@ LRESULT GlassWindow::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCMBUTTONDOWN:
         case WM_NCRBUTTONDOWN:
         case WM_NCXBUTTONDOWN:
-            if (wParam == HTCAPTION) {
-                break;
-            }
-
             UngrabFocus(); // ungrab itself
             CheckUngrab(); // check if other owned windows hierarchy holds the grab
 

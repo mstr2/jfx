@@ -36,7 +36,7 @@ import com.sun.glass.ui.WindowOverlayMetrics;
 import com.sun.javafx.binding.ObjectConstant;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Dimension2D;
-import javafx.geometry.HPos;
+import javafx.geometry.HorizontalDirection;
 import java.nio.ByteBuffer;
 
 /**
@@ -188,7 +188,7 @@ final class MacWindow extends Window {
     public ObservableValue<WindowOverlayMetrics> windowOverlayMetrics() {
         if (windowOverlayMetrics == null) {
             windowOverlayMetrics = ObjectConstant.valueOf(
-                new WindowOverlayMetrics(HPos.LEFT, new Dimension2D(68, 0)));
+                new WindowOverlayMetrics(HorizontalDirection.LEFT, new Dimension2D(68, 0)));
         }
 
         return windowOverlayMetrics;

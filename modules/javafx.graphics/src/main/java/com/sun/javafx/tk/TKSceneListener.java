@@ -119,7 +119,14 @@ public interface TKSceneListener {
 
     public void touchEventEnd();
 
-    public boolean dragAreaHitTest(double x, double y);
-
     public Accessible getSceneAccessible();
+
+    /**
+     * Tests whether the specified coordinate identifies a draggable area.
+     *
+     * @param x the X coordinate relative to the scene
+     * @param y the Y coordinate relative to the scene
+     * @return {@code true} if the area is draggable, {@code false} otherwise
+     */
+    public boolean dragAreaHitTest(double x, double y);
 }

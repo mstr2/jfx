@@ -23,6 +23,11 @@
  * questions.
  */
 
+.window-button-container {
+    -fx-button-placement: right;
+    -fx-allow-rtl: true;
+}
+
 .minimize-button,
 .maximize-button,
 .close-button {
@@ -58,15 +63,15 @@
     -fx-scale-shape: false;
 }
 
-.minimize-button:focused > .glyph,
-.maximize-button:focused > .glyph,
-.close-button:focused > .glyph {
+.minimize-button:active > .glyph,
+.maximize-button:active > .glyph,
+.close-button:active > .glyph {
     -fx-background-color: black;
 }
 
-.minimize-button.dark:focused > .glyph,
-.maximize-button.dark:focused > .glyph,
-.close-button.dark:focused > .glyph {
+.minimize-button.dark:active > .glyph,
+.maximize-button.dark:active > .glyph,
+.close-button.dark:active > .glyph {
     -fx-background-color: white;
 }
 

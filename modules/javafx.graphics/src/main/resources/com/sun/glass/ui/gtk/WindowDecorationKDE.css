@@ -23,6 +23,11 @@
  * questions.
  */
 
+.window-button-container {
+    -fx-button-placement: right;
+    -fx-allow-rtl: true;
+}
+
 .minimize-button,
 .maximize-button,
 .close-button {

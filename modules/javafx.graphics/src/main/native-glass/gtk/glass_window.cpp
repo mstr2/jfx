@@ -1403,6 +1403,8 @@ void WindowContextTop::notify_window_move() {
  * no non-client regions.
  */
 void WindowContextTop::process_mouse_button(GdkEventButton* event) {
+    // Non-EXTENDED or full-screen windows don't have additional behaviors, so we delegate
+    // directly to the base implementation.
     if (is_fullscreen || frame_type != EXTENDED || jwindow == NULL) {
         WindowContextBase::process_mouse_button(event);
         return;
@@ -1417,6 +1419,8 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
         if (dragArea) {
             set_maximized(!is_maximized);
         }
+
+        // We don't process the GDK_2BUTTON_PRESS event in the base implementation.
         return;
     }
 
@@ -1426,6 +1430,11 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
         // Clicking on a window edge starts a move-resize operation.
         if (shouldStartResizeDrag) {
+            // Send a synthetic PRESS + RELEASE to FX, which will dismiss open popup windows.
+//            WindowContextBase::process_mouse_button(event);
+//            event->type = GDK_BUTTON_RELEASE;
+//            WindowContextBase::process_mouse_button(event);
+
             gint rx = 0, ry = 0;
             gdk_window_get_root_coords(get_gdk_window(), event->x, event->y, &rx, &ry);
             gtk_window_begin_resize_drag(get_gtk_window(), edge, 1, rx, ry, event->time);
@@ -1438,6 +1447,11 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
         // Clicking on a draggable area starts a move-drag operation.
         if (shouldStartMoveDrag) {
+            // Send a synthetic PRESS + RELEASE to FX, which will dismiss open popup windows.
+//            WindowContextBase::process_mouse_button(event);
+//            event->type = GDK_BUTTON_RELEASE;
+//            WindowContextBase::process_mouse_button(event);
+
             gint rx = 0, ry = 0;
             gdk_window_get_root_coords(get_gdk_window(), event->x, event->y, &rx, &ry);
             gtk_window_begin_move_drag(get_gtk_window(), 1, rx, ry, event->time);

@@ -23,6 +23,11 @@
  * questions.
  */
 
+.window-button-container {
+    -fx-button-placement: right;
+    -fx-allow-rtl: true;
+}
+
 .minimize-button,
 .maximize-button,
 .close-button {
@@ -39,27 +44,27 @@
     -fx-background-color: #ffffff09;
 }
 
-.minimize-button:focused,
-.maximize-button:focused,
-.close-button:focused {
+.minimize-button:active,
+.maximize-button:active,
+.close-button:active {
     -fx-background-color: #00000015;
 }
 
-.minimize-button.dark:focused,
-.maximize-button.dark:focused,
-.close-button.dark:focused {
+.minimize-button.dark:active,
+.maximize-button.dark:active,
+.close-button.dark:active {
     -fx-background-color: #ffffff15
 }
 
-.minimize-button:focused:hover,
-.maximize-button:focused:hover,
-.close-button:focused:hover {
+.minimize-button:active:hover,
+.maximize-button:active:hover,
+.close-button:active:hover {
     -fx-background-color: #00000025;
 }
 
-.minimize-button.dark:focused:hover,
-.maximize-button.dark:focused:hover,
-.close-button.dark:focused:hover {
+.minimize-button.dark:active:hover,
+.maximize-button.dark:active:hover,
+.close-button.dark:active:hover {
     -fx-background-color: #ffffff25;
 }
 
@@ -84,15 +89,15 @@
     -fx-position-shape: false;
 }
 
-.minimize-button:focused > .glyph,
-.maximize-button:focused > .glyph,
-.close-button:focused > .glyph {
+.minimize-button:active > .glyph,
+.maximize-button:active > .glyph,
+.close-button:active > .glyph {
     -fx-background-color: #333;
 }
 
-.minimize-button.dark:focused > .glyph,
-.maximize-button.dark:focused > .glyph,
-.close-button.dark:focused > .glyph {
+.minimize-button.dark:active > .glyph,
+.maximize-button.dark:active > .glyph,
+.close-button.dark:active > .glyph {
     -fx-background-color: white;
 }
 

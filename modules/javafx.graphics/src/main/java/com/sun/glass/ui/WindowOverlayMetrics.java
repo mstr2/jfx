@@ -26,13 +26,20 @@
 package com.sun.glass.ui;
 
 import javafx.geometry.Dimension2D;
-import javafx.geometry.HPos;
+import javafx.geometry.HorizontalDirection;
+import javafx.stage.StageStyle;
 import java.util.Objects;
 
-public record WindowOverlayMetrics(HPos alignment, Dimension2D size) {
+/**
+ * Provides metrics about the window controls of {@link StageStyle#EXTENDED} windows.
+ *
+ * @param placement the placement of the window buttons
+ * @param size the size of the window buttons
+ */
+public record WindowOverlayMetrics(HorizontalDirection placement, Dimension2D size) {
 
     public WindowOverlayMetrics {
-        Objects.requireNonNull(alignment, "alignment cannot be null");
+        Objects.requireNonNull(placement, "placement cannot be null");
         Objects.requireNonNull(size, "size cannot be null");
     }
 }
