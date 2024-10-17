@@ -1430,10 +1430,12 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
         // Clicking on a window edge starts a move-resize operation.
         if (shouldStartResizeDrag) {
-            // Send a synthetic PRESS + RELEASE to FX, which will dismiss open popup windows.
-//            WindowContextBase::process_mouse_button(event);
-//            event->type = GDK_BUTTON_RELEASE;
-//            WindowContextBase::process_mouse_button(event);
+            // Send a synthetic PRESS + RELEASE to FX. This allows FX to do things that need to be done
+            // prior to resizing the window, like closing a popup menu. We do this because we won't be
+            // sending events to FX once the resize operation has started.
+            WindowContextBase::process_mouse_button(event);
+            event->type = GDK_BUTTON_RELEASE;
+            WindowContextBase::process_mouse_button(event);
 
             gint rx = 0, ry = 0;
             gdk_window_get_root_coords(get_gdk_window(), event->x, event->y, &rx, &ry);
@@ -1447,10 +1449,10 @@ void WindowContextTop::process_mouse_button(GdkEventButton* event) {
 
         // Clicking on a draggable area starts a move-drag operation.
         if (shouldStartMoveDrag) {
-            // Send a synthetic PRESS + RELEASE to FX, which will dismiss open popup windows.
-//            WindowContextBase::process_mouse_button(event);
-//            event->type = GDK_BUTTON_RELEASE;
-//            WindowContextBase::process_mouse_button(event);
+            // Send a synthetic PRESS + RELEASE to FX.
+            WindowContextBase::process_mouse_button(event);
+            event->type = GDK_BUTTON_RELEASE;
+            WindowContextBase::process_mouse_button(event);
 
             gint rx = 0, ry = 0;
             gdk_window_get_root_coords(get_gdk_window(), event->x, event->y, &rx, &ry);
