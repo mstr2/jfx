@@ -181,13 +181,19 @@ final class MacWindow extends Window {
         };
     }
 
+    private native boolean _isRightToLeftLayoutDirection();
+
     private ObservableValue<WindowOverlayMetrics> windowOverlayMetrics;
 
     @Override
     public ObservableValue<WindowOverlayMetrics> windowOverlayMetrics() {
         if (windowOverlayMetrics == null) {
+            HorizontalDirection direction = _isRightToLeftLayoutDirection()
+                ? HorizontalDirection.RIGHT
+                : HorizontalDirection.LEFT;
+
             windowOverlayMetrics = ObjectConstant.valueOf(
-                new WindowOverlayMetrics(HorizontalDirection.LEFT, new Dimension2D(78, 38)));
+                new WindowOverlayMetrics(direction, new Dimension2D(78, 38)));
         }
 
         return windowOverlayMetrics;

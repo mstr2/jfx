@@ -1501,3 +1501,28 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_mac_MacWindow__1performWindowDrag
     GLASS_POOL_EXIT;
     GLASS_CHECK_EXCEPTION(env);
 }
+
+/*
+ * Class:     com_sun_glass_ui_mac_MacWindow
+ * Method:    _isRightToLeftLayoutDirection
+ * Signature: ()Z;
+ */
+JNIEXPORT jboolean JNICALL Java_com_sun_glass_ui_mac_MacWindow__1isRightToLeftLayoutDirection
+(JNIEnv *env, jobject self)
+{
+    LOG("Java_com_sun_glass_ui_mac_MacWindow__1isRightToLeftLayoutDirection");
+    jboolean result = false;
+
+    GLASS_ASSERT_MAIN_JAVA_THREAD(env);
+    GLASS_POOL_ENTER;
+    {
+        NSString* preferredLanguage = [[NSLocale preferredLanguages] objectAtIndex:0];
+        NSLocale* locale = [NSLocale localeWithLocaleIdentifier:preferredLanguage];
+        NSString* languageCode = [locale objectForKey:NSLocaleLanguageCode];
+        result = [NSLocale characterDirectionForLanguage:languageCode] == NSLocaleLanguageDirectionRightToLeft;
+    }
+    GLASS_POOL_EXIT;
+    GLASS_CHECK_EXCEPTION(env);
+
+    return result;
+}
