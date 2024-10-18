@@ -173,7 +173,6 @@ final class MacWindow extends Window {
                         maximize(!isMaximized());
                     } else if (clickCount == 1) {
                         _performWindowDrag(getRawHandle());
-                        return true;
                     }
                 }
             }
@@ -188,7 +187,7 @@ final class MacWindow extends Window {
     public ObservableValue<WindowOverlayMetrics> windowOverlayMetrics() {
         if (windowOverlayMetrics == null) {
             windowOverlayMetrics = ObjectConstant.valueOf(
-                new WindowOverlayMetrics(HorizontalDirection.LEFT, new Dimension2D(68, 0)));
+                new WindowOverlayMetrics(HorizontalDirection.LEFT, new Dimension2D(78, 38)));
         }
 
         return windowOverlayMetrics;

@@ -25,6 +25,9 @@
 
 package javafx.stage;
 
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HeaderBar;
+
 /**
  * This enum defines the possible styles for a {@code Stage}.
  * @since JavaFX 2.0
@@ -69,8 +72,27 @@ public enum StageStyle {
     UNIFIED,
 
     /**
-     * Defines a {@code Stage} style in which the client area is extended into the non-client area,
-     * allowing applications to place scene graph nodes in the title bar area of the stage.
+     * Defines a {@code Stage} style in which the client area is extended into the header bar area, removing
+     * the separation between the two areas and allowing applications to place scene graph nodes in the header
+     * bar area of the stage.
+     * <p>
+     * An extended window has the default window buttons (minimize, maximize, close), but no system-provided
+     * draggable header bar. Applications need to provide their own header bar by placing the {@link HeaderBar}
+     * control in the scene graph. Usually, this is combined with a {@link BorderPane} root container:
+     * <pre>{@code
+     * public class MyApp extends Application {
+     *     @Override
+     *     public void start(Stage stage) {
+     *         var headerBar = new HeaderBar();
+     *         var root = new BorderPane();
+     *         root.setTop(headerBar);
+     *
+     *         stage.setScene(new Scene(root));
+     *         stage.initStyle(StageStyle.EXTENDED);
+     *         stage.show();
+     *     }
+     * }
+     * }</pre>
      *
      * @since 24
      */

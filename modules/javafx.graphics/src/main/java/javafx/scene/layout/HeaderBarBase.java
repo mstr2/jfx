@@ -43,7 +43,7 @@ import javafx.util.Subscription;
  * point for custom header bar implementations. This class enables the <em>drag to move</em> and
  * <em>double-click to maximize</em> behaviors that are usually afforded by system-provided header bars.
  * <p>
- * Client-area header bars are used as a replacement for system-provided header bars in stages
+ * Client-area header bars are used as a replacement for the system-provided header bar in stages
  * with the {@link StageStyle#EXTENDED} style.
  * <p>
  * Most application developers should use the {@link HeaderBar} implementation instead of

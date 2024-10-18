@@ -460,6 +460,8 @@ static jlong _createWindowCommonDo(JNIEnv *env, jobject jWindow, jlong jOwnerPtr
 
         if ((jStyleMask & com_sun_glass_ui_Window_EXTENDED) != 0) {
             [window->nsWindow setTitlebarAppearsTransparent:YES];
+            [window->nsWindow setToolbar:[NSToolbar new]];
+            [window->nsWindow setToolbarStyle:NSWindowToolbarStyleUnifiedCompact];
         }
 
         if ((jStyleMask & com_sun_glass_ui_Window_UNIFIED) != 0) {

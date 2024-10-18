@@ -34,9 +34,46 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
+import javafx.stage.StageStyle;
 
 /**
+ * A client-area header bar that is used as a replacement for the system-provided header bar in stages
+ * with the {@link StageStyle#EXTENDED} style. This class enables the <em>drag to move</em> and
+ * <em>double-click to maximize</em> behaviors that are usually afforded by system-provided header bars.
+ * <p>
+ * {@code HeaderBar} is also a layout container that allows applications to lay out scene graph nodes
+ * in three areas: left, center, and right. {@code HeaderBar} ensures that the left and right areas
+ * account for the default window buttons (minimize, maximize, close). The center area is laid out
+ * with respect to the window, so that nodes will appear centered in the window regardless of the
+ * platform-specific placement of default window buttons.
  *
+ * <h2>Optional layout constraints</h2>
+ * An application may set constraints on individual children to customize their layout.
+ * For each constraint, {@code HeaderBar} provides static getter and setter methods.
+ * <table style="white-space: nowrap">
+ *     <caption>Layout constraints of {@code HeaderBar}</caption>
+ *     <thead>
+ *         <tr><th>Constraint</th><th>Type</th><th>Description</th></tr>
+ *     </thead>
+ *     <tbody>
+ *         <tr><th>alignment</th><td>{@link Pos}</td>
+ *             <td>The alignment of the child within its area of the {@code HeaderBar}.</td>
+ *         </tr>
+ *         <tr><th>margin</th>
+ *             <td>{@link Insets}</td><td>Margin space around the outside of the child.</td>
+ *         </tr>
+ *     </tbody>
+ * </table>
+ *
+ * <h2>Example</h2>
+ * <pre>{@code
+ *     var button = new Button("My button");
+ *     HeaderBar.setAlignment(button, Pos.CENTER_LEFT);
+ *     HeaderBar.setMargin(button, new Insets(5));
+ *     myHeaderBar.setCenter(button);
+ * }</pre>
+ *
+ * @since 24
  */
 public class HeaderBar extends HeaderBarBase {
 
