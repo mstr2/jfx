@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Map;
 import javafx.application.Preloader.PreloaderNotification;
 import javafx.css.Stylesheet;
 import javafx.scene.Scene;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import com.sun.javafx.application.LauncherImpl;
@@ -537,5 +538,149 @@ public abstract class Application {
         } else {
             PlatformImpl.setPlatformUserAgentStylesheet(url);
         }
+    }
+
+    /**
+     * Gets the user-modifiable preferences of the current application.
+     * <p>
+     * The map returned from this method includes all platform preferences, and is updated by JavaFX
+     * when the operating system reports that a platform preference has changed. In contrast to
+     * {@link Platform#getPreferences()}, user code can override the mappings in the application
+     * preferences map. An overridden value always takes precedence over a platform-provided value.
+     *
+     * @return the {@code Preferences} instance
+     * @see Platform#getPreferences()
+     * @since 24
+     */
+    public static Preferences getPreferences() {
+        PlatformImpl.checkPreferencesSupport();
+        return PlatformImpl.getApplicationPreferences();
+    }
+
+    /**
+     * Contains the user-modifiable preferences of the current application.
+     *
+     * @see Platform.Preferences
+     * @since 24
+     */
+    public sealed interface Preferences extends Platform.Preferences
+            permits com.sun.javafx.application.preferences.ApplicationPreferences {
+
+        /**
+         * Overrides the value of the {@link #reducedMotionProperty() reducedMotion} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code reducedMotion} property to its platform-provided value.
+         * <p>
+         * Overriding this property will not override the key-value mapping that represents the
+         * reduced motion preference in the underlying map.
+         *
+         * @param reduced the reduced motion override, or {@code null} to clear the override
+         */
+        void setReducedMotion(Boolean reduced);
+
+        /**
+         * Overrides the value of the {@link #reducedTransparencyProperty() reducedTransparency} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code reducedTransparency} property to its platform-provided value.
+         * <p>
+         * Overriding this property will not override the key-value mapping that represents the
+         * reduced transparency preference in the underlying map.
+         *
+         * @param reduced the reduced transparency override, or {@code null} to clear the override
+         */
+        void setReducedTransparency(Boolean reduced);
+
+        /**
+         * Overrides the value of the {@link #colorSchemeProperty() colorScheme} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code colorScheme} property to its platform-provided value.
+         * <p>
+         * Note that {@code colorScheme} is a derived property: its value is computed by comparing
+         * the {@link #backgroundColorProperty() background} and {@link #foregroundColorProperty() foreground}
+         * properties. However, overriding the {@code colorScheme} property does not change the value
+         * of the {@code background} or {@code foreground} properties. If an application overrides the
+         * {@code colorScheme} property, it should also consider overriding {@code background} and
+         * {@code foreground} to match the value of the overridden {@code colorScheme} property.
+         *
+         * @param colorScheme the color scheme override, or {@code null} to clear the override
+         */
+        void setColorScheme(ColorScheme colorScheme);
+
+        /**
+         * Overrides the value of the {@link #backgroundColorProperty() backgroundColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code backgroundColor} property to its platform-provided value.
+         * <p>
+         * Overriding this property will not override the key-value mapping that represents the
+         * background color in the underlying map.
+         *
+         * @param color the background color override, or {@code null} to clear the override
+         */
+        void setBackgroundColor(Color color);
+
+        /**
+         * Overrides the value of the {@link #foregroundColorProperty() foregroundColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code foregroundColor} property to its platform-provided value.
+         * <p>
+         * Overriding this property will not override the key-value mapping that represents the
+         * foreground color in the underlying map.
+         *
+         * @param color the foreground color override, or {@code null} to clear the override
+         */
+        void setForegroundColor(Color color);
+
+        /**
+         * Overrides the value of the {@link #accentColorProperty() accentColor} property.
+         * <p>
+         * Specifying {@code null} clears the override, which restores the value of the
+         * {@code accentColor} property to its platform-provided value.
+         * <p>
+         * Overriding this property will not override the key-value mapping that represents the
+         * accent color in the underlying map.
+         *
+         * @param color the accent color override, or {@code null} to clear the override
+         */
+        void setAccentColor(Color color);
+
+        /**
+         * Overrides a preference mapping.
+         * <p>
+         * If a platform-provided mapping for the key already exists, calling this method overrides
+         * the value that is mapped to the key. If a platform-provided mapping for the key does not
+         * exist, this method creates a new mapping.
+         *
+         * @param key the key
+         * @param value the new value
+         * @throws NullPointerException if {@code key} or {@code value} is null
+         * @throws IllegalArgumentException if the specified value is not compatible with the declared
+         *                                  type of the mapping
+         * @return the previous value associated with {@code key}
+         */
+        @Override
+        Object put(String key, Object value);
+
+        /**
+         * Resets an overridden preference mapping to its platform-provided value.
+         * <p>
+         * If the preference is overridden, but the platform does not provide a mapping for the
+         * specified key, the mapping will be removed. If no mapping exists for the specified
+         * key, calling this method has no effect.
+         *
+         * @param key the key
+         * @throws NullPointerException if {@code key} is null
+         */
+        void reset(String key);
+
+        /**
+         * Resets all overridden preference mappings to their platform-provided values and removes
+         * all mappings for which the platform does not provide a default value.
+         */
+        void reset();
     }
 }

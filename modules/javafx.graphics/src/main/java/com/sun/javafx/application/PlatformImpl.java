@@ -28,6 +28,7 @@ package com.sun.javafx.application;
 import static com.sun.javafx.FXPermissions.CREATE_TRANSPARENT_WINDOW_PERMISSION;
 import com.sun.javafx.PlatformUtil;
 import com.sun.javafx.SecurityUtil;
+import com.sun.javafx.application.preferences.ApplicationPreferences;
 import com.sun.javafx.application.preferences.PlatformPreferences;
 import com.sun.javafx.application.preferences.PreferenceMapping;
 import com.sun.javafx.css.StyleManager;
@@ -942,6 +943,16 @@ public class PlatformImpl {
         return platformPreferences;
     }
 
+    private static ApplicationPreferences applicationPreferences;
+
+    public static ApplicationPreferences getApplicationPreferences() {
+        if (applicationPreferences == null) {
+            throw new IllegalStateException("Toolkit not initialized");
+        }
+
+        return applicationPreferences;
+    }
+
     /**
      * Called by Glass when the toolkit is initialized.
      *
@@ -953,6 +964,9 @@ public class PlatformImpl {
                                        Map<String, Object> preferences) {
         platformPreferences = new PlatformPreferences(platformKeys, platformKeyMappings);
         platformPreferences.update(preferences);
+
+        applicationPreferences = new ApplicationPreferences(platformKeys, platformKeyMappings);
+        applicationPreferences.update(preferences);
     }
 
     /**
@@ -968,6 +982,7 @@ public class PlatformImpl {
         if (isFxApplicationThread()) {
             checkHighContrastThemeChanged(preferences);
             platformPreferences.update(preferences);
+            applicationPreferences.update(preferences);
         } else {
             // Make a defensive copy in case the caller of this method decides to re-use or
             // modify its preferences map after the method returns. Don't use Map.copyOf

@@ -445,6 +445,7 @@ public final class Platform {
      * by JavaFX when the operating system reports that a platform preference has changed.
      *
      * @return the {@code Preferences} instance
+     * @see Application#getPreferences()
      * @see <a href="Platform.Preferences.html#preferences-table-windows">Windows preferences</a>
      * @see <a href="Platform.Preferences.html#preferences-table-macos">macOS preferences</a>
      * @see <a href="Platform.Preferences.html#preferences-table-linux">Linux preferences</a>
@@ -584,7 +585,7 @@ public final class Platform {
      * @since 22
      */
     public sealed interface Preferences extends ObservableMap<String, Object>
-            permits com.sun.javafx.application.preferences.PlatformPreferences {
+            permits Application.Preferences, com.sun.javafx.application.preferences.PlatformPreferences {
 
         /**
          * Specifies whether applications should minimize the amount of non-essential animations,

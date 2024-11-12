@@ -73,7 +73,7 @@ final class PreferenceProperties {
         return reducedMotion.get();
     }
 
-    public void setReducedMotion(boolean value) {
+    public void setReducedMotion(Boolean value) {
         reducedMotion.setValueOverride(value);
     }
 
@@ -85,7 +85,7 @@ final class PreferenceProperties {
         return reducedTransparency.get();
     }
 
-    public void setReducedTransparency(boolean value) {
+    public void setReducedTransparency(Boolean value) {
         reducedTransparency.setValueOverride(value);
     }
 

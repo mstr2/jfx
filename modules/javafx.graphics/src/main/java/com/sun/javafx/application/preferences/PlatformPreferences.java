@@ -51,31 +51,32 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * When the operating system signals that a preference has changed, the mappings are updated
  * by calling the {@link #update(Map)} method.
  */
-public final class PlatformPreferences extends AbstractMap<String, Object> implements Platform.Preferences {
-
+public sealed class PlatformPreferences extends AbstractMap<String, Object>
+                                        implements Platform.Preferences
+                                        permits ApplicationPreferences {
     /**
      * Contains mappings from platform-specific keys to their types. This information is
      * used to catch misuse of typed getters even if the preferences map doesn't contain
      * the preference mapping at runtime.
      */
-    private final Map<String, Class<?>> platformKeys;
+    final Map<String, Class<?>> platformKeys;
 
     /**
      * Contains mappings from platform-specific keys to well-known keys, which are used
      * in the implementation of the property-based API in {@link PreferenceProperties}.
      */
-    private final Map<String, PreferenceMapping<?>> platformKeyMappings;
+    final Map<String, PreferenceMapping<?>> platformKeyMappings;
 
     /**
      * Contains the current set of effective preferences, i.e. the set of preferences that
      * we know to be the current state of the world, and are exposed to users of this map.
      */
-    private final Map<String, Object> effectivePreferences = new HashMap<>();
-    private final Map<String, Object> unmodifiableEffectivePreferences = Collections.unmodifiableMap(effectivePreferences);
+    final Map<String, Object> effectivePreferences = new HashMap<>();
 
     /** Contains the implementation of the property-based API. */
-    private final PreferenceProperties properties = new PreferenceProperties(this);
+    final PreferenceProperties properties = new PreferenceProperties(this);
 
+    private final Map<String, Object> unmodifiableEffectivePreferences = Collections.unmodifiableMap(effectivePreferences);
     private final List<InvalidationListener> invalidationListeners = new CopyOnWriteArrayList<>();
     private final List<MapChangeListener<? super String, Object>> mapChangeListeners = new CopyOnWriteArrayList<>();
 
@@ -290,7 +291,7 @@ public final class PlatformPreferences extends AbstractMap<String, Object> imple
         }
     }
 
-    private void fireValueChangedEvent(Map<String, ChangedValue> changedEntries) {
+    void fireValueChangedEvent(Map<String, ChangedValue> changedEntries) {
         invalidationListeners.forEach(listener -> listener.invalidated(this));
         var change = new MapExpressionHelper.SimpleChange<>(this);
 
@@ -320,7 +321,7 @@ public final class PlatformPreferences extends AbstractMap<String, Object> imple
      * @param target the target type
      * @return {@code true} if a casting conversion exists, {@code false} otherwise
      */
-    private boolean isConvertible(Class<?> source, Class<?> target) {
+    boolean isConvertible(Class<?> source, Class<?> target) {
         if (source.isArray()) {
             return isArrayConvertible(source, target);
         }
