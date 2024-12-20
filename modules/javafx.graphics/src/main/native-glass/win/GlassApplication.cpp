@@ -183,9 +183,9 @@ LRESULT GlassApplication::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_SYSCOLORCHANGE:
         case WM_DWMCOLORIZATIONCOLORCHANGED:
             // Usually, the WM_THEMECHANGED and WM_SYSCOLORCHANGE messages are followed by other
-            // messages or WinRT callbacks that may affect platform preferences.
-            bool expectMoreChanges = (msg == WM_THEMECHANGED) || (msg == WM_SYSCOLORCHANGE);
-            if (m_platformSupport.updatePreferences(expectMoreChanges)) {
+            // messages or WinRT callbacks that may change platform preferences.
+            bool moreChangesExpected = (msg == WM_THEMECHANGED) || (msg == WM_SYSCOLORCHANGE);
+            if (m_platformSupport.updatePreferences(moreChangesExpected)) {
                 return 0;
             }
             break;
