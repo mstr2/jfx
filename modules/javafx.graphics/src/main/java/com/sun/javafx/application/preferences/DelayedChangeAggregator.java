@@ -62,11 +62,15 @@ public final class DelayedChangeAggregator {
      * @param delayMillis the delay period, in milliseconds
      */
     public synchronized void update(Map<String, Object> changeset, int delayMillis) {
-        int currentSerial = ++serial;
-        long newElapsedTimeNanos = nanoTimeSupplier.getAsLong() + (long)delayMillis * 1000000;
-        elapsedTimeNanos = Math.max(elapsedTimeNanos, newElapsedTimeNanos);
-        currentChangeSet.putAll(changeset);
-        delayedExecutor.execute(() -> update(currentSerial));
+        if (delayMillis > 0 || !currentChangeSet.isEmpty()) {
+            int currentSerial = ++serial;
+            long newElapsedTimeNanos = nanoTimeSupplier.getAsLong() + (long)delayMillis * 1000000;
+            elapsedTimeNanos = Math.max(elapsedTimeNanos, newElapsedTimeNanos);
+            currentChangeSet.putAll(changeset);
+            delayedExecutor.execute(() -> update(currentSerial));
+        } else {
+            changeConsumer.accept(changeset);
+        }
     }
 
     private synchronized void update(int expectedSerial) {

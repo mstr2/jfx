@@ -60,7 +60,10 @@ public:
     bool onSettingChanged(WPARAM, LPARAM) const;
 
 private:
-    static constexpr int DELAY_MILLIS = 1000;
+    /**
+     * Suggested aggregation delay for changes that come in over a period of time.
+     */
+    static constexpr int SUGGESTED_DELAY_MILLIS = 1000;
 
     JNIEnv* env;
     jobject application;
