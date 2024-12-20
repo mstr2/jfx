@@ -25,7 +25,6 @@
 
 package com.sun.javafx.application.preferences;
 
-import javafx.util.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -34,17 +33,15 @@ import java.util.function.LongSupplier;
 
 /**
  * Aggregates multiple subsequent sets of changes into a single changeset, and notifies a consumer.
- * Due to its delayed nature, the consumer may not be notified immediately when a changeset arrives.
+ * Due to its delayed nature, the consumer will not be notified immediately when a changeset arrives.
  */
 public final class DelayedChangeAggregator {
-
-    public static final Duration DELAY = Duration.millis(1000);
 
     private final Executor delayedExecutor;
     private final LongSupplier nanoTimeSupplier;
     private final Consumer<Map<String, Object>> changeConsumer;
     private final Map<String, Object> currentChangeSet;
-    private long followUpNanos;
+    private long elapsedTimeNanos;
     private int serial;
 
     public DelayedChangeAggregator(Consumer<Map<String, Object>> changeConsumer,
@@ -57,29 +54,24 @@ public final class DelayedChangeAggregator {
     }
 
     /**
-     * Aggregates a new set of changes into the current changeset.
-     * <p>
-     * If the current changeset is empty and {@code expectMoreChanges} is {@code false}, the new
-     * changeset is applied immediately. Otherwise, a follow-up operation is scheduled with the
-     * delayed executor.
+     * Integrates the specified changeset into the current changeset, and applies the current changeset
+     * after the specified delay period. The delay is added to the current time, but will not elapse
+     * before any previous delays are scheduled to elapse.
      *
-     * @param changeset the changed mappings
-     * @param expectMoreChanges indicates whether the caller expects more changes to come soon
+     * @param changeset the changeset
+     * @param delayMillis the delay period, in milliseconds
      */
-    public synchronized void update(Map<String, Object> changeset, boolean expectMoreChanges) {
-        if (expectMoreChanges || !currentChangeSet.isEmpty()) {
-            int currentSerial = ++serial;
-            currentChangeSet.putAll(changeset);
-            followUpNanos = nanoTimeSupplier.getAsLong() + (long)(DELAY.toMillis() * 1000000);
-            delayedExecutor.execute(() -> update(currentSerial));
-        } else {
-            changeConsumer.accept(changeset);
-        }
+    public synchronized void update(Map<String, Object> changeset, int delayMillis) {
+        int currentSerial = ++serial;
+        long newElapsedTimeNanos = nanoTimeSupplier.getAsLong() + (long)delayMillis * 1000000;
+        elapsedTimeNanos = Math.max(elapsedTimeNanos, newElapsedTimeNanos);
+        currentChangeSet.putAll(changeset);
+        delayedExecutor.execute(() -> update(currentSerial));
     }
 
     private synchronized void update(int expectedSerial) {
         if (expectedSerial == serial) {
-            if (nanoTimeSupplier.getAsLong() < followUpNanos) {
+            if (nanoTimeSupplier.getAsLong() < elapsedTimeNanos) {
                 delayedExecutor.execute(() -> update(expectedSerial));
             } else {
                 changeConsumer.accept(currentChangeSet);

@@ -333,7 +333,7 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinApplication_initIDs
     if (CheckAndClearException(env)) return;
 
     javaIDs.Application.notifyPreferencesChangedMID =
-        env->GetMethodID(cls, "notifyPreferencesChanged", "(Ljava/util/Map;Z)V");
+        env->GetMethodID(cls, "notifyPreferencesChanged", "(Ljava/util/Map;I)V");
     ASSERT(javaIDs.Application.notifyPreferencesChangedMID);
     if (CheckAndClearException(env)) return;
 

@@ -365,8 +365,8 @@ public final class QuantumToolkit extends Toolkit {
                 }
 
                 @Override
-                public void handlePreferencesChanged(Map<String, Object> preferences, boolean expectMoreChanges) {
-                    PlatformImpl.updatePreferences(preferences, expectMoreChanges);
+                public void handlePreferencesChanged(Map<String, Object> preferences, int suggestedDelayMillis) {
+                    PlatformImpl.updatePreferences(preferences, suggestedDelayMillis);
                 }
             });
         }

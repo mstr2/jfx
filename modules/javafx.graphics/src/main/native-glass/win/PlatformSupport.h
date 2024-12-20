@@ -52,14 +52,17 @@ public:
      * Collect all platform preferences and notify the JavaFX application when a preference has changed.
      * The change notification includes all preferences, not only the changed preferences.
      */
-    bool updatePreferences(bool expectMoreChanges) const;
+    bool updatePreferences(bool delayedChangesExpected) const;
 
     /**
      * Handles the WM_SETTINGCHANGE message.
-    */
+     */
     bool onSettingChanged(WPARAM, LPARAM) const;
 
 private:
+    static constexpr int SHORT_DELAY_MILLIS = 100;
+    static constexpr int LONG_DELAY_MILLIS = 1000;
+
     JNIEnv* env;
     jobject application;
     bool initialized;
