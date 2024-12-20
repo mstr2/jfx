@@ -225,7 +225,7 @@ static jobject currentPreferences = nil;
             (*env)->CallVoidMethod(
                 env, application,
                 javaIDs.MacApplication.notifyPreferencesChanged,
-                unmodifiablePreferences);
+                unmodifiablePreferences, 0);
             GLASS_CHECK_EXCEPTION(env);
 
             (*env)->DeleteLocalRef(env, unmodifiablePreferences);
