@@ -150,7 +150,7 @@ void PlatformSupport::updatePreferences() const {
             jCollectionsCls, jCollectionsUnmodifiableMap, newPreferences);
 
         if (!EXCEPTION_OCCURED(env)) {
-            env->CallVoidMethod(application, jApplicationNotifyPreferencesChanged, unmodifiablePreferences);
+            env->CallVoidMethod(application, jApplicationNotifyPreferencesChanged, unmodifiablePreferences, false);
             EXCEPTION_OCCURED(env);
 
             env->DeleteLocalRef(unmodifiablePreferences);
