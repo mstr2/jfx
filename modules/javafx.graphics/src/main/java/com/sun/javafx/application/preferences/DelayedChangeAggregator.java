@@ -33,7 +33,7 @@ import java.util.function.LongSupplier;
 
 /**
  * Aggregates multiple subsequent sets of changes into a single changeset, and notifies a consumer.
- * Due to its delayed nature, the consumer will not be notified immediately when a changeset arrives.
+ * Due to its delayed nature, the consumer may not be notified immediately when a changeset arrives.
  */
 public final class DelayedChangeAggregator {
 

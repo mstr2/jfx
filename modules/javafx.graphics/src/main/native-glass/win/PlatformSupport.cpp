@@ -152,9 +152,8 @@ bool PlatformSupport::updatePreferences(bool delayedChangesExpected) const
             javaClasses.Collections, javaIDs.Collections.unmodifiableMap, newPreferences);
 
         if (!CheckAndClearException(env)) {
-            int suggestedDelayMillis = delayedChangesExpected ? LONG_DELAY_MILLIS : SHORT_DELAY_MILLIS;
             env->CallVoidMethod(application, javaIDs.Application.notifyPreferencesChangedMID,
-                                unmodifiablePreferences, suggestedDelayMillis);
+                                unmodifiablePreferences, delayedChangesExpected ? DELAY_MILLIS : 0);
             env->DeleteLocalRef(unmodifiablePreferences);
             env->DeleteLocalRef(newPreferences);
             CheckAndClearException(env);

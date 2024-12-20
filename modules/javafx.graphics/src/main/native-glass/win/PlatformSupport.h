@@ -60,8 +60,7 @@ public:
     bool onSettingChanged(WPARAM, LPARAM) const;
 
 private:
-    static constexpr int SHORT_DELAY_MILLIS = 100;
-    static constexpr int LONG_DELAY_MILLIS = 1000;
+    static constexpr int DELAY_MILLIS = 1000;
 
     JNIEnv* env;
     jobject application;
