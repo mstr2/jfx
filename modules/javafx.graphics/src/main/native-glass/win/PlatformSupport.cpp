@@ -104,7 +104,7 @@ PlatformSupport::PlatformSupport(JNIEnv* env, jobject application)
         settings5->add_AutoHideScrollBarsChanged(
             Callback<ITypedEventHandler<UISettings*, UISettingsAutoHideScrollBarsChangedEventArgs*>>(
                 [this](IUISettings*, IUISettingsAutoHideScrollBarsChangedEventArgs*) {
-                    updatePreferences();
+                    updatePreferences(false);
                     return S_OK;
                 }).Get(),
             &token);
@@ -134,7 +134,7 @@ jobject PlatformSupport::collectPreferences() const
     return prefs;
 }
 
-bool PlatformSupport::updatePreferences() const
+bool PlatformSupport::updatePreferences(bool expectMoreChanges) const
 {
     if (!initialized) {
         return false;
@@ -152,7 +152,8 @@ bool PlatformSupport::updatePreferences() const
             javaClasses.Collections, javaIDs.Collections.unmodifiableMap, newPreferences);
 
         if (!CheckAndClearException(env)) {
-            env->CallVoidMethod(application, javaIDs.Application.notifyPreferencesChangedMID, unmodifiablePreferences);
+            env->CallVoidMethod(application, javaIDs.Application.notifyPreferencesChangedMID,
+                                unmodifiablePreferences, expectMoreChanges);
             env->DeleteLocalRef(unmodifiablePreferences);
             env->DeleteLocalRef(newPreferences);
             CheckAndClearException(env);
@@ -169,12 +170,14 @@ bool PlatformSupport::onSettingChanged(WPARAM wParam, LPARAM lParam) const
 {
     switch ((UINT)wParam) {
         case SPI_SETHIGHCONTRAST:
+            return updatePreferences(true);
+
         case SPI_SETCLIENTAREAANIMATION:
-            return updatePreferences();
+            return updatePreferences(false);
     }
 
     if (lParam != NULL && wcscmp(LPCWSTR(lParam), L"ImmersiveColorSet") == 0) {
-        return updatePreferences();
+        return updatePreferences(false);
     }
 
     return false;

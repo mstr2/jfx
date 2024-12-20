@@ -182,7 +182,10 @@ LRESULT GlassApplication::WindowProc(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_THEMECHANGED:
         case WM_SYSCOLORCHANGE:
         case WM_DWMCOLORIZATIONCOLORCHANGED:
-            if (m_platformSupport.updatePreferences()) {
+            // Usually, the WM_THEMECHANGED and WM_SYSCOLORCHANGE messages are followed by other
+            // messages or WinRT callbacks that may affect platform preferences.
+            bool expectMoreChanges = (msg == WM_THEMECHANGED) || (msg == WM_SYSCOLORCHANGE);
+            if (m_platformSupport.updatePreferences(expectMoreChanges)) {
                 return 0;
             }
             break;
@@ -330,7 +333,7 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinApplication_initIDs
     if (CheckAndClearException(env)) return;
 
     javaIDs.Application.notifyPreferencesChangedMID =
-        env->GetMethodID(cls, "notifyPreferencesChanged", "(Ljava/util/Map;)V");
+        env->GetMethodID(cls, "notifyPreferencesChanged", "(Ljava/util/Map;Z)V");
     ASSERT(javaIDs.Application.notifyPreferencesChangedMID);
     if (CheckAndClearException(env)) return;
 

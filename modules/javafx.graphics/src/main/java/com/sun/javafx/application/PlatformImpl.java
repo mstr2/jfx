@@ -27,6 +27,7 @@ package com.sun.javafx.application;
 
 import com.sun.javafx.PlatformUtil;
 import com.sun.javafx.SecurityUtil;
+import com.sun.javafx.application.preferences.DelayedChangeAggregator;
 import com.sun.javafx.application.preferences.PlatformPreferences;
 import com.sun.javafx.application.preferences.PreferenceMapping;
 import com.sun.javafx.css.StyleManager;
@@ -913,6 +914,7 @@ public class PlatformImpl {
     }
 
     private static PlatformPreferences platformPreferences;
+    private static DelayedChangeAggregator platformPreferencesAggregator;
 
     public static PlatformPreferences getPlatformPreferences() {
         if (platformPreferences == null) {
@@ -933,6 +935,10 @@ public class PlatformImpl {
                                        Map<String, Object> preferences) {
         platformPreferences = new PlatformPreferences(platformKeys, platformKeyMappings);
         platformPreferences.update(preferences);
+        platformPreferencesAggregator = new DelayedChangeAggregator(
+            platformPreferences::update,
+            Toolkit.getToolkit().getPrimaryTimer()::nanos,
+            PlatformImpl::runLater);
     }
 
     /**
@@ -943,17 +949,18 @@ public class PlatformImpl {
      * was removed, the corresponding key is mapped to {@code null}.
      *
      * @param preferences a map that includes the changed preferences
+     * @param expectMoreChanges a hint from the native implementation that more changes may be coming soon
      */
-    public static void updatePreferences(Map<String, Object> preferences) {
+    public static void updatePreferences(Map<String, Object> preferences, boolean expectMoreChanges) {
         if (isFxApplicationThread()) {
             checkHighContrastThemeChanged(preferences);
-            platformPreferences.update(preferences);
+            platformPreferencesAggregator.update(preferences, expectMoreChanges);
         } else {
             // Make a defensive copy in case the caller of this method decides to re-use or
             // modify its preferences map after the method returns. Don't use Map.copyOf
             // because the preferences map may contain null values.
             Map<String, Object> preferencesCopy = new HashMap<>(preferences);
-            runLater(() -> updatePreferences(preferencesCopy));
+            runLater(() -> updatePreferences(preferencesCopy, expectMoreChanges));
         }
     }
 

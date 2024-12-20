@@ -52,7 +52,7 @@ public:
      * Collect all platform preferences and notify the JavaFX application when a preference has changed.
      * The change notification includes all preferences, not only the changed preferences.
      */
-    bool updatePreferences() const;
+    bool updatePreferences(bool expectMoreChanges) const;
 
     /**
      * Handles the WM_SETTINGCHANGE message.
