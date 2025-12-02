@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import javafx.application.ConditionalFeature;
 import javafx.geometry.Dimension2D;
@@ -142,6 +143,11 @@ public class StubToolkit extends Toolkit {
     @Override
     public boolean init() {
         return true;
+    }
+
+    @Override
+    public ExecutorService getRendererService() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 
 #include "RoActivationSupport.h"
+#include <DispatcherQueue.h>
 #include <utility>
 #include <comdef.h>
 #include <winstring.h>
@@ -33,20 +34,26 @@ namespace
 {
     typedef HRESULT WINAPI FnRoInitialize(RO_INIT_TYPE initType);
     typedef void WINAPI FnRoUninitialize();
+    typedef BOOL WINAPI FnRoOriginateError(HRESULT error, HSTRING message);
     typedef HRESULT WINAPI FnRoActivateInstance(HSTRING activatableClassId, IInspectable** instance);
     typedef HRESULT WINAPI FnRoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void** factory);
     typedef HRESULT WINAPI FnWindowsCreateString(PCNZWCH sourceString, UINT32 length, HSTRING* string);
     typedef HRESULT WINAPI FnWindowsDeleteString(HSTRING string);
+    typedef HRESULT WINAPI FnCreateDispatcherQueueController(DispatcherQueueOptions options,
+                                                             ABI::Windows::System::IDispatcherQueueController **controller);
 
     bool initialized = false;
-    const char* moduleNotFoundMessage = "WinRT: %s not found\n";
+    bool coreMessagingInitialized = false;
     HMODULE hLibComBase = NULL;
+    HMODULE hLibCoreMessaging = NULL;
     FnRoInitialize* pRoInitialize = NULL;
     FnRoUninitialize* pRoUninitialize = NULL;
+    FnRoOriginateError* pRoOriginateError = NULL;
     FnRoActivateInstance* pRoActivateInstance = NULL;
     FnRoGetActivationFactory* pRoGetActivationFactory = NULL;
     FnWindowsCreateString* pWindowsCreateString = NULL;
     FnWindowsDeleteString* pWindowsDeleteString = NULL;
+    FnCreateDispatcherQueueController* pCreateDispatcherQueueController = NULL;
 
     template<class T>
     bool loadFunction(HMODULE lib, T*& fnptr, const char* name)
@@ -60,6 +67,33 @@ namespace
 
         return true;
     }
+
+    HMODULE loadLibrary(const wchar_t* name)
+    {
+        wchar_t path[MAX_PATH];
+        wchar_t file[MAX_PATH];
+
+        UINT pathSize = sizeof(path) / sizeof(wchar_t);
+        UINT rval = GetSystemDirectoryW(path, pathSize);
+        if (rval == 0 || rval >= pathSize) {
+            fprintf(stderr, "WinRT: Failed to fetch system directory");
+            return NULL;
+        }
+
+        memcpy_s(file, sizeof(file), path, sizeof(path));
+        if (wcscat_s(file, MAX_PATH-1, L"\\combase.dll") != 0) {
+            fwprintf(stderr, L"WinRT: Failed to form path to %s", name);
+            return NULL;
+        }
+
+        HMODULE library = LoadLibraryW(file);
+        if (!library) {
+            fwprintf(stderr, L"WinRT: %s not found\n", name);
+            return NULL;
+        }
+
+        return library;
+    }
 }
 
 void tryInitializeRoActivationSupport()
@@ -68,31 +102,15 @@ void tryInitializeRoActivationSupport()
         return;
     }
 
-    wchar_t path[MAX_PATH];
-    wchar_t file[MAX_PATH];
-
-    UINT pathSize = sizeof(path) / sizeof(wchar_t);
-    UINT rval = GetSystemDirectoryW(path, pathSize);
-    if (rval == 0 || rval >= pathSize) {
-        fprintf(stderr, "WinRT: Failed to fetch system directory");
-        return;
-    }
-
-    memcpy_s(file, sizeof(file), path, sizeof(path));
-    if (wcscat_s(file, MAX_PATH-1, L"\\combase.dll") != 0) {
-        fprintf(stderr, "WinRT: Failed to form path to combase.dll");
-        return;
-    }
-
-    hLibComBase = LoadLibraryW(file);
+    hLibComBase = loadLibrary(L"combase.dll");
     if (!hLibComBase) {
-        fprintf(stderr, moduleNotFoundMessage, "combase.dll");
         return;
     }
 
     bool loaded =
         loadFunction(hLibComBase, pRoInitialize, "RoInitialize") &&
         loadFunction(hLibComBase, pRoUninitialize, "RoUninitialize") &&
+        loadFunction(hLibComBase, pRoOriginateError, "RoOriginateError") &&
         loadFunction(hLibComBase, pRoActivateInstance, "RoActivateInstance") &&
         loadFunction(hLibComBase, pRoGetActivationFactory, "RoGetActivationFactory") &&
         loadFunction(hLibComBase, pWindowsCreateString, "WindowsCreateString") &&
@@ -100,15 +118,25 @@ void tryInitializeRoActivationSupport()
 
     if (!loaded) {
         uninitializeRoActivationSupport();
-    } else {
-        HRESULT res = RoInitialize(RO_INIT_SINGLETHREADED);
-        if (FAILED(res)) {
-            fprintf(stderr, RoException("RoInitialize failed: ", res).message());
-            uninitializeRoActivationSupport();
-        } else {
-            initialized = true;
-        }
+        return;
     }
+
+    HRESULT res = RoInitialize(RO_INIT_SINGLETHREADED);
+    if (FAILED(res)) {
+        fprintf(stderr, RoException("RoInitialize failed: ", res).message());
+        uninitializeRoActivationSupport();
+        return;
+    }
+
+    initialized = true;
+
+    hLibCoreMessaging = loadLibrary(L"coremessaging.dll");
+    if (!hLibCoreMessaging) {
+        return;
+    }
+
+    coreMessagingInitialized =
+        loadFunction(hLibCoreMessaging, pCreateDispatcherQueueController, "CreateDispatcherQueueController");
 }
 
 void uninitializeRoActivationSupport()
@@ -118,22 +146,34 @@ void uninitializeRoActivationSupport()
     }
 
     initialized = false;
+    coreMessagingInitialized = false;
 
     if (hLibComBase) {
         FreeLibrary(hLibComBase);
         hLibComBase = NULL;
         pRoInitialize = NULL;
         pRoUninitialize = NULL;
+        pRoOriginateError = NULL;
         pRoActivateInstance = NULL;
         pRoGetActivationFactory = NULL;
         pWindowsCreateString = NULL;
         pWindowsDeleteString = NULL;
+    }
+
+    if (hLibCoreMessaging) {
+        FreeLibrary(hLibCoreMessaging);
+        pCreateDispatcherQueueController = NULL;
     }
 }
 
 bool isRoActivationSupported()
 {
     return initialized;
+}
+
+bool isCoreMessagingSupported()
+{
+    return coreMessagingInitialized;
 }
 
 HRESULT WINAPI RoInitialize(RO_INIT_TYPE initType)
@@ -144,6 +184,10 @@ HRESULT WINAPI RoInitialize(RO_INIT_TYPE initType)
 void WINAPI RoUninitialize()
 {
     pRoUninitialize();
+}
+
+BOOL WINAPI RoOriginateError(HRESULT error, HSTRING message) {
+    return pRoOriginateError(error, message);
 }
 
 HRESULT WINAPI RoActivateInstance(HSTRING activatableClassId, IInspectable** instance)
@@ -164,6 +208,13 @@ HRESULT WINAPI WindowsCreateString(PCNZWCH sourceString, UINT32 length, HSTRING*
 HRESULT WINAPI WindowsDeleteString(HSTRING string)
 {
     return pWindowsDeleteString(string);
+}
+
+HRESULT WINAPI CreateDispatcherQueueController(DispatcherQueueOptions options,
+                                               ABI::Windows::System::IDispatcherQueueController **controller) {
+    return pCreateDispatcherQueueController != NULL
+        ? pCreateDispatcherQueueController(options, controller)
+        : E_NOTIMPL;
 }
 
 hstring::hstring(const char* str) : hstr_(NULL)

@@ -41,7 +41,7 @@ public final class PrismSettings {
     public static final boolean trace;
     public static final boolean metalDebug;
     public static final boolean printAllocs;
-    public static final boolean isVsyncEnabled;
+    public static boolean isVsyncEnabled;
     public static final boolean dirtyOptsEnabled;
     public static final boolean occlusionCullingEnabled;
     public static final boolean scrollCacheOpt;

@@ -50,6 +50,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import com.sun.glass.ui.CommonDialogs.FileChooserResult;
 import com.sun.glass.ui.GlassRobot;
@@ -78,6 +79,11 @@ final public class DummyToolkit extends Toolkit {
     @Override
     public boolean init() {
         return true;
+    }
+
+    @Override
+    public ExecutorService getRendererService() {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override

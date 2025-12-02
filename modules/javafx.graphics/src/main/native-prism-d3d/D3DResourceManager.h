@@ -91,9 +91,11 @@ private:
 class D3DResource : public IManagedResource {
 public:
                          D3DResource(IDirect3DResource9 *pRes)
-                             { Init(pRes, NULL); }
+                             { Init(pRes, NULL, 0); }
+                         D3DResource(IDirect3DResource9 *pRes, HANDLE sharedHandle)
+                             { Init(pRes, NULL, sharedHandle); }
                          D3DResource(IDirect3DSwapChain9 *pSC)
-                             { Init(NULL, pSC); }
+                             { Init(NULL, pSC, 0); }
     IDirect3DResource9*  GetResource() { return pResource; }
     IDirect3DTexture9*   GetTexture() { return pTexture; }
     IDirect3DSurface9*   GetSurface() { return pSurface; }
@@ -101,6 +103,7 @@ public:
     void                 SetDepthSurface(IDirect3DSurface9* pDB) { pDepthSurface = pDB; }
     IDirect3DSwapChain9* GetSwapChain() { return pSwapChain; }
     D3DSURFACE_DESC*     GetDesc() { return &desc; }
+    HANDLE               GetSharedHandle() { return sharedHandle; }
     virtual BOOL         IsDefaultPool();
 
 protected:
@@ -108,7 +111,7 @@ protected:
     // ResourceManager
 virtual                 ~D3DResource();
 virtual void             Release();
-    void                 Init(IDirect3DResource9*, IDirect3DSwapChain9*);
+    void                 Init(IDirect3DResource9*, IDirect3DSwapChain9*, HANDLE);
 
 private:
     // prevents accidental bad things like copying the object
@@ -122,6 +125,7 @@ private:
     IDirect3DTexture9*   pTexture;
 
     D3DSURFACE_DESC      desc;
+    HANDLE               sharedHandle;
 };
 
 class D3DPixelShaderResource : public IManagedResource {
@@ -192,13 +196,14 @@ public:
     HRESULT ReleaseResource(IManagedResource* pResource);
 
     HRESULT CreateTexture(UINT width, UINT height,
-                          BOOL isRTT, BOOL isOpaque, BOOL useMipmap,
+                          BOOL isRTT, BOOL isOpaque, BOOL useMipmap, BOOL shared,
                           D3DFORMAT *pFormat/*in/out*/,
                           DWORD dwUsage,
                           D3DResource **ppTextureResource/*out*/);
 
     HRESULT D3DResourceManager::CreateRenderTarget(UINT width, UINT height,
                                   BOOL isOpaque,
+                                  BOOL shared,
                                   D3DFORMAT *pFormat,
                                   D3DMULTISAMPLE_TYPE msType,
                                   D3DResource **ppSurfaceResource);

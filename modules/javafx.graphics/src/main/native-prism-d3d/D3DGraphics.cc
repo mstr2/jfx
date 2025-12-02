@@ -30,6 +30,7 @@
 
 #include "com_sun_prism_d3d_D3DGraphics.h"
 #include "com_sun_prism_d3d_D3DSwapChain.h"
+#include "com_sun_prism_d3d_D3DOffscreenPresentable.h"
 #include "com_sun_prism_d3d_D3DContext.h"
 
 /*
@@ -49,10 +50,26 @@ JNIEXPORT jint JNICALL Java_com_sun_prism_d3d_D3DSwapChain_nPresent
 
     RETURN_STATUS_IF_NULL(pSwapChainRes, E_FAIL);
 
-    pCtx->EndScene();
+    pCtx->EndScene(false);
 
     RECT r = { 0, 0, pSwapChainRes->GetDesc()->Width, pSwapChainRes->GetDesc()->Height };
     return pSwapChainRes->GetSwapChain()->Present(0, &r, 0, 0, 0);
+}
+
+/*
+ * Class:     com_sun_prism_d3d_D3DOffscreenPresentable
+ * Method:    nPresent
+ */
+JNIEXPORT jint JNICALL Java_com_sun_prism_d3d_D3DOffscreenPresentable_nPresent
+  (JNIEnv *, jclass, jlong ctx)
+{
+    TraceLn(NWT_TRACE_INFO, "D3DOffscreenPresentable_nPresent");
+
+    D3DContext *pCtx = (D3DContext*)jlong_to_ptr(ctx);
+
+    RETURN_STATUS_IF_NULL(pCtx, E_FAIL);
+
+    return pCtx->EndScene(true);
 }
 
 void setIntField(JNIEnv *env, jobject object, jclass clazz, const char *name, int value);

@@ -30,9 +30,25 @@
 
 // d3d9.dll library dynamic load
 HMODULE hLibD3D9 = 0;
+HMODULE hLibD3D11 = 0;
+HMODULE hLibDXGI = 0;
+
 typedef HRESULT WINAPI FnDirect3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex**);
+typedef HRESULT WINAPI FnCreateDXGIFactory(REFIID riid, void **ppFactory);
+typedef HRESULT WINAPI FnD3D11CreateDevice(IDXGIAdapter* pAdapter,
+                                           D3D_DRIVER_TYPE DriverType,
+                                           HMODULE Software,
+                                           UINT Flags,
+                                           const D3D_FEATURE_LEVEL* pFeatureLevels,
+                                           UINT FeatureLevels,
+                                           UINT SDKVersion,
+                                           ID3D11Device** ppDevice,
+                                           D3D_FEATURE_LEVEL* pFeatureLevel,
+                                           ID3D11DeviceContext** ppImmediateContext);
 
 FnDirect3DCreate9Ex * pD3D9FactoryExFunction = 0;
+FnD3D11CreateDevice * pD3D11FactoryFunction = 0;
+FnCreateDXGIFactory * pCreateDXGIFactoryFunction = 0;
 
 static jboolean checkAndClearException(JNIEnv *env) {
     if (!env->ExceptionCheck()) {
@@ -44,12 +60,29 @@ static jboolean checkAndClearException(JNIEnv *env) {
 
 void loadD3DLibrary() {
     wchar_t path[MAX_PATH];
+
     if (::GetSystemDirectory(path, sizeof(path) / sizeof(wchar_t)) != 0) {
-        wcscat_s(path, MAX_PATH-1, L"\\d3d9.dll");
-        hLibD3D9 = ::LoadLibrary(path);
+        wchar_t file[MAX_PATH];
+        memcpy_s(file, sizeof(file), path, sizeof(path));
+        wcscat_s(file, MAX_PATH-1, L"\\d3d9.dll");
+        hLibD3D9 = ::LoadLibraryW(file);
+
+        memcpy_s(file, sizeof(file), path, sizeof(path));
+        wcscat_s(file, MAX_PATH-1, L"\\dxgi.dll");
+        hLibDXGI = ::LoadLibraryW(file);
+
+        memcpy_s(file, sizeof(file), path, sizeof(path));
+        wcscat_s(file, MAX_PATH-1, L"\\d3d11.dll");
+        hLibD3D11 = ::LoadLibraryW(file);
     }
+
     if (hLibD3D9) {
         pD3D9FactoryExFunction = (FnDirect3DCreate9Ex*)GetProcAddress(hLibD3D9, "Direct3DCreate9Ex");
+    }
+
+    if (hLibDXGI && hLibD3D11) {
+        pCreateDXGIFactoryFunction = (FnCreateDXGIFactory*)GetProcAddress(hLibDXGI, "CreateDXGIFactory");
+        pD3D11FactoryFunction = (FnD3D11CreateDevice*)GetProcAddress(hLibD3D11, "D3D11CreateDevice");
     }
 }
 
@@ -59,12 +92,41 @@ void freeD3DLibrary() {
         hLibD3D9 = 0;
         pD3D9FactoryExFunction = 0;
     }
+
+    if (hLibD3D11) {
+        ::FreeLibrary(hLibD3D11);
+        hLibD3D11 = 0;
+        pD3D11FactoryFunction = 0;
+    }
+
+    if (hLibDXGI) {
+        ::FreeLibrary(hLibDXGI);
+        hLibDXGI = 0;
+        pCreateDXGIFactoryFunction = 0;
+    }
 }
 
 IDirect3D9Ex * Direct3DCreate9Ex() {
     IDirect3D9Ex * pD3D = 0;
     HRESULT hr = pD3D9FactoryExFunction ? pD3D9FactoryExFunction(D3D_SDK_VERSION, &pD3D) : E_FAIL;
     return SUCCEEDED(hr) ? pD3D : 0;
+}
+
+ID3D11Device * D3D11CreateDevice(IDXGIAdapter* adapter) {
+    ID3D11Device* pd3dDevice = 0;
+    HRESULT hr = pD3D11FactoryFunction
+        ? pD3D11FactoryFunction(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, D3D11_CREATE_DEVICE_SINGLETHREADED,
+                                NULL, 0, D3D11_SDK_VERSION, &pd3dDevice, NULL, NULL)
+        : E_FAIL;
+   return SUCCEEDED(hr) ? pd3dDevice : 0;
+}
+
+IDXGIFactory * CreateDXGIFactory() {
+    IDXGIFactory* pFactory = 0;
+    HRESULT hr = pCreateDXGIFactoryFunction
+        ? pCreateDXGIFactoryFunction(__uuidof(IDXGIFactory), (void**)&pFactory)
+        : E_FAIL;
+    return SUCCEEDED(hr) ? pFactory : 0;
 }
 
 #ifndef STATIC_BUILD

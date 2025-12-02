@@ -41,6 +41,7 @@ class D3DRTTexture extends D3DTexture
     implements D3DRenderTarget, RTTexture, ReadbackRenderTarget
 {
 
+    private final long sharedHandle;
     private boolean opaque;
 
     D3DRTTexture(D3DContext context, WrapMode wrapMode, long pResource,
@@ -51,18 +52,20 @@ class D3DRTTexture extends D3DTexture
               physicalWidth, physicalHeight,
               contentWidth, contentHeight, true);
         this.opaque = false;
+        this.sharedHandle = 0;
     }
 
     D3DRTTexture(D3DContext context, WrapMode wrapMode, long pResource,
                  int physicalWidth, int physicalHeight,
                  int contentX, int contentY,
                  int contentWidth, int contentHeight,
-                 int samples)
+                 int samples, long sharedHandle)
     {
         super(context, PixelFormat.INT_ARGB_PRE, wrapMode, pResource,
               physicalWidth, physicalHeight,
               contentX, contentY, contentWidth, contentHeight, true, samples, false);
         this.opaque = false;
+        this.sharedHandle = sharedHandle;
     }
 
     @Override
@@ -178,5 +181,9 @@ class D3DRTTexture extends D3DTexture
     @Override
     public boolean isMSAA() {
         return resource.getResource().getSamples() != 0;
+    }
+
+    public long getSharedHandle() {
+        return sharedHandle;
     }
 }

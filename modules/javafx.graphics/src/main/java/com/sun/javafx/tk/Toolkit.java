@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import com.sun.glass.ui.CommonDialogs.FileChooserResult;
 import com.sun.glass.ui.GlassRobot;
@@ -292,6 +293,12 @@ public abstract class Toolkit {
     }
 
     public abstract boolean init();
+
+    public abstract ExecutorService getRendererService();
+
+    public boolean isDCompositionEnabled() {
+        return false;
+    }
 
     /**
      * Indicates whether a nested event loop can be started from the current thread in the current state.

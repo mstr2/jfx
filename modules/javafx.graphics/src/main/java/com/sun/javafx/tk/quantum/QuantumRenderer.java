@@ -25,128 +25,39 @@
 
 package com.sun.javafx.tk.quantum;
 
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.sun.glass.ui.Application;
-import com.sun.glass.ui.Screen;
 import com.sun.javafx.tk.CompletionListener;
 import com.sun.javafx.tk.RenderJob;
+import com.sun.javafx.tk.quantum.win.CompositionQuantumRenderer;
 import com.sun.prism.GraphicsPipeline;
 import com.sun.prism.GraphicsResource;
 import com.sun.prism.Presentable;
 import com.sun.prism.ResourceFactory;
 import com.sun.prism.impl.PrismSettings;
-import com.sun.scenario.effect.impl.Renderer;
-import com.sun.scenario.effect.impl.prism.PrFilterContext;
-import java.util.HashMap;
 
 /*
  * Quantum Renderer
  */
-final class QuantumRenderer extends ThreadPoolExecutor  {
-    private static boolean usePurgatory = // TODO - deprecate
+public interface QuantumRenderer extends ExecutorService {
+
+    boolean usePurgatory = // TODO - deprecate
         Boolean.getBoolean("decora.purgatory");
 
-    private static final AtomicReference<QuantumRenderer> instanceReference =
-                                    new AtomicReference<>(null);
+    boolean useDComposition = Boolean.getBoolean("quantum.dcomposition");
 
-    private Thread          _renderer;
-    private Throwable       _initThrowable = null;
-    private CountDownLatch  initLatch = new CountDownLatch(1);
+    AtomicReference<QuantumRenderer> instanceReference = new AtomicReference<>(null);
 
-    private QuantumRenderer() {
-        super(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
-        setThreadFactory(new QuantumThreadFactory());
-    }
+    Thread getThread();
 
-    protected Throwable initThrowable() {
-        return _initThrowable;
-    }
+    Throwable initThrowable();
 
-    private void setInitThrowable(Throwable th) {
-        _initThrowable = th;
-    }
+    void setInitThrowable(Throwable th);
 
-    private class PipelineRunnable implements Runnable {
-        private Runnable    work;
-
-        public PipelineRunnable(Runnable runner) {
-            work = runner;
-        }
-
-        public void init() {
-            try {
-                if (GraphicsPipeline.createPipeline() == null) {
-                    String MSG = "Error initializing QuantumRenderer: no suitable pipeline found";
-                    System.err.println(MSG);
-                    throw new RuntimeException(MSG);
-                } else {
-                    Map device = GraphicsPipeline.getPipeline().getDeviceDetails();
-                    if (device == null) {
-                        device = new HashMap();
-                    }
-                    device.put(com.sun.glass.ui.View.Capability.kHiDPIAwareKey,
-                               PrismSettings.allowHiDPIScaling);
-                    Map map =  Application.getDeviceDetails();
-                    if (map != null) {
-                        device.putAll(map);
-                    }
-                    Application.setDeviceDetails(device);
-                }
-            } catch (Throwable th) {
-                QuantumRenderer.this.setInitThrowable(th);
-            } finally {
-                initLatch.countDown();
-            }
-        }
-
-        public void cleanup() {
-            GraphicsPipeline pipeline = GraphicsPipeline.getPipeline();
-            if (pipeline != null) {
-                pipeline.dispose();
-            }
-        }
-
-        @Override public void run() {
-            try {
-                init();
-                work.run();
-            } finally {
-                cleanup();
-            }
-        }
-    }
-
-    private class QuantumThreadFactory implements ThreadFactory {
-        final AtomicInteger threadNumber = new AtomicInteger(0);
-
-        @Override public Thread newThread(Runnable r) {
-            final PipelineRunnable pipeline = new PipelineRunnable(r);
-            Thread th = new Thread(pipeline);
-            th.setName("QuantumRenderer-" + threadNumber.getAndIncrement());
-            th.setDaemon(true);
-            th.setUncaughtExceptionHandler((t, thr) -> {
-                System.err.println(t.getName() + " uncaught: " + thr.getClass().getName());
-                thr.printStackTrace();
-            });
-            _renderer = th;
-
-            assert threadNumber.get() == 1;
-
-            return _renderer;
-        }
-    }
-
-    protected void createResourceFactory() {
+    default void createResourceFactory() {
         final CountDownLatch createLatch = new CountDownLatch(1);
 
         final CompletionListener createDone = job -> createLatch.countDown();
@@ -171,8 +82,8 @@ final class QuantumRenderer extends ThreadPoolExecutor  {
      * Dispose the native GraphicsResource of the Presentable on the
      * render thread.  This method can be called from the FX thread
      */
-    protected void disposePresentable(final Presentable presentable) {
-        assert !Thread.currentThread().equals(_renderer);
+    default void disposePresentable(final Presentable presentable) {
+        assert !Thread.currentThread().equals(getThread());
 
         if (presentable instanceof GraphicsResource) {
             final GraphicsResource resource = (GraphicsResource)presentable;
@@ -185,7 +96,7 @@ final class QuantumRenderer extends ThreadPoolExecutor  {
         }
     }
 
-    protected void stopRenderer() {
+    default void stopRenderer() {
         shutdown();
 
         if (PrismSettings.verbose) {
@@ -202,32 +113,11 @@ final class QuantumRenderer extends ThreadPoolExecutor  {
         instanceReference.set(null);
     }
 
-    @Override protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
-        return (RenderJob)runnable;
-    }
-
-    protected Future submitRenderJob(RenderJob r) {
+    default Future submitRenderJob(RenderJob r) {
         return (submit(r));
     }
 
-    /* java.util.concurrent.ThreadPoolExecutor */
-
-    @Override public void afterExecute(Runnable r, Throwable t) {
-        super.afterExecute(r, t);
-
-        /*
-         * clean up what we can after every render job
-         *
-         * we should really be keeping RenderJob/Scene pools
-         */
-        if (usePurgatory) {
-            Screen screen = Screen.getMainScreen();
-            Renderer renderer = Renderer.getRenderer(PrFilterContext.getInstance(screen));
-            renderer.releasePurgatory();
-        }
-    }
-
-    void checkRendererIdle() {
+    default void checkRendererIdle() {
         if (PrismSettings.threadCheck) {
             PaintCollector collector = PaintCollector.getInstance();
             final boolean busy = ViewPainter.renderLock.isLocked() &&
@@ -239,42 +129,45 @@ final class QuantumRenderer extends ThreadPoolExecutor  {
                 for (StackTraceElement s : QuantumToolkit.getFxUserThread().getStackTrace()) {
                     System.err.println("FX: " + s);
                 }
-                for (StackTraceElement q : _renderer.getStackTrace()) {
+                for (StackTraceElement q : getThread().getStackTrace()) {
                     System.err.println("QR: " + q);
                 }
             }
         }
     }
 
-    public static synchronized QuantumRenderer getInstance() {
-        if (instanceReference.get() == null) {
-            synchronized (QuantumRenderer.class) {
-                QuantumRenderer newTk = null;
-                try {
-                    newTk = new QuantumRenderer();
-                    newTk.prestartCoreThread();
-
-                    newTk.initLatch.await();
-                } catch (Throwable t) {
-                    if (newTk != null) {
-                        newTk.setInitThrowable(t);
+    static QuantumRenderer getInstance() {
+        synchronized (instanceReference) {
+            if (instanceReference.get() == null) {
+                synchronized (QuantumRenderer.class) {
+                    QuantumRenderer newTk = null;
+                    try {
+                        if (!useDComposition) {
+                            newTk = new CompositionQuantumRenderer();
+                        } else {
+                            newTk = new DefaultQuantumRenderer();
+                        }
+                    } catch (Throwable t) {
+                        if (newTk != null) {
+                            newTk.setInitThrowable(t);
+                        }
+                        if (PrismSettings.verbose) {
+                            t.printStackTrace();
+                        }
                     }
-                    if (PrismSettings.verbose) {
-                        t.printStackTrace();
+                    if (newTk != null && newTk.initThrowable() != null) {
+                        if (PrismSettings.noFallback) {
+                            System.err.println("Cannot initialize a graphics pipeline, and Prism fallback is disabled");
+                            throw new InternalError("Could not initialize prism toolkit, " +
+                                "and the fallback is disabled.");
+                        } else {
+                            throw new RuntimeException(newTk.initThrowable());
+                        }
                     }
+                    instanceReference.set(newTk);
                 }
-                if (newTk != null && newTk.initThrowable() != null) {
-                    if (PrismSettings.noFallback) {
-                        System.err.println("Cannot initialize a graphics pipeline, and Prism fallback is disabled");
-                        throw new InternalError("Could not initialize prism toolkit, " +
-                                                "and the fallback is disabled.");
-                    } else {
-                        throw new RuntimeException(newTk.initThrowable());
-                    }
-                }
-                instanceReference.set(newTk);
             }
+            return instanceReference.get();
         }
-        return instanceReference.get();
     }
 }

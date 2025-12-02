@@ -32,11 +32,13 @@ import com.sun.glass.ui.Pixels;
 import com.sun.glass.ui.Screen;
 import com.sun.glass.ui.View;
 import com.sun.glass.ui.Window;
+import com.sun.javafx.tk.Toolkit;
+import com.sun.javafx.tk.quantum.win.CompositionQuantumRenderer;
 
 /**
  * MS Windows platform implementation class for Window.
  */
-class WinWindow extends Window {
+public class WinWindow extends Window {
     public static final int RESIZE_DISABLE = 0;
     public static final int RESIZE_AROUND_ANCHOR = 1;
     public static final int RESIZE_TO_FX_ORIGIN = 2;
@@ -47,6 +49,8 @@ class WinWindow extends Window {
     private float fxReqHeight;
     private int pfReqWidth;
     private int pfReqHeight;
+
+    private WinCompositionLayer compositionLayer;
 
     private native static void _initIDs();
     static {
@@ -59,6 +63,19 @@ class WinWindow extends Window {
         if (isExtendedWindow()) {
             prefHeaderButtonHeightProperty().subscribe(this::onPrefHeaderButtonHeightChanged);
         }
+
+        if (Toolkit.getToolkit().isDCompositionEnabled()) {
+            initializeCompositionLayer();
+        }
+    }
+
+    private void initializeCompositionLayer() {
+        WinCompositor compositor = ((CompositionQuantumRenderer)Toolkit.getToolkit().getRendererService()).getCompositor();
+        compositionLayer = compositor.createCompositionLayer(getRawHandle());
+    }
+
+    public WinCompositionLayer getCompositionLayer() {
+        return compositionLayer;
     }
 
     @Override
@@ -270,6 +287,15 @@ class WinWindow extends Window {
         super.notifyResize(type, width, height);
     }
 
+    @Override
+    protected void notifyDestroy() {
+        if (compositionLayer != null) {
+            compositionLayer.dispose();
+        }
+
+        super.notifyDestroy();
+    }
+
     native protected boolean _setBackground2(long ptr, float r, float g, float b);
     @Override
     protected boolean _setBackground(long ptr, float r, float g, float b) {
@@ -290,7 +316,12 @@ class WinWindow extends Window {
     native private long _getInsets(long ptr);
     native private long _getAnchor(long ptr);
     native private void _showSystemMenu(long ptr, int x, int y);
-    @Override native protected long _createWindow(long ownerPtr, long screenPtr, int mask);
+
+    @Override protected long _createWindow(long ownerPtr, long screenPtr, int mask) {
+        return _createWindow(ownerPtr, screenPtr, mask, Toolkit.getToolkit().isDCompositionEnabled());
+    }
+
+    native protected long _createWindow(long ownerPtr, long screenPtr, int mask, boolean composition);
     @Override native protected boolean _close(long ptr);
     @Override native protected boolean _setView(long ptr, View view);
     @Override native protected void _updateViewSize(long ptr);

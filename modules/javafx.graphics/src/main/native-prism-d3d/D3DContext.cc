@@ -35,6 +35,10 @@
 #include "D3DMesh.h"
 #include "D3DMeshView.h"
 #include "D3DPhongMaterial.h"
+
+IDXGIFactory* CreateDXGIFactory();
+ID3D11Device* D3D11CreateDevice(IDXGIAdapter*);
+
 using std::cout;
 using std::endl;
 /**
@@ -86,6 +90,8 @@ D3DContext::D3DContext(IDirect3D9Ex *pd3d9, UINT adapter)
     TraceLn1(NWT_TRACE_VERBOSE, "  pd3d9=0x%x", pd3d9);
     pd3dObject = pd3d9;
     pd3dDevice = NULL;
+    pd3d11Device = NULL;
+    d3d11DeviceInitialized = FALSE;
     adapterOrdinal = adapter;
     defaulResourcePool = D3DPOOL_SYSTEMMEM;
 
@@ -130,7 +136,7 @@ void D3DContext::ReleaseContextResources(int releaseType)
         return;
     }
 
-    EndScene();
+    EndScene(false);
 
     if (releaseType == RELEASE_DEFAULT) {
         if (pVertexBufferRes != NULL && pVertexBufferRes->IsDefaultPool()) {
@@ -155,12 +161,15 @@ int D3DContext::release() {
     TraceLn2(NWT_TRACE_INFO,
                 "~D3DContext: pd3dDevice=0x%x, pd3dObject =0x%x",
                 pd3dDevice, pd3dObject);
+    SAFE_RELEASE(pEventQuery);
     ReleaseContextResources(RELEASE_ALL);
     for (int i = 0; i < NUM_TEXTURE_CACHE; i++) {
         SAFE_RELEASE(textureCache[i].surface);
         SAFE_RELEASE(textureCache[i].texture);
     }
     SAFE_RELEASE(pd3dDevice);
+    SAFE_RELEASE(pd3d11Device);
+    d3d11DeviceInitialized = FALSE;
 
     if (phongShader) {
         delete phongShader;
@@ -651,6 +660,43 @@ HRESULT D3DContext::createIndexBuffer() {
     return hr;
 }
 
+ID3D11Device* D3DContext::Get3DDevice11() {
+    if (!d3d11DeviceInitialized && pd3dObject != NULL) {
+        IDXGIAdapter* adapter = NULL;
+        LUID adapterLuid;
+
+        if (SUCCEEDED(pd3dObject->GetAdapterLUID(adapterOrdinal, &adapterLuid))) {
+            IDXGIFactory* factory = CreateDXGIFactory();
+
+            if (factory != NULL) {
+                IDXGIAdapter* pAdapter;
+                DXGI_ADAPTER_DESC desc;
+
+                for (UINT i = 0; factory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
+                    if (SUCCEEDED(pAdapter->GetDesc(&desc)) &&
+                            desc.AdapterLuid.LowPart == adapterLuid.LowPart &&
+                            desc.AdapterLuid.HighPart == adapterLuid.HighPart) {
+                        adapter = pAdapter;
+                        break;
+                    } else {
+                        pAdapter->Release();
+                    }
+                }
+
+                factory->Release();
+            }
+        }
+
+        if (adapter != NULL) {
+            pd3d11Device = D3D11CreateDevice(adapter);
+            adapter->Release();
+        }
+    }
+
+    d3d11DeviceInitialized = TRUE;
+    return pd3d11Device;
+}
+
 HRESULT D3DContext::InitDevice(IDirect3DDevice9Ex *pd3dDevice)
 {
 #if defined PERF_COUNTERS
@@ -660,6 +706,11 @@ HRESULT D3DContext::InitDevice(IDirect3DDevice9Ex *pd3dDevice)
     RETURN_STATUS_IF_NULL(pd3dDevice, S_FALSE);
 
     HRESULT res = S_OK;
+
+    if (FAILED(pd3dDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pEventQuery))) {
+        pEventQuery = NULL;
+    }
+
 
     pd3dDevice->GetDeviceCaps(&devCaps);
 
@@ -1255,12 +1306,27 @@ HRESULT D3DContext::BeginScene()
     return S_OK;
 }
 
-HRESULT D3DContext::EndScene()
+HRESULT D3DContext::EndScene(bool flushCommandBuffer)
 {
     if (bBeginScenePending) {
         bBeginScenePending = FALSE;
         TraceLn(NWT_TRACE_INFO, "D3DContext::EndScene");
-        return pd3dDevice->EndScene();
+
+        HRESULT res = pd3dDevice->EndScene();
+        if (!flushCommandBuffer) {
+            return res;
+        }
+
+        res = pEventQuery->Issue(D3DISSUE_END);
+        if (FAILED(res)) {
+            return res;
+        }
+
+        while ((res = pEventQuery->GetData(NULL, 0, D3DGETDATA_FLUSH)) == S_FALSE) {
+            // wait until the command buffer queue is empty
+        }
+
+        return res;
     }
     return S_OK;
 }

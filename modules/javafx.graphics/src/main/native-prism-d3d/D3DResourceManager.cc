@@ -34,10 +34,11 @@
  * D3DRTYPE_INDEXBUFFER
  */
 void
-D3DResource::Init(IDirect3DResource9 *pRes, IDirect3DSwapChain9 *pSC)
+D3DResource::Init(IDirect3DResource9 *pRes, IDirect3DSwapChain9 *pSC, HANDLE handle)
 {
     TraceLn(NWT_TRACE_INFO, "D3DResource::Init");
 
+    sharedHandle = handle;
     pDepthSurface = NULL;
     pResource  = NULL;
     pSwapChain = pSC;
@@ -322,7 +323,7 @@ D3DResourceManager::CreateVertexBuffer(D3DVertexBufferResource** ppVBRes)
 
 HRESULT
 D3DResourceManager::CreateTexture(UINT width, UINT height,
-                                  BOOL isRTT, BOOL isOpaque, BOOL useMipmap,
+                                  BOOL isRTT, BOOL isOpaque, BOOL useMipmap, BOOL shared,
                                   D3DFORMAT *pFormat, DWORD dwUsage,
                                   D3DResource **ppTextureResource)
 {
@@ -384,11 +385,12 @@ D3DResourceManager::CreateTexture(UINT width, UINT height,
      }
 
     IDirect3DTexture9 *pTexture = NULL;
+    HANDLE sharedHandle = 0;
     HRESULT res = pd3dDevice->CreateTexture(width, height, 1/*levels*/, dwUsage,
-                                    format, pool, &pTexture, 0);
+                                    format, pool, &pTexture, shared ? &sharedHandle : NULL);
     if (SUCCEEDED(res)) {
         TraceLn1(NWT_TRACE_VERBOSE, "  created texture: 0x%x", pTexture);
-        *ppTextureResource = new D3DResource((IDirect3DResource9*)pTexture);
+        *ppTextureResource = new D3DResource((IDirect3DResource9*)pTexture, sharedHandle);
         res = AddResource(*ppTextureResource);
     } else {
         DebugPrintD3DError(res, "D3DRM::CreateTexture failed");
@@ -405,6 +407,7 @@ D3DResourceManager::CreateTexture(UINT width, UINT height,
 
 HRESULT D3DResourceManager::CreateRenderTarget(UINT width, UINT height,
                                                BOOL isOpaque,
+                                               BOOL shared,
                                                D3DFORMAT *pFormat,
                                                D3DMULTISAMPLE_TYPE msType,
                                                D3DResource **ppSurfaceResource)
@@ -457,13 +460,14 @@ HRESULT D3DResourceManager::CreateRenderTarget(UINT width, UINT height,
     BOOL lockable = false;
     DWORD multisampleQuality = totalSamples - 1;
     IDirect3DSurface9 *pSurface = NULL;
+    HANDLE sharedHandle = 0;
 
     res = pd3dDevice->CreateRenderTarget(width, height, format,
-            msType, multisampleQuality, lockable, &pSurface, NULL);
+            msType, multisampleQuality, lockable, &pSurface, shared ? &sharedHandle : NULL);
 
     if (SUCCEEDED(res)) {
         TraceLn1(NWT_TRACE_VERBOSE, "  created render target surface: 0x%x", pSurface);
-        *ppSurfaceResource = new D3DResource((IDirect3DResource9*)pSurface);
+        *ppSurfaceResource = new D3DResource((IDirect3DResource9*)pSurface, sharedHandle);
         res = AddResource(*ppSurfaceResource);
     } else {
         DebugPrintD3DError(res, "D3DRM::CreateRenderTarget failed");

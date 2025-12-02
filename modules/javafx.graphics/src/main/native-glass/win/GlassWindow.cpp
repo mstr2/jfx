@@ -42,6 +42,7 @@
 #include "com_sun_glass_ui_win_WinWindow.h"
 
 #define ABM_GETAUTOHIDEBAREX 0x0000000b // multimon aware autohide bars
+#define WS_EX_NOREDIRECTIONBITMAP 0x00200000
 
 // Helper LEAVE_MAIN_THREAD for GlassWindow
 #define LEAVE_MAIN_THREAD_WITH_hWnd  \
@@ -1436,10 +1437,10 @@ JNIEXPORT void JNICALL Java_com_sun_glass_ui_win_WinWindow__1initIDs
 /*
  * Class:     com_sun_glass_ui_win_WinWindow
  * Method:    _createWindow
- * Signature: (JJZI)J
+ * Signature: (JJIZ)J
  */
 JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
-    (JNIEnv *env, jobject jThis, jlong ownerPtr, jlong screenPtr, jint mask)
+    (JNIEnv *env, jobject jThis, jlong ownerPtr, jlong screenPtr, jint mask, boolean useDirectComposition)
 {
     ENTER_MAIN_THREAD_AND_RETURN(jlong)
     {
@@ -1489,6 +1490,11 @@ JNIEXPORT jlong JNICALL Java_com_sun_glass_ui_win_WinWindow__1createWindow
 
         if (mask & com_sun_glass_ui_Window_RIGHT_TO_LEFT) {
             dwExStyle |= WS_EX_NOINHERITLAYOUT | WS_EX_LAYOUTRTL;
+        }
+
+        // If we're using DirectComposition, we don't need a GDI surface to draw on.
+        if (useDirectComposition) {
+            dwExStyle |= WS_EX_NOREDIRECTIONBITMAP;
         }
 
         GlassWindow *pWindow =

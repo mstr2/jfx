@@ -38,6 +38,8 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import com.sun.glass.ui.Screen;
+import com.sun.glass.ui.win.WinWindow;
+import com.sun.javafx.tk.Toolkit;
 import com.sun.prism.Image;
 import com.sun.prism.MediaFrame;
 import com.sun.prism.Mesh;
@@ -181,7 +183,7 @@ class D3DResourceFactory extends BaseShaderFactory {
         }
         long pResource = nCreateTexture(context.getContextHandle(),
                                         format.ordinal(), usagehint.ordinal(),
-                                        false /*isRTT*/, allocw, alloch, 0, useMipmap);
+                                        false /*isRTT*/, allocw, alloch, 0, useMipmap, false);
         if (pResource == 0L) {
             return null;
         }
@@ -254,7 +256,7 @@ class D3DResourceFactory extends BaseShaderFactory {
             }
             long pResource = nCreateTexture(context.getContextHandle(),
                     texFormat.ordinal(), Usage.DYNAMIC.ordinal(),
-                    false, texWidth, texHeight, 0, false);
+                    false, texWidth, texHeight, 0, false, false);
             if (0 == pResource) {
                 return null;
             }
@@ -303,6 +305,10 @@ class D3DResourceFactory extends BaseShaderFactory {
 
     @Override
     public D3DRTTexture createRTTexture(int width, int height, WrapMode wrapMode, boolean msaa) {
+        return createRTTexture(width, height, wrapMode, msaa, false);
+    }
+
+    public D3DRTTexture createRTTexture(int width, int height, WrapMode wrapMode, boolean msaa, boolean shared) {
         if (checkDisposed()) return null;
 
         if (PrismSettings.verbose && context.isLost()) {
@@ -345,15 +351,16 @@ class D3DResourceFactory extends BaseShaderFactory {
         long pResource = nCreateTexture(context.getContextHandle(),
                                         format.ordinal(),
                                         Usage.DEFAULT.ordinal(),
-                                        true /*isRTT*/, createw, createh, aaSamples, false);
+                                        true /*isRTT*/, createw, createh, aaSamples, false, shared);
         if (pResource == 0L) {
             return null;
         }
 
         int texw = nGetTextureWidth(pResource);
         int texh = nGetTextureHeight(pResource);
+        long sharedHandle = nGetSharedHandle(pResource);
         D3DRTTexture rtt = new D3DRTTexture(context, wrapMode, pResource, texw, texh,
-                                            cx, cy, width, height, aaSamples);
+                                            cx, cy, width, height, aaSamples, sharedHandle);
         // ensure the RTTexture is cleared to all zeros before returning
         // (Decora relies on the Java2D behavior, where an image is expected
         // to be fully transparent after initialization)
@@ -366,9 +373,15 @@ class D3DResourceFactory extends BaseShaderFactory {
         if (checkDisposed()) return null;
 
         if (PrismSettings.verbose && context.isLost()) {
-            System.err.println("SwapChain allocation while the device is lost");
+            System.err.println("Presentable allocation while the device is lost");
         }
 
+        return Toolkit.getToolkit().isDCompositionEnabled()
+            ? createOffscreenPresentable(pState)
+            : createSwapChain(pState);
+    }
+
+    private Presentable createSwapChain(PresentableState pState) {
         long pResource = nCreateSwapChain(context.getContextHandle(),
                                           pState.getNativeView(),
                                           PrismSettings.isVsyncEnabled);
@@ -387,8 +400,29 @@ class D3DResourceFactory extends BaseShaderFactory {
 
             D3DResourceFactory.nReleaseResource(context.getContextHandle(), pResource);
         }
-        return null;
 
+        return null;
+    }
+
+    private Presentable createOffscreenPresentable(PresentableState pState) {
+        WinWindow window = (WinWindow)pState.getWindow();
+        int width = pState.getRenderWidth();
+        int height = pState.getRenderHeight();
+        D3DRTTexture rtt = createRTTexture(width, height, WrapMode.CLAMP_NOT_NEEDED, pState.isMSAA(), true);
+
+        if (rtt != null) {
+            if (PrismSettings.dirtyOptsEnabled) {
+                rtt.contentsUseful();
+            }
+
+            long handle = context.getContextHandle();
+
+            return new D3DOffscreenPresentable(
+                nGetDevice11(handle), window.getCompositionLayer(), context, rtt,
+                pState.getRenderScaleX(), pState.getRenderScaleY());
+        }
+
+        return null;
     }
 
     private static ByteBuffer getBuffer(InputStream is) {
@@ -554,13 +588,14 @@ class D3DResourceFactory extends BaseShaderFactory {
                                       int format, int hint,
                                       boolean isRTT,
                                       int width, int height, int samples,
-                                      boolean useMipmap);
+                                      boolean useMipmap, boolean shared);
     static native long nCreateSwapChain(long pContext, long hwnd,
                                         boolean isVsyncEnabled);
     static native int nReleaseResource(long pContext, long resource);
     static native int nGetMaximumTextureSize(long pContext);
     static native int nGetTextureWidth(long pResource);
     static native int nGetTextureHeight(long pResource);
+    static native int nGetSharedHandle(long pResource);
     static native int nReadPixelsI(long pContext, long pResource,
                                     long length,
                                     Buffer pixels, int[] arr,
@@ -587,5 +622,6 @@ class D3DResourceFactory extends BaseShaderFactory {
                                       int srcw, int srch, int srcscan);
 
     static native long nGetDevice(long pContext);
+    static native long nGetDevice11(long pContext);
     static native long nGetNativeTextureObject(long pResource);
 }

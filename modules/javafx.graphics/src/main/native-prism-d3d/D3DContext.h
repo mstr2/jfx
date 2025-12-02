@@ -132,6 +132,8 @@ public:
 
     IDirect3DDevice9Ex *Get3DDevice() { return pd3dDevice; }
 
+    ID3D11Device *Get3DDevice11();
+
     IDirect3D9Ex *Get3DObject() { return pd3dObject; }
 
     D3DMATRIX *GetViewProjTx() { return &projection; }
@@ -194,7 +196,7 @@ public:
      * Flushes the vertex queue and does end scene if
      * a BeginScene is pending
      */
-    HRESULT EndScene();
+    HRESULT EndScene(bool flushCommandBuffer);
 
 #if defined PERF_COUNTERS
     struct FrameStats {
@@ -262,9 +264,13 @@ private:
     HRESULT InitDevice(IDirect3DDevice9Ex *d3dDevice);
     HRESULT createIndexBuffer();
     HRESULT InitContextCaps();
+
+    IDirect3DQuery9         *pEventQuery;
     IDirect3DDevice9Ex      *pd3dDevice;
+    ID3D11Device            *pd3d11Device;
     IDirect3DSurface9       *currentSurface;
     IDirect3D9Ex            *pd3dObject;
+    BOOL                    d3d11DeviceInitialized;
 
     D3DPOOL defaulResourcePool;
 

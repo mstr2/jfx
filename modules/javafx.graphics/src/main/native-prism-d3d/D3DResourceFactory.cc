@@ -65,7 +65,7 @@ JNIEXPORT jlong JNICALL
 Java_com_sun_prism_d3d_D3DResourceFactory_nCreateTexture
   (JNIEnv *env, jclass klass,
         jlong ctx, jint formatHint, jint usageHint, jboolean isRTT,
-        jint width, jint height, jint samples, jboolean useMipmap)
+        jint width, jint height, jint samples, jboolean useMipmap, jboolean shared)
 {
     TraceLn6(NWT_TRACE_INFO,
              "nCreateTexture formatHint=%d usageHint=%d isRTT=%d w=%d h=%d useMipmap=%d",
@@ -118,10 +118,10 @@ Java_com_sun_prism_d3d_D3DResourceFactory_nCreateTexture
     if (samples) {
         // assert isRTT == true
         D3DMULTISAMPLE_TYPE msType = static_cast<D3DMULTISAMPLE_TYPE>(samples);
-        res = pMgr->CreateRenderTarget(width, height, isOpaque,
+        res = pMgr->CreateRenderTarget(width, height, isOpaque, shared,
                 &format, msType, &pTexResource);
     } else {
-        res = pMgr->CreateTexture(width, height, isRTT, isOpaque, useMipmap,
+        res = pMgr->CreateTexture(width, height, isRTT, isOpaque, useMipmap, shared,
                 &format, dwUsage, &pTexResource);
     }
     if (SUCCEEDED(res)) {
@@ -229,6 +229,20 @@ JNIEXPORT jint JNICALL Java_com_sun_prism_d3d_D3DResourceFactory_nGetTextureHeig
     RETURN_STATUS_IF_NULL(pResource, -1);
 
     return (jint)pResource->GetDesc()->Height;
+}
+
+/*
+ * Class:     com_sun_prism_d3d_D3DResourceFactory
+ * Method:    nGetSharedHandle
+ * Signature: (J)J
+ */
+JNIEXPORT jlong JNICALL Java_com_sun_prism_d3d_D3DResourceFactory_nGetSharedHandle
+  (JNIEnv *, jclass, jlong resource)
+{
+    D3DResource *pResource = (D3DResource*)jlong_to_ptr(resource);
+    RETURN_STATUS_IF_NULL(pResource, -1);
+
+    return (jlong)pResource->GetSharedHandle();
 }
 
 /*
@@ -424,7 +438,7 @@ static HRESULT D3DResourceFactory_nReadPixels(D3DContext *pCtx, D3DResource *pRe
     if (SUCCEEDED(res)) {
         IDirect3DSurface9 *pTmpSurface = pLockableRes->GetSurface();
 
-        pCtx->EndScene();
+        pCtx->EndScene(false);
 
         res = pd3dDevice->GetRenderTargetData(pSrc, pTmpSurface);
         if (SUCCEEDED(res)) {
@@ -567,6 +581,15 @@ JNIEXPORT jlong JNICALL Java_com_sun_prism_d3d_D3DResourceFactory_nGetDevice
     RETURN_STATUS_IF_NULL(pCtx, 0L);
 
     return jlong(pCtx->Get3DDevice());
+}
+
+JNIEXPORT jlong JNICALL Java_com_sun_prism_d3d_D3DResourceFactory_nGetDevice11
+  (JNIEnv *env, jclass, jlong context)
+{
+    D3DContext *pCtx = (D3DContext*)jlong_to_ptr(context);
+    RETURN_STATUS_IF_NULL(pCtx, 0L);
+
+    return jlong(pCtx->Get3DDevice11());
 }
 
 JNIEXPORT jlong JNICALL Java_com_sun_prism_d3d_D3DResourceFactory_nGetNativeTextureObject

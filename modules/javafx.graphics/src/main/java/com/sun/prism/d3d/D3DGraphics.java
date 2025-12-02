@@ -47,7 +47,7 @@ class D3DGraphics extends BaseShaderGraphics implements D3DContextSource {
         ret.preTranslate(-0.5, -0.5, 0.0);
     }
 
-    static Graphics create(RenderTarget target, D3DContext context) {
+    static D3DGraphics create(RenderTarget target, D3DContext context) {
         if (target == null) {
             return null;
         }
