@@ -54,23 +54,23 @@ public final class WindowRelocator {
      * </ul>
      * Enabled constraints reduce the usable area for placement by the given insets.
      */
-    public static WindowLocationAlgorithm newRelocationAlgorithm(Screen userScreen,
+    public static WindowLocationAlgorithm newRelocationAlgorithm(Screen screen,
                                                                  AnchorPoint screenAnchor,
                                                                  Insets screenPadding,
                                                                  AnchorPoint stageAnchor,
                                                                  AnchorPolicy anchorPolicy) {
+        Objects.requireNonNull(screen, "screen cannot be null");
         Objects.requireNonNull(screenAnchor, "screenAnchor cannot be null");
         Objects.requireNonNull(screenPadding, "screenPadding cannot be null");
         Objects.requireNonNull(stageAnchor, "stageAnchor cannot be null");
         Objects.requireNonNull(anchorPolicy, "anchorPolicy cannot be null");
 
-        return (windowScreen, windowWidth, windowHeight) -> {
+        return (_, windowWidth, windowHeight) -> {
             double screenX, screenY;
             double gravityX, gravityY;
-            Screen currentScreen = Objects.requireNonNullElse(userScreen, windowScreen);
-            Rectangle2D currentBounds = Utils.hasFullScreenStage(currentScreen)
-                ? currentScreen.getBounds()
-                : currentScreen.getVisualBounds();
+            Rectangle2D currentBounds = Utils.hasFullScreenStage(screen)
+                ? screen.getBounds()
+                : screen.getVisualBounds();
 
             // Compute the absolute coordinates of the screen anchor.
             // If the screen anchor is specified in proportional coordinates, it is proportional to the complete
@@ -87,7 +87,7 @@ public final class WindowRelocator {
             // need to recompute the actual screen and its bounds (complete when full-screen stage showing,
             // visual otherwise).
             Screen targetScreen = Utils.getScreenForPoint(screenX, screenY);
-            Rectangle2D screenBounds = Utils.hasFullScreenStage(targetScreen)
+            Rectangle2D targetBounds = Utils.hasFullScreenStage(targetScreen)
                 ? targetScreen.getBounds()
                 : targetScreen.getVisualBounds();
 
@@ -95,8 +95,14 @@ public final class WindowRelocator {
                 screenX, screenY,
                 windowWidth, windowHeight,
                 stageAnchor, anchorPolicy,
-                screenBounds, screenPadding);
+                targetBounds, screenPadding);
 
+            // Gravity is an anchor factor used to keep a chosen point of the window "fixed" when the window
+            // manager later reveals (or changes) the frame extents (title bar and borders).
+            // For example, on X11/GTK, the real decoration sizes aren't known until after the window is realized.
+            // That can cause the window to "jump" (e.g., its center drifts) when JavaFX tries to size/position it
+            // early. So we pass down gravity to the native implementation to say: "When the outer window grows by
+            // adding borders or a title bar, keep this anchor point stable."
             if (stageAnchor.isProportional()) {
                 gravityX = stageAnchor.getX();
                 gravityY = stageAnchor.getY();

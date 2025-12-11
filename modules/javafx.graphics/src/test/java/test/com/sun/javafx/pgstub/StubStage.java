@@ -33,6 +33,11 @@ import com.sun.javafx.tk.FocusCause;
 import com.sun.javafx.tk.TKScene;
 import com.sun.javafx.tk.TKStage;
 import com.sun.javafx.tk.TKStageListener;
+import com.sun.javafx.util.Utils;
+import com.sun.jdi.InternalException;
+import javafx.geometry.Rectangle2D;
+import javafx.stage.Screen;
+import test.com.sun.javafx.pgstub.StubToolkit.ScreenConfiguration;
 
 /**
  * @author Richard Bair
@@ -73,6 +78,7 @@ public class StubStage implements TKStage {
     public float height = 192;
     public float renderScaleX = 1.0f;
     public float renderScaleY = 1.0f;
+    private ScreenConfiguration currentScreen;
 
     public boolean visible;
     public float opacity;
@@ -133,6 +139,25 @@ public class StubStage implements TKStage {
         }
         if (renderScaleX > 0.0) this.renderScaleX = renderScaleX;
         if (renderScaleY > 0.0) this.renderScaleY = renderScaleY;
+
+        Screen screen = Utils.getScreenForRectangle(new Rectangle2D(x, y, Math.max(0, width), Math.max(0, height)));
+
+        @SuppressWarnings("unchecked")
+        ScreenConfiguration newScreen = ((List<ScreenConfiguration>)StubToolkit.getToolkit().getScreens())
+            .stream()
+            .filter(config ->
+                config.getMinX() == screen.getBounds().getMinX()
+                && config.getMinY() == screen.getBounds().getMinY()
+                && config.getWidth() == screen.getBounds().getWidth()
+                && config.getHeight() == screen.getBounds().getHeight())
+            .findFirst()
+            .orElseThrow(() -> new InternalException("No screen found"));
+
+        if (newScreen != currentScreen) {
+            ScreenConfiguration oldScreen = currentScreen;
+            currentScreen = newScreen;
+            notificationSender.changedScreen(oldScreen, newScreen);
+        }
     }
 
     @Override
@@ -436,7 +461,7 @@ public class StubStage implements TKStage {
 
         @Override
         public void changedScreen(Object from, Object to) {
-            // TODO: Add code later
+            process(listener1 -> listener1.changedScreen(from, to));
         }
 
     }

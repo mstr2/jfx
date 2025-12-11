@@ -34,6 +34,7 @@ import java.util.Objects;
 
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
+import javafx.beans.WeakInvalidationListener;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.BooleanPropertyBase;
 import javafx.beans.property.ObjectProperty;
@@ -42,6 +43,7 @@ import javafx.beans.property.ReadOnlyDoubleWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -235,8 +237,29 @@ public abstract class PopupWindow extends Window {
      * The window which is the parent of this popup. All popups must have an
      * owner window.
      */
-    private ReadOnlyObjectWrapper<Window> ownerWindow =
-            new ReadOnlyObjectWrapper<>(this, "ownerWindow");
+    private ReadOnlyObjectWrapper<Window> ownerWindow = new ReadOnlyObjectWrapper<>(this, "ownerWindow") {
+        private Window currentValue;
+        private InvalidationListener listener;
+        private WeakInvalidationListener weakListener;
+
+        @Override
+        protected void invalidated() {
+            if (currentValue != null) {
+                currentValue.screenProperty().removeListener(weakListener);
+            }
+
+            currentValue = get();
+
+            if (currentValue != null) {
+                listener = obs -> notifyOwnerScreenChanged(((ObservableValue<Screen>)obs).getValue());
+                weakListener = new WeakInvalidationListener(listener);
+                currentValue.screenProperty().addListener(weakListener);
+                notifyOwnerScreenChanged(currentValue.getScreen());
+            } else {
+                notifyOwnerScreenChanged(null);
+            }
+        }
+    };
     public final Window getOwnerWindow() {
         return ownerWindow.get();
     }

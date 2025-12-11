@@ -27,8 +27,6 @@ package com.sun.javafx.stage;
 
 import com.sun.javafx.tk.TKStage;
 import com.sun.javafx.util.Utils;
-import javafx.beans.property.ReadOnlyObjectProperty;
-import javafx.stage.Screen;
 import javafx.stage.Window;
 
 /**
@@ -165,7 +163,5 @@ public class WindowHelper {
         float getPlatformScaleY(Window window);
 
         void notifyScaleChanged(Window window, double newOutputScaleX, double newOutputScaleY);
-
-        ReadOnlyObjectProperty<Screen> screenProperty(Window window);
     }
 }

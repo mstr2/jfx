@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.layout.Region;
+import javafx.stage.Screen;
 import test.com.sun.javafx.pgstub.StubStage;
 import test.com.sun.javafx.pgstub.StubToolkit;
 import com.sun.javafx.tk.TKStage;
@@ -182,6 +183,24 @@ public final class WindowTest {
 
         windows.remove(anotherTestWindow);
         assertEquals(initialWindowCount + 1, windows.size());
+    }
+
+    @Test
+    public void testScreenProperty_DefaultIsPrimaryAndNonNull() {
+        toolkit.setScreens(new StubToolkit.ScreenConfiguration(0, 0, 800, 600, 0, 0, 800, 600, 96));
+        try {
+            assertNotNull(testWindow.getScreen());
+            assertEquals(Screen.getPrimary(), testWindow.getScreen());
+            assertEquals(Screen.getPrimary(), testWindow.screenProperty().get());
+        } finally {
+            toolkit.resetScreens();
+        }
+    }
+
+    @Test
+    public void testScreenProperty_BeanAndName() {
+        assertEquals(testWindow, testWindow.screenProperty().getBean());
+        assertEquals("screen", testWindow.screenProperty().getName());
     }
 
     @Test

@@ -37,6 +37,7 @@ import javafx.beans.property.ObjectPropertyBase;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectPropertyBase;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.ReadOnlyDoubleWrapper;
@@ -208,11 +209,6 @@ public class Window implements EventTarget {
                     public float getPlatformScaleY(Window window) {
                         TKStage peer = window.getPeer();
                         return peer == null ? 1.0f : peer.getPlatformScaleY();
-                    }
-
-                    @Override
-                    public ReadOnlyObjectProperty<Screen> screenProperty(Window window) {
-                        return window.screenProperty();
                     }
                 });
     }
@@ -626,7 +622,7 @@ public class Window implements EventTarget {
         }
 
         WindowLocationAlgorithm.ComputedLocation location =
-            algorithm.compute(Utils.getScreenForWindow(this), getWidth(), getHeight());
+            algorithm.compute(getScreen(), getWidth(), getHeight());
 
         if (!xExplicit) {
             x.set(location.x());
@@ -1419,12 +1415,61 @@ public class Window implements EventTarget {
         return null;
     }
 
-    private final ReadOnlyObjectWrapper<Screen> screen = new ReadOnlyObjectWrapper<>(Screen.getPrimary());
-    private ReadOnlyObjectProperty<Screen> screenProperty() { return screen.getReadOnlyProperty(); }
+    final void notifyOwnerScreenChanged(Screen ownerScreen) {
+        screen.ownerScreen = ownerScreen;
+        screen.updateEffectiveValue();
+    }
 
     private void notifyScreenChanged(Object from, Object to) {
-        screen.set(Screen.getScreenForNative(to));
+        screen.currentScreen = Screen.getScreenForNative(to);
+        screen.updateEffectiveValue();
     }
+
+    private final class ScreenProperty extends ReadOnlyObjectPropertyBase<Screen> {
+        private Screen ownerScreen;
+        private Screen currentScreen;
+        private Screen effectiveScreen = Screen.getPrimary();
+
+        @Override
+        public Screen get() {
+            return effectiveScreen;
+        }
+
+        @Override
+        public Object getBean() {
+            return Window.this;
+        }
+
+        @Override
+        public String getName() {
+            return "screen";
+        }
+
+        void updateEffectiveValue() {
+            Screen effectiveScreen = currentScreen != null
+                ? currentScreen
+                : ownerScreen != null
+                    ? ownerScreen
+                    : Screen.getPrimary();
+
+            if (this.effectiveScreen != effectiveScreen) {
+                this.effectiveScreen = effectiveScreen;
+                fireValueChangedEvent();
+            }
+        }
+    }
+
+    /**
+     * The {@code Screen} that contains this window.
+     * <p>
+     * If the window does not have a position yet, it is contained by the screen of its owner window; if it
+     * doesn't have an owner window, it is contained by the {@linkplain Screen#getPrimary() primary} screen.
+     *
+     * @since 26
+     */
+    private final ScreenProperty screen = new ScreenProperty();
+    public final ReadOnlyObjectProperty<Screen> screenProperty() { return screen; }
+    public final Screen getScreen() { return screen.get(); }
 
     /**
      * Caches all requested bounds settings and applies them at once during
