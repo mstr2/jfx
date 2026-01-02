@@ -3109,6 +3109,10 @@ public class Scene implements EventTarget {
             getRoot().pickNode(headerAreaPickRay, headerAreaPickResultChooser);
             PickResult result = headerAreaPickResultChooser.toPickResult();
             headerAreaPickResultChooser.reset();
+            if (result == null) {
+                return null;
+            }
+
             Node intersectedNode = result.getIntersectedNode();
             HeaderDragType dragType = intersectedNode instanceof HeaderBar ? HeaderDragType.DRAGGABLE : null;
 
