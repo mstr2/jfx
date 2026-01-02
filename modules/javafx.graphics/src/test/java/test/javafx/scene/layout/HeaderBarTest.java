@@ -515,10 +515,10 @@ public class HeaderBarTest {
          * </pre>
          */
         private static class TestHeaderBar extends HeaderBar {
-            final Box box4 = new Box(null, 50, 0, 50, 100);
-            final Box box3 = new Box(box4, 50, 0, 100, 100);
-            final Box box2 = new Box(box3, 50, 0, 150, 100);
-            final Box box1 = new Box(box2, 50, 0, 200, 100);
+            final Box box4 = new Box("box4", null, 50, 0, 50, 100);
+            final Box box3 = new Box("box3", box4, 50, 0, 100, 100);
+            final Box box2 = new Box("box2", box3, 50, 0, 150, 100);
+            final Box box1 = new Box("box1", box2, 50, 0, 200, 100);
 
             TestHeaderBar() {
                 setCenter(box1);
@@ -526,13 +526,21 @@ public class HeaderBarTest {
         }
 
         private static class Box extends StackPane {
-            Box(Node child, double x, double y, double width, double height) {
+            final String name;
+
+            Box(String name, Node child, double x, double y, double width, double height) {
+                this.name = name;
                 setManaged(false);
                 resizeRelocate(x, y, width, height);
 
                 if (child != null) {
                     getChildren().add(child);
                 }
+            }
+
+            @Override
+            public String toString() {
+                return name;
             }
         }
 
