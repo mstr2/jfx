@@ -30,7 +30,6 @@ import javafx.scene.Scene;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * CSS media rules are @-rules that contain media queries. A media query tests the "external"
@@ -38,20 +37,20 @@ import java.util.List;
  */
 public final class MediaRule {
 
-    private final List<MediaQuery> queries;
+    private final MediaQueryList queries;
     private final MediaRule parent;
 
-    public MediaRule(List<MediaQuery> queries, MediaRule parent) {
-        this.queries = List.copyOf(queries);
+    public MediaRule(MediaQueryList queries, MediaRule parent) {
+        this.queries = queries;
         this.parent = parent;
     }
 
     /**
-     * Returns the unmodifiable list of media queries.
+     * Returns the list of media queries.
      *
-     * @return the unmodifiable list of media queries
+     * @return the list of media queries
      */
-    public List<MediaQuery> getQueries() {
+    public MediaQueryList getQueries() {
         return queries;
     }
 
@@ -76,29 +75,11 @@ public final class MediaRule {
             return false;
         }
 
-        if (queries.isEmpty()) {
-            return true;
-        }
-
-        for (int i = 0, max = queries.size(); i < max; i++) {
-            MediaQuery query = queries.get(i);
-            boolean value = query.evaluate(context);
-            context.notifyQueryEvaluated(query, value);
-
-            if (value) {
-                return true;
-            }
-        }
-
-        return false;
+        return queries.evaluate(context);
     }
 
     public void writeBinary(DataOutputStream stream, StyleConverter.StringStore stringStore) throws IOException {
-        stream.writeInt(queries.size());
-
-        for (MediaQuery query : queries) {
-            MediaQuerySerializer.writeBinary(query, stream, stringStore);
-        }
+        queries.writeBinary(stream, stringStore);
 
         stream.writeBoolean(parent != null);
 
@@ -108,16 +89,11 @@ public final class MediaRule {
     }
 
     public static MediaRule readBinary(DataInputStream stream, String[] strings) throws IOException {
-        int size = stream.readInt();
-        var queries = new MediaQuery[size];
-
-        for (int i = 0; i < size; i++) {
-            queries[i] = MediaQuerySerializer.readBinary(stream, strings);
-        }
+        MediaQueryList queries = MediaQueryList.readBinary(stream, strings);
 
         boolean hasParent = stream.readBoolean();
         MediaRule parentRule = hasParent ? readBinary(stream, strings) : null;
 
-        return new MediaRule(List.of(queries), parentRule);
+        return new MediaRule(queries, parentRule);
     }
 }
