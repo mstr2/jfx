@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,8 +200,7 @@ public class EffectDirtyRegionTest {
         gbn.applyEffect(gbn.getEffectFilter(), drc, drp);
         drcExpected.deriveWithNewRegions(new RectBounds[]
             {
-                new RectBounds(22, 38, 88, 72),
-                new RectBounds(56, 64, 94, 86)
+                new RectBounds(22, 38, 94, 86)
             });
         compareResult(drcExpected, drc);
     }
@@ -316,8 +315,7 @@ public class EffectDirtyRegionTest {
         gbn.applyEffect(gbn.getEffectFilter(), drc, drp);
         drcExpected.deriveWithNewRegions(new RectBounds[]
             {
-                new RectBounds(39, 40, 71, 70),
-                new RectBounds(69, 60, 81, 90)
+                new RectBounds(39, 40, 81, 90)
             });
         compareResult(drcExpected, drc);
     }

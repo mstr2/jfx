@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -223,5 +223,10 @@ public class ColorAdjust extends CoreEffect<RenderState> {
     public boolean reducesOpaquePixels() {
         final Effect input = getInput();
         return input != null && input.reducesOpaquePixels();
+    }
+
+    @Override
+    public boolean isLocallyBounded() {
+        return true;
     }
 }

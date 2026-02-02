@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -502,6 +502,57 @@ public abstract class Effect {
      * of the default input already.
      */
     public abstract boolean reducesOpaquePixels();
+
+    /**
+     * Returns whether this effect has a locally-bounded spatial dependency on its inputs.
+     * <p>
+     * An effect is considered locally bounded if each output pixel depends only on input pixels within a
+     * bounded neighborhood around the corresponding output location. In this case, when only a sub-region
+     * of the input changes, only a correspondingly expanded sub-region of the output can be affected.
+     * <p>
+     * This method computes the property for the entire effect subtree by checking all non-null inputs
+     * recursively. If any upstream effect is non-local, the composed effect chain is treated as non-local.
+     * Otherwise, the result is determined by this effect's intrinsic behavior as reported by
+     * {@link #isLocallyBounded()}.
+     * <p>
+     * This information is used by dirty-region/backdrop dependency tracking to avoid unnecessarily
+     * repainting an effect's entire output when only a small portion of its input has changed.
+     *
+     * @return {@code true} if this effect and all of its inputs are locally bounded,
+     *         {@code false} if any part of the chain is non-local
+     */
+    public final boolean isInputLocal() {
+        for (int i = 0, max = inputs.size(); i < max; i++) {
+            Effect effect = inputs.get(i);
+            if (effect != null && !effect.isInputLocal()) {
+                return false;
+            }
+        }
+
+        return isLocallyBounded();
+    }
+
+    /**
+     * Returns whether this effect is intrinsically locally bounded with respect to its input.
+     * <p>
+     * Implementations should return {@code true} only if the effect has a fixed, position-invariant "reach":
+     * there exists a constant distance per edge such that changing input pixels can only affect output pixels
+     * within this distance of the corresponding location. More specifically, there must exist fixed per-edge
+     * extents such that, for any output sub-region, the set of input pixels that can influence that sub-region
+     * is contained in the output sub-region expanded by those extents. (Examples: blur with a fixed radius,
+     * drop shadow with fixed offset and blur, tint adjustment.)
+     * <p>
+     * Effects that can mix distant input pixels into arbitrary output locations, or whose footprint varies
+     * across the output (e.g. perspective transform, displacement mapping, etc.), must return {@code false}.
+     * <p>
+     * This method does not consider input effects; callers that need the property for the full effect chain
+     * should use {@link #isInputLocal()}.
+     *
+     * @return {@code true} if this effect's input dependency is locally bounded, {@code false} otherwise
+     */
+    protected boolean isLocallyBounded() {
+        return false;
+    }
 
     /**
      * A set of values that represent the possible levels of acceleration

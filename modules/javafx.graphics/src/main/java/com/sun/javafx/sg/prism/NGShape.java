@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import com.sun.prism.PrinterGraphics;
 import com.sun.prism.RTTexture;
 import com.sun.prism.Texture;
 import com.sun.prism.impl.PrismSettings;
+import com.sun.prism.paint.Color;
 import com.sun.prism.paint.Paint;
 import com.sun.prism.shape.ShapeRep;
 import static com.sun.prism.shape.ShapeRep.InvalidationType.LOCATION_AND_GEOMETRY;
@@ -284,11 +285,11 @@ public abstract class NGShape extends NGNode {
         }
         Shape shape = getShape();
         if (mode != Mode.STROKE) {
-            g.setPaint(fillPaint);
+            g.setPaint(isBackdropMask() ? Color.WHITE : fillPaint);
             localShapeRep.fill(g, shape, contentBounds);
         }
         if (mode != Mode.FILL && drawStroke.getLineWidth() > 0) {
-            g.setPaint(drawPaint);
+            g.setPaint(isBackdropMask() ? Color.WHITE : drawPaint);
             g.setStroke(drawStroke);
             localShapeRep.draw(g, shape, contentBounds);
         }

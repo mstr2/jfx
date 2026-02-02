@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ public enum DirtyBits {
     NODE_CACHE,
     NODE_CLIP,
     NODE_EFFECT,
+    NODE_BACKDROP_EFFECT,
     NODE_OPACITY,
     NODE_TRANSFORM,
     NODE_BOUNDS,
@@ -79,6 +80,7 @@ public enum DirtyBits {
 
     // Dirty bits for various subclasses of Effect
     EFFECT_EFFECT,    // Used when Effect is dirty
+    EFFECT_BACKDROP_EFFECT,
 
     // Dirty bits for Camera class
     NODE_CAMERA,

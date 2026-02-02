@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,7 +169,7 @@ public class NGGroup extends NGNode {
 
     // Call this method if children view order is needed for rendering.
     // The returned list should be treated as read only.
-    private List<NGNode> getOrderedChildren() {
+    final List<NGNode> getOrderedChildren() {
         if (!viewOrderChildren.isEmpty()) {
             return viewOrderChildren;
         }

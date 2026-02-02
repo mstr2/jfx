@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import com.sun.javafx.geom.BackdropRegionContainer;
+import com.sun.javafx.geom.BackdropRegionPool;
 import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.DirtyRegionContainer;
 import com.sun.javafx.geom.DirtyRegionPool;
@@ -306,6 +308,7 @@ public class DirtyRegionTestBase extends NGTestBase {
     protected void setUp(Creator creator, Polluter polluter) {
         this.creator = creator;
         this.polluter = polluter;
+        this.windowClip = new RectBounds(-100000, -100000, 100000, 10000);
     }
 
     /**
@@ -325,12 +328,14 @@ public class DirtyRegionTestBase extends NGTestBase {
         // such that we could test that the dirty region accumulation logic all works
         // correctly even in the presence of a non-identity device space transform
         // (JDK-8091760)
-        DirtyRegionPool pool = new DirtyRegionPool(1);
-        DirtyRegionContainer drc = pool.checkOut();
+        DirtyRegionPool drPool = new DirtyRegionPool(1);
+        BackdropRegionPool brPool = new BackdropRegionPool();
+        DirtyRegionContainer drc = drPool.checkOut();
+        BackdropRegionContainer brc = brPool.checkOut();
         int status = start.accumulateDirtyRegions(
                 windowClip,
-                new RectBounds(), pool,
-                drc,
+                new RectBounds(), drPool, drc,
+                brPool, brc,
                 BaseTransform.IDENTITY_TRANSFORM, new GeneralTransform3D());
 
         RectBounds dirtyRegion = drc.getDirtyRegion(0) ;
@@ -362,12 +367,14 @@ public class DirtyRegionTestBase extends NGTestBase {
      * at any time.
      */
     protected void assertContainsClip(NGNode start, RectBounds expectedDirtyRegion, int expectedStatus) {
-        DirtyRegionPool pool = new DirtyRegionPool(1);
-        DirtyRegionContainer drc = pool.checkOut();
+        DirtyRegionPool drPool = new DirtyRegionPool(1);
+        BackdropRegionPool brPool = new BackdropRegionPool();
+        DirtyRegionContainer drc = drPool.checkOut();
+        BackdropRegionContainer brc = brPool.checkOut();
         int status = start.accumulateDirtyRegions(
                 windowClip,
-                new RectBounds(), pool,
-                drc,
+                new RectBounds(), drPool, drc,
+                brPool, brc,
                 BaseTransform.IDENTITY_TRANSFORM, new GeneralTransform3D());
 
         assertEquals(expectedStatus, status, "creator=" + creator + ", polluter=" + polluter);
@@ -421,12 +428,13 @@ public class DirtyRegionTestBase extends NGTestBase {
      * such as transforms or geometry changes.
      */
     private void accumulateDirtyRegions() {
-        DirtyRegionPool pool = new DirtyRegionPool(1);
+        DirtyRegionPool drPool = new DirtyRegionPool(1);
+        BackdropRegionPool brPool = new BackdropRegionPool();
         DirtyRegionTestBase.resetGroupBounds(root);
         root.accumulateDirtyRegions(
-                new RectBounds(0, 0, 800, 600),
-                new RectBounds(), pool,
-                pool.checkOut(),
+                new RectBounds(0, 0, 800, 600), new RectBounds(),
+                drPool, drPool.checkOut(),
+                brPool, brPool.checkOut(),
                 BaseTransform.IDENTITY_TRANSFORM,
                 new GeneralTransform3D());
     }

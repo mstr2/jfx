@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,4 +193,8 @@ public class Merge extends CoreEffect<RenderState> {
         return topInput != null && topInput.reducesOpaquePixels() && bottomInput != null && bottomInput.reducesOpaquePixels();
     }
 
+    @Override
+    public boolean isLocallyBounded() {
+        return true;
+    }
 }

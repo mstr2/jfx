@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import java.lang.reflect.Field;
+import com.sun.javafx.geom.BackdropRegionContainer;
+import com.sun.javafx.geom.BackdropRegionPool;
 import com.sun.javafx.geom.BaseBounds;
 import com.sun.javafx.geom.DirtyRegionContainer;
 import com.sun.javafx.geom.DirtyRegionPool;
@@ -191,22 +193,27 @@ public class NGTestBase {
             rendered = true;
         }
 
-        @Override public int accumulateDirtyRegions(final RectBounds clip,
-                RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx) {
+        @Override public int accumulateDirtyRegions(final RectBounds clip, RectBounds dirtyRegion,
+                                                    DirtyRegionPool drPool, DirtyRegionContainer drc,
+                                                    BackdropRegionPool brPool, BackdropRegionContainer brc,
+                                                    BaseTransform tx, GeneralTransform3D pvTx) {
             askedToAccumulateDirtyRegion = true;
-            return super.accumulateDirtyRegions(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateDirtyRegions(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateGroupDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionPool drPool, DirtyRegionContainer drc,
+                BackdropRegionPool brPool, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateGroupDirtyRegion(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateGroupDirtyRegion(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateNodeDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionContainer drc, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, tx, pvTx);
+            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, brc, tx, pvTx);
         }
         @Override public boolean askedToAccumulateDirtyRegion() { return askedToAccumulateDirtyRegion; }
         @Override public boolean computedDirtyRegion() { return computedDirtyRegion; }
@@ -224,22 +231,27 @@ public class NGTestBase {
             rendered = true;
         }
 
-        @Override public int accumulateDirtyRegions(final RectBounds clip,
-                RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx) {
+        @Override public int accumulateDirtyRegions(final RectBounds clip, RectBounds dirtyRegion,
+                                                    DirtyRegionPool drPool, DirtyRegionContainer drc,
+                                                    BackdropRegionPool brPool, BackdropRegionContainer brc,
+                                                    BaseTransform tx, GeneralTransform3D pvTx) {
             askedToAccumulateDirtyRegion = true;
-            return super.accumulateDirtyRegions(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateDirtyRegions(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateGroupDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionPool drPool, DirtyRegionContainer drc,
+                BackdropRegionPool brPool, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateGroupDirtyRegion(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateGroupDirtyRegion(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateNodeDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionContainer drc, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, tx, pvTx);
+            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, brc, tx, pvTx);
         }
         @Override public boolean askedToAccumulateDirtyRegion() { return askedToAccumulateDirtyRegion; }
         @Override public boolean computedDirtyRegion() { return computedDirtyRegion; }
@@ -256,16 +268,19 @@ public class NGTestBase {
             rendered = true;
         }
 
-        @Override public int accumulateDirtyRegions(final RectBounds clip,
-                RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx) {
+        @Override public int accumulateDirtyRegions(final RectBounds clip, RectBounds dirtyRegion,
+                                                    DirtyRegionPool drPool, DirtyRegionContainer drc,
+                                                    BackdropRegionPool brPool, BackdropRegionContainer brc,
+                                                    BaseTransform tx, GeneralTransform3D pvTx) {
             askedToAccumulateDirtyRegion = true;
-            return super.accumulateDirtyRegions(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateDirtyRegions(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateNodeDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionContainer drc, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, tx, pvTx);
+            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, brc, tx, pvTx);
         }
         @Override public boolean askedToAccumulateDirtyRegion() { return askedToAccumulateDirtyRegion; }
         @Override public boolean computedDirtyRegion() { return computedDirtyRegion; }
@@ -282,16 +297,19 @@ public class NGTestBase {
             rendered = true;
         }
 
-        @Override public int accumulateDirtyRegions(final RectBounds clip,
-                RectBounds dirtyRegion, DirtyRegionPool pool, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx) {
+        @Override public int accumulateDirtyRegions(final RectBounds clip, RectBounds dirtyRegion,
+                                                    DirtyRegionPool drPool, DirtyRegionContainer drc,
+                                                    BackdropRegionPool brPool, BackdropRegionContainer brc,
+                                                    BaseTransform tx, GeneralTransform3D pvTx) {
             askedToAccumulateDirtyRegion = true;
-            return super.accumulateDirtyRegions(clip, dirtyRegion, pool, drc, tx, pvTx);
+            return super.accumulateDirtyRegions(clip, dirtyRegion, drPool, drc, brPool, brc, tx, pvTx);
         }
         @Override public int accumulateNodeDirtyRegion(
-                final RectBounds clip, RectBounds dirtyRegion, DirtyRegionContainer drc, BaseTransform tx, GeneralTransform3D pvTx)
-        {
+                final RectBounds clip, RectBounds dirtyRegion,
+                DirtyRegionContainer drc, BackdropRegionContainer brc,
+                BaseTransform tx, GeneralTransform3D pvTx) {
             computedDirtyRegion = true;
-            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc,tx, pvTx);
+            return super.accumulateNodeDirtyRegion(clip, dirtyRegion, drc, brc, tx, pvTx);
         }
         @Override public boolean askedToAccumulateDirtyRegion() { return askedToAccumulateDirtyRegion; }
         @Override public boolean computedDirtyRegion() { return computedDirtyRegion; }

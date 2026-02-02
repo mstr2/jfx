@@ -928,14 +928,29 @@ public abstract sealed class Node
         }
 
         if (isDirty(DirtyBits.EFFECT_EFFECT)) {
-            if (getEffect() != null) {
-                EffectHelper.sync(getEffect());
+            Effect effect = getEffect();
+            if (effect != null) {
+                EffectHelper.sync(effect);
                 peer.effectChanged();
             }
         }
 
+        if (isDirty(DirtyBits.EFFECT_BACKDROP_EFFECT)) {
+            Effect effect = getBackdropEffect();
+            if (effect != null) {
+                EffectHelper.sync(effect);
+                peer.backdropEffectChanged();
+            }
+        }
+
         if (isDirty(DirtyBits.NODE_EFFECT)) {
-            peer.setEffect(getEffect() != null ? EffectHelper.getPeer(getEffect()) : null);
+            Effect effect = getEffect();
+            peer.setEffect(effect != null ? EffectHelper.getPeer(effect) : null);
+        }
+
+        if (isDirty(DirtyBits.NODE_BACKDROP_EFFECT)) {
+            Effect effect = getBackdropEffect();
+            peer.setBackdropEffect(effect != null ? EffectHelper.getPeer(effect) : null);
         }
 
         if (isDirty(DirtyBits.NODE_VISIBLE)) {
@@ -1801,6 +1816,34 @@ public abstract sealed class Node
      */
     public final ObjectProperty<Effect> effectProperty() {
         return getMiscProperties().effectProperty();
+    }
+
+    public final void setBackdropEffect(Effect value) {
+        backdropEffectProperty().set(value);
+    }
+
+    public final Effect getBackdropEffect() {
+        return (miscProperties == null) ? DEFAULT_EFFECT
+                                        : miscProperties.getBackdropEffect();
+    }
+
+    /**
+     * Specifies an effect that applies to the area behind this {@code Node}.
+     * <p>
+     * In contrast to {@link #effectProperty() effect}, which applies to the content of this node, a backdrop
+     * effect applies to the area <em>behind</em> this node. Since the node is rendered on top of its backdrop,
+     * it needs to be transparent or partially transparent to see the effect.
+     * <p>
+     * Note that this is a conditional feature. See
+     * {@link javafx.application.ConditionalFeature#EFFECT ConditionalFeature.EFFECT}
+     * for more information.
+     *
+     * @defaultValue null
+     * @return the backdrop effect property for this {@code Node}
+     * @since 27
+     */
+    public final ObjectProperty<Effect> backdropEffectProperty() {
+        return getMiscProperties().backdropEffectProperty();
     }
 
     public final void setDepthTest(DepthTest value) {
@@ -6872,6 +6915,7 @@ public abstract sealed class Node
         private ObjectProperty<DepthTest> depthTest;
         private BooleanProperty disable;
         private ObjectProperty<Effect> effect;
+        private ObjectProperty<Effect> backdropEffect;
         private ObjectProperty<InputMethodRequests> inputMethodRequests;
         private BooleanProperty mouseTransparent;
         private DoubleProperty viewOrder;
@@ -7236,57 +7280,17 @@ public abstract sealed class Node
 
         public final ObjectProperty<Effect> effectProperty() {
             if (effect == null) {
-                effect = new StyleableObjectProperty<Effect>(DEFAULT_EFFECT) {
-                    private Effect oldEffect = null;
-                    private int oldBits;
-
-                    private final AbstractNotifyListener effectChangeListener =
-                            new AbstractNotifyListener() {
-
+                effect = new EffectProperty() {
+                    final AbstractNotifyListener effectChangeListener = new EffectChangeListener() {
                         @Override
-                        public void invalidated(Observable valueModel) {
-                            int newBits = ((IntegerProperty) valueModel).get();
-                            int changedBits = newBits ^ oldBits;
-                            oldBits = newBits;
-                            if (EffectDirtyBits.isSet(
-                                    changedBits,
-                                    EffectDirtyBits.EFFECT_DIRTY)
-                                && EffectDirtyBits.isSet(
-                                       newBits,
-                                       EffectDirtyBits.EFFECT_DIRTY)) {
-                                NodeHelper.markDirty(Node.this, DirtyBits.EFFECT_EFFECT);
-                            }
-                            if (EffectDirtyBits.isSet(
-                                    changedBits,
-                                    EffectDirtyBits.BOUNDS_CHANGED)) {
+                        public void invalidated(Observable observable) {
+                            int changedBits = invalidated(((IntegerProperty)observable).get());
+
+                            if (EffectDirtyBits.isSet(changedBits, EffectDirtyBits.BOUNDS_CHANGED)) {
                                 localBoundsChanged();
                             }
                         }
                     };
-
-                    @Override
-                    protected void invalidated() {
-                        Effect _effect = get();
-                        if (oldEffect != null) {
-                            EffectHelper.effectDirtyProperty(oldEffect).removeListener(
-                                    effectChangeListener.getWeakListener());
-                        }
-                        oldEffect = _effect;
-                        if (_effect != null) {
-                            EffectHelper.effectDirtyProperty(_effect)
-                                   .addListener(
-                                       effectChangeListener.getWeakListener());
-                            if (EffectHelper.isEffectDirty(_effect)) {
-                                NodeHelper.markDirty(Node.this, DirtyBits.EFFECT_EFFECT);
-                            }
-                            oldBits = EffectHelper.effectDirtyProperty(_effect).get();
-                        }
-
-                        NodeHelper.markDirty(Node.this, DirtyBits.NODE_EFFECT);
-                        // bounds may have changed regardless whether
-                        // the dirty flag on effect is set
-                        localBoundsChanged();
-                    }
 
                     @Override
                     public CssMetaData getCssMetaData() {
@@ -7294,17 +7298,137 @@ public abstract sealed class Node
                     }
 
                     @Override
-                    public Object getBean() {
-                        return Node.this;
+                    public String getName() {
+                        return "effect";
+                    }
+
+                    @Override
+                    protected void invalidated() {
+                        super.invalidated();
+
+                        // bounds may have changed regardless whether the dirty flag on effect is set
+                        localBoundsChanged();
+                    }
+
+                    @Override
+                    InvalidationListener getWeakEffectChangeListener() {
+                        return effectChangeListener.getWeakListener();
+                    }
+
+                    @Override
+                    DirtyBits getNodeDirtyBit() {
+                        return DirtyBits.NODE_EFFECT;
+                    }
+
+                    @Override
+                    DirtyBits getEffectDirtyBit() {
+                        return DirtyBits.EFFECT_EFFECT;
+                    }
+                };
+            }
+
+            return effect;
+        }
+
+        public final Effect getBackdropEffect() {
+            return (backdropEffect == null) ? DEFAULT_EFFECT : backdropEffect.get();
+        }
+
+        public final ObjectProperty<Effect> backdropEffectProperty() {
+            if (backdropEffect == null) {
+                backdropEffect = new EffectProperty() {
+                    final AbstractNotifyListener effectChangeListener = new EffectChangeListener() {
+                        @Override
+                        public void invalidated(Observable observable) {
+                            invalidated(((IntegerProperty)observable).get());
+                        }
+                    };
+
+                    @Override
+                    public CssMetaData getCssMetaData() {
+                        return StyleableProperties.BACKDROP_EFFECT;
                     }
 
                     @Override
                     public String getName() {
-                        return "effect";
+                        return "backdropEffect";
+                    }
+
+                    @Override
+                    InvalidationListener getWeakEffectChangeListener() {
+                        return effectChangeListener.getWeakListener();
+                    }
+
+                    @Override
+                    DirtyBits getNodeDirtyBit() {
+                        return DirtyBits.NODE_BACKDROP_EFFECT;
+                    }
+
+                    @Override
+                    DirtyBits getEffectDirtyBit() {
+                        return DirtyBits.EFFECT_BACKDROP_EFFECT;
                     }
                 };
             }
-            return effect;
+
+            return backdropEffect;
+        }
+
+        private abstract class EffectProperty extends StyleableObjectProperty<Effect> {
+            private Effect oldEffect = null;
+            private int oldBits;
+
+            EffectProperty() {
+                super(DEFAULT_EFFECT);
+            }
+
+            @Override
+            public Object getBean() {
+                return Node.this;
+            }
+
+            @Override
+            protected void invalidated() {
+                Effect _effect = get();
+
+                if (oldEffect != null) {
+                    EffectHelper.effectDirtyProperty(oldEffect).removeListener(getWeakEffectChangeListener());
+                }
+
+                oldEffect = _effect;
+
+                if (_effect != null) {
+                    EffectHelper.effectDirtyProperty(_effect).addListener(getWeakEffectChangeListener());
+
+                    if (EffectHelper.isEffectDirty(_effect)) {
+                        NodeHelper.markDirty(Node.this, getEffectDirtyBit());
+                    }
+
+                    oldBits = EffectHelper.effectDirtyProperty(_effect).get();
+                }
+
+                NodeHelper.markDirty(Node.this, getNodeDirtyBit());
+            }
+
+            abstract InvalidationListener getWeakEffectChangeListener();
+
+            abstract DirtyBits getNodeDirtyBit();
+
+            abstract DirtyBits getEffectDirtyBit();
+
+            abstract class EffectChangeListener extends AbstractNotifyListener {
+                final int invalidated(int newBits) {
+                    int changedBits = newBits ^ oldBits;
+                    oldBits = newBits;
+
+                    if (EffectDirtyBits.isSet(changedBits, EffectDirtyBits.EFFECT_DIRTY)
+                            && EffectDirtyBits.isSet(newBits, EffectDirtyBits.EFFECT_DIRTY)) {
+                        NodeHelper.markDirty(Node.this, getEffectDirtyBit());
+                    }
+
+                    return changedBits;
+                }
+            }
         }
 
         public final InputMethodRequests getInputMethodRequests() {
@@ -7346,6 +7470,10 @@ public abstract sealed class Node
 
         public boolean canSetEffect() {
             return (effect == null) || !effect.isBound();
+        }
+
+        public boolean canSetBackdropEffect() {
+            return (backdropEffect == null) || !backdropEffect.isBound();
         }
     }
 
@@ -9493,6 +9621,19 @@ public abstract sealed class Node
                     return (StyleableProperty<Effect>)node.effectProperty();
                 }
             };
+        private static final CssMetaData<Node,Effect> BACKDROP_EFFECT =
+            new CssMetaData<>("-fx-backdrop-effect", EffectConverter.getInstance()) {
+
+                @Override
+                public boolean isSettable(Node node) {
+                    return node.miscProperties == null || node.miscProperties.canSetBackdropEffect();
+                }
+
+                @Override
+                public StyleableProperty<Effect> getStyleableProperty(Node node) {
+                    return (StyleableProperty<Effect>)node.backdropEffectProperty();
+                }
+            };
         private static final CssMetaData<Node,Boolean> FOCUS_TRAVERSABLE =
             new CssMetaData<>("-fx-focus-traversable",
                 BooleanConverter.getInstance(), Boolean.FALSE) {
@@ -9717,6 +9858,7 @@ public abstract sealed class Node
                      new ArrayList<>();
              styleables.add(CURSOR);
              styleables.add(EFFECT);
+             styleables.add(BACKDROP_EFFECT);
              styleables.add(FOCUS_TRAVERSABLE);
              styleables.add(OPACITY);
              styleables.add(BLEND_MODE);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ package com.sun.javafx.tk.quantum;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import com.sun.javafx.geom.BackdropRegionContainer;
+import com.sun.javafx.geom.BackdropRegionPool;
 import com.sun.javafx.geom.DirtyRegionContainer;
 import com.sun.javafx.geom.DirtyRegionPool;
 import com.sun.javafx.geom.RectBounds;
@@ -103,6 +105,8 @@ abstract class ViewPainter implements Runnable {
     private RectBounds dirtyRegionTemp;
     private DirtyRegionPool dirtyRegionPool;
     private DirtyRegionContainer dirtyRegionContainer;
+    private BackdropRegionPool backdropRegionPool;
+    private BackdropRegionContainer backdropRegionContainer;
     private Affine3D tx;
     private Affine3D scaleTx;
     private GeneralTransform3D viewProjTx;
@@ -139,6 +143,8 @@ abstract class ViewPainter implements Runnable {
             dirtyRegionTemp = new RectBounds();
             dirtyRegionPool = new DirtyRegionPool(PrismSettings.dirtyRegionCount);
             dirtyRegionContainer = dirtyRegionPool.checkOut();
+            backdropRegionPool = new BackdropRegionPool();
+            backdropRegionContainer = backdropRegionPool.checkOut();
         }
     }
 
@@ -242,12 +248,14 @@ abstract class ViewPainter implements Runnable {
             clip.setBounds(0, 0, width, height);
             dirtyRegionTemp.makeEmpty();
             dirtyRegionContainer.reset();
+            backdropRegionContainer.reset();
             tx.setToIdentity();
             projTx.setIdentity();
             adjustPerspective(sceneState.getCamera());
             status = root.accumulateDirtyRegions(clip, dirtyRegionTemp,
-                                                     dirtyRegionPool, dirtyRegionContainer,
-                                                     tx, projTx);
+                                                 dirtyRegionPool, dirtyRegionContainer,
+                                                 backdropRegionPool, backdropRegionContainer,
+                                                 tx, projTx);
             dirtyRegionContainer.roundOut();
             if (status == DirtyRegionContainer.DTR_OK) {
                 root.doPreCulling(dirtyRegionContainer, tx, projTx);
@@ -305,7 +313,9 @@ abstract class ViewPainter implements Runnable {
 
             // Paint each dirty region
             for (int i = 0; i < dirtyRegionSize; ++i) {
-                final RectBounds dirtyRegion = dirtyRegionContainer.getDirtyRegion(i);
+                DirtyRegionContainer.Entry entry = dirtyRegionContainer.getEntry(i);
+                RectBounds dirtyRegion = entry.getCoreRegion();
+
                 // TODO it should be impossible to have ever created a dirty region that was empty...
                 // Make sure we are not trying to render in some invalid region
                 if (dirtyRegion.getWidth() > 0 && dirtyRegion.getHeight() > 0) {
@@ -318,7 +328,7 @@ abstract class ViewPainter implements Runnable {
                     dirtyRect.height = (int) Math.ceil (dirtyRegion.getMaxY() * pixelScaleY) - y0;
                     g.setClipRect(dirtyRect);
                     g.setClipRectIndex(i);
-                    doPaint(g, getRootPath(i));
+                    doPaint(g, getRootPath(i), entry, pixelScaleX, pixelScaleY);
                     getRootPath(i).clear();
                 }
             }
@@ -326,7 +336,7 @@ abstract class ViewPainter implements Runnable {
             // There are no dirty regions, so just paint everything
             g.setHasPreCullingBits(false);
             g.setClipRect(null);
-            this.doPaint(g, null);
+            this.doPaint(g, null, null, pixelScaleX, pixelScaleY);
         }
         root.renderForcedContent(g);
 
@@ -375,10 +385,18 @@ abstract class ViewPainter implements Runnable {
                 // We are going to show the dirty regions
                 if (dirtyRegionSize > 0) {
                     // We have dirty regions to draw
-                    backBufferGraphics.setPaint(new Color(1, 0, 0, .3f));
+                    Color color = new Color(1, 0, 0, .3f);
                     for (int i = 0; i < dirtyRegionSize; i++) {
-                        final RectBounds reg = dirtyRegionContainer.getDirtyRegion(i);
-                        backBufferGraphics.fillRect(reg.getMinX(), reg.getMinY(), reg.getWidth(), reg.getHeight());
+                        DirtyRegionContainer.Entry entry = dirtyRegionContainer.getEntry(i);
+                        RectBounds core = entry.getCoreRegion();
+                        backBufferGraphics.setPaint(color);
+                        backBufferGraphics.fillRect(core.getMinX(), core.getMinY(), core.getWidth(), core.getHeight());
+
+                        if (entry.hasPadding()) {
+                            RectBounds ext = entry.getExtendedRegion();
+                            backBufferGraphics.setPaint(Color.RED);
+                            backBufferGraphics.drawRect(ext.getMinX(), ext.getMinY(), ext.getWidth(), ext.getHeight());
+                        }
                     }
                 } else {
                     // No dirty regions, fill the entire view area
@@ -447,7 +465,9 @@ abstract class ViewPainter implements Runnable {
         return presentable == null ? 1.0f : presentable.getPixelScaleFactorY();
     }
 
-    private void doPaint(Graphics g, NodePath renderRootPath) {
+    private void doPaint(Graphics g, NodePath renderRootPath,
+                         DirtyRegionContainer.Entry entry,
+                         float pixelScaleX, float pixelScaleY) {
         // Null path indicates that occlusion culling is not used
         if (renderRootPath != null) {
             if (renderRootPath.isEmpty()) {
@@ -478,6 +498,16 @@ abstract class ViewPainter implements Runnable {
         }
         g.setCamera(sceneState.getCamera());
         g.setRenderRoot(renderRootPath);
-        root.render(g);
+
+        if (entry != null && entry.hasPadding()) {
+            RectBounds extendedRegion = entry.getExtendedRegion();
+            int x = (int)Math.floor(extendedRegion.getMinX() * pixelScaleX);
+            int y = (int)Math.floor(extendedRegion.getMinY() * pixelScaleY);
+            int width = (int)Math.ceil(extendedRegion.getMaxX() * pixelScaleX) - x;
+            int height = (int)Math.ceil(extendedRegion.getMaxY() * pixelScaleY) - y;
+            root.render(g, new Rectangle(x, y, width, height));
+        } else {
+            root.render(g, null);
+        }
     }
 }

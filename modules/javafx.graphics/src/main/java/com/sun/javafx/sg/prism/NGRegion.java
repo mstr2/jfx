@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -806,6 +806,7 @@ public class NGRegion extends NGGroup {
         final boolean cache =
                 background.getFills().size() > 1 && // Not worth the overhead otherwise
                 cacheMode != 0 &&
+                !isBackdropMask() &&
                 g.getTransformNoClone().isTranslateOrIdentity() &&
                 !(g instanceof PrinterGraphics);
         final int border = 1;
@@ -1096,7 +1097,7 @@ public class NGRegion extends NGGroup {
             // width and will not paint it. TODO we need to document this fact (JDK-8091593)
             if (w > 0 && h > 0) {
                 // Could optimize this such that if paint is transparent then we go no further.
-                final Paint paint = getPlatformPaint(fill.getFill());
+                final Paint paint = getPlatformPaint(isBackdropMask() ? Color.WHITE : fill.getFill());
                 g.setPaint(paint);
                 final CornerRadii radii = getNormalizedFillRadii(i);
                 // This is a workaround for JDK-8087965 so we use path rasterizer for small radius's We are
@@ -1146,10 +1147,20 @@ public class NGRegion extends NGGroup {
             final CornerRadii radii = getNormalizedStrokeRadii(i);
             final Insets insets = stroke.getInsets();
 
-            final javafx.scene.paint.Paint topStroke = stroke.getTopStroke();
-            final javafx.scene.paint.Paint rightStroke = stroke.getRightStroke();
-            final javafx.scene.paint.Paint bottomStroke = stroke.getBottomStroke();
-            final javafx.scene.paint.Paint leftStroke = stroke.getLeftStroke();
+            final javafx.scene.paint.Paint topStroke;
+            final javafx.scene.paint.Paint rightStroke;
+            final javafx.scene.paint.Paint bottomStroke;
+            final javafx.scene.paint.Paint leftStroke;
+
+            if (isBackdropMask()) {
+                topStroke = rightStroke = bottomStroke = leftStroke = Color.WHITE;
+            } else {
+                topStroke = stroke.getTopStroke();
+                rightStroke = stroke.getRightStroke();
+                bottomStroke = stroke.getBottomStroke();
+                leftStroke = stroke.getLeftStroke();
+
+            }
 
             final float topInset = (float) insets.getTop();
             final float rightInset = (float) insets.getRight();

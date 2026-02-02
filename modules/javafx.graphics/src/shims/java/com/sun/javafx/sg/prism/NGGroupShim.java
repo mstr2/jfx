@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 
 package com.sun.javafx.sg.prism;
 
+import com.sun.javafx.geom.BackdropRegionContainer;
+import com.sun.javafx.geom.BackdropRegionPool;
 import com.sun.javafx.geom.DirtyRegionContainer;
 import com.sun.javafx.geom.DirtyRegionPool;
 import com.sun.javafx.geom.RectBounds;
@@ -38,21 +40,26 @@ public class NGGroupShim extends NGGroup {
             final RectBounds clip,
             final RectBounds dirtyRegionTemp,
             final DirtyRegionPool regionPool,
-            DirtyRegionContainer dirtyRegionContainer,
+            final DirtyRegionContainer dirtyRegionContainer,
+            final BackdropRegionPool backdropRegionPool,
+            final BackdropRegionContainer backdropRegionContainer,
             final BaseTransform tx,
             final GeneralTransform3D pvTx) {
         return super.accumulateGroupDirtyRegion(clip, dirtyRegionTemp,
-                regionPool, dirtyRegionContainer, tx, pvTx);
+                regionPool, dirtyRegionContainer,
+                backdropRegionPool, backdropRegionContainer,
+                tx, pvTx);
     }
 
     @Override
     public int accumulateNodeDirtyRegion(final RectBounds clip,
                                   final RectBounds dirtyRegionTemp,
                                   final DirtyRegionContainer dirtyRegionContainer,
+                                  final BackdropRegionContainer backdropRegionContainer,
                                   final BaseTransform tx,
                                   final GeneralTransform3D pvTx) {
         return super.accumulateNodeDirtyRegion(clip, dirtyRegionTemp,
-                dirtyRegionContainer, tx, pvTx);
+                dirtyRegionContainer, backdropRegionContainer, tx, pvTx);
     }
 
 }

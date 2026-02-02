@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -205,18 +205,17 @@ public class Crop extends CoreEffect<RenderState> {
     }
 
     @Override
+    public boolean isLocallyBounded() {
+        return true;
+    }
+
+    @Override
     public DirtyRegionContainer getDirtyRegions(Effect defaultInput, DirtyRegionPool regionPool) {
         Effect di0 = getDefaultedInput(0, defaultInput);
         DirtyRegionContainer drc = di0.getDirtyRegions(defaultInput, regionPool);
         Effect di1 = getDefaultedInput(1, defaultInput);
         BaseBounds cropBounds = di1.getBounds(BaseTransform.IDENTITY_TRANSFORM, defaultInput);
-        for (int i = 0; i < drc.size(); i++) {
-            drc.getDirtyRegion(i).intersectWith(cropBounds);
-            if (drc.checkAndClearRegion(i)) {
-                --i;
-            }
-        }
-
+        drc.intersectWith(cropBounds);
         return drc;
     }
 }

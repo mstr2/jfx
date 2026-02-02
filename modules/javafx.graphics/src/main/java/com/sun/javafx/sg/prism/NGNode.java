@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 
 package com.sun.javafx.sg.prism;
 
+import com.sun.javafx.geom.BackdropRegionContainer;
+import com.sun.javafx.geom.BackdropRegionPool;
 import javafx.scene.CacheHint;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +47,7 @@ import com.sun.prism.Graphics;
 import com.sun.prism.GraphicsPipeline;
 import com.sun.prism.RTTexture;
 import com.sun.prism.ReadbackGraphics;
+import com.sun.prism.Surface;
 import com.sun.prism.impl.PrismSettings;
 import com.sun.scenario.effect.Blend;
 import com.sun.scenario.effect.Effect;
@@ -106,6 +109,9 @@ public abstract class NGNode {
      */
     private static final BoxBounds TEMP_BOUNDS = new BoxBounds();
     private static final RectBounds TEMP_RECT_BOUNDS = new RectBounds();
+    private static final RectBounds TEMP_RECT_BOUNDS_2 = new RectBounds();
+    private static final RectBounds TEMP_RECT_BOUNDS_3 = new RectBounds();
+    private static final Rectangle TEMP_RECTANGLE = new Rectangle();
     protected static final Affine3D TEMP_TRANSFORM = new Affine3D();
 
     /**
@@ -139,6 +145,17 @@ public abstract class NGNode {
      * "content" bounds, that is, without transforms or filters applied.
      */
     protected BaseBounds contentBounds = new RectBounds();
+
+    /**
+     * The cached backdrop-effect bounds, which are computed as necessary for this node
+     * and are invalidated when the node bounds or the backdrop effect has changed.
+     */
+    private BaseBounds backdropBounds = new RectBounds();
+
+    /**
+     * Indicates whether {@link #backdropBounds} is invalid and needs to be recomputed.
+     */
+    private boolean backdropBoundsInvalid = true;
 
     /**
      * We keep a reference to the last transform bounds that were valid
@@ -220,6 +237,39 @@ public abstract class NGNode {
      * there are no effects on the FX scene graph node.
      */
     private EffectFilter effectFilter;
+
+    /**
+     * The effect that is applied to the "backdrop" of this node, that is, to the pixels that have
+     * already been rendered behind this node on the current render target.
+     * <p>
+     * In contrast to {@link #effectFilter}, which operates on this node's own rendered contents,
+     * the backdrop effect samples the content underneath the node, processes it through the
+     * {@link Effect}, and composites the result as part of this node's content.
+     * <p>
+     * A value of {@code null} means that no backdrop effect is applied.
+     */
+    private Effect backdropEffect;
+
+    /**
+     * The number of this node's descendants with a backdrop effect, not including this node if it
+     * has a backdrop effect. Since we need to keep track of backdrop-effect regions for dirty region
+     * optimization, knowing whether there are any downstream backdrop-effect nodes can speed up
+     * tree traversal by skipping subtrees without backdrop-effect nodes.
+     */
+    private int backdropEffectNodesWithin;
+
+    /**
+     * Flag indicating that the node is currently being rendered as a mask for a backdrop effect.
+     * <p>
+     * When rendering a backdrop effect, we first render this node into an off-screen mask image
+     * which is later used to clip the filtered backdrop. During this mask pass, {@code backdropMask}
+     * is set to {@code true} so that subclasses of this node can adjust their rendering behavior
+     * to force a simple solid fill.
+     * <p>
+     * This flag is only valid during rendering and is set and cleared by
+     * {@link #renderBackdropEffect(com.sun.prism.Graphics)}.
+     */
+    private boolean backdropMask;
 
     /**
      * If this node is an NGGroup, then this flag will be used to indicate
@@ -337,8 +387,15 @@ public abstract class NGNode {
             // and then proceed with updating dirty bounds to their new value.
             dirtyBounds = dirtyBounds.deriveWithUnion(transformedBounds);
         }
+
         dirtyBounds = dirtyBounds.deriveWithUnion(bounds);
         transformedBounds = transformedBounds.deriveWithNewBounds(bounds);
+
+        // Since the transformed bounds include the clip (and are thus changed when the
+        // clip for this node has changed), this also invalidates the backdrop-effect
+        // bounds for this node.
+        backdropBoundsInvalid = true;
+
         if (hasVisuals() && !byTransformChangeOnly) {
             markDirty();
         }
@@ -394,6 +451,7 @@ public abstract class NGNode {
             markDirty();
         }
         invalidateOpaqueRegion();
+        backdropBoundsInvalid = true;
     }
 
     /**
@@ -414,6 +472,7 @@ public abstract class NGNode {
             // Mark this node dirty, invalidate its cache, and all parents.
             visualsChanged();
             invalidateOpaqueRegion();
+            backdropBoundsInvalid = true;
         }
     }
 
@@ -596,11 +655,61 @@ public abstract class NGNode {
         }
     }
 
+    protected final Effect getEffect() {
+        return effectFilter == null ? null : effectFilter.getEffect();
+    }
+
     /**
      * Called by the FX scene graph when an effect in the effect chain on the node
      * changes internally.
      */
     public void effectChanged() {
+        visualsChanged();
+    }
+
+    /**
+     * Called by the FX scene graph to set the backdrop effect.
+     * @param effect the effect (can be null to clear it)
+     */
+    public final void setBackdropEffect(Effect effect) {
+        // When effects are disabled, be sure to reset the effect filter
+        if (PrismSettings.disableEffects) {
+            effect = null;
+        }
+
+        if (backdropEffect == effect) {
+            return;
+        }
+
+        if (backdropEffect != null && effect == null) {
+            NGNode parent = this.parent;
+            while (parent != null) {
+                parent.backdropEffectNodesWithin--;
+                parent = parent.getParent();
+            }
+        } else if (backdropEffect == null && effect != null) {
+            NGNode parent = this.parent;
+            while (parent != null) {
+                parent.backdropEffectNodesWithin++;
+                parent = parent.getParent();
+            }
+        }
+
+        Effect oldEffect = backdropEffect;
+        backdropEffect = effect;
+        backdropEffectChanged();
+    }
+
+    protected final Effect getBackdropEffect() {
+        return backdropEffect;
+    }
+
+    /**
+     * Called by the FX scene graph when a backdrop effect in the effect chain on the node
+     * changes internally.
+     */
+    public final void backdropEffectChanged() {
+        backdropBoundsInvalid = true;
         visualsChanged();
     }
 
@@ -630,6 +739,21 @@ public abstract class NGNode {
      * Only called by this class, or by the NGGroup class.
      */
     public void setParent(NGNode parent) {
+        int change = backdropEffectNodesWithin + (backdropEffect != null ? 1 : 0);
+        if (change > 0) {
+            NGNode p = this.parent;
+            while (p != null) {
+                p.backdropEffectNodesWithin -= change;
+                p = p.getParent();
+            }
+
+            p = parent;
+            while (p != null) {
+                p.backdropEffectNodesWithin += change;
+                p = p.getParent();
+            }
+        }
+
         setParent(parent, false);
     }
 
@@ -651,8 +775,6 @@ public abstract class NGNode {
     public final String getName() {
         return name;
     }
-
-    protected final Effect getEffect() { return effectFilter == null ? null : effectFilter.getEffect(); }
 
     /**
      * Gets whether this node's visible property is set
@@ -775,6 +897,32 @@ public abstract class NGNode {
             }
             return bounds;
         }
+    }
+
+    private BaseBounds getBackdropBounds(BaseBounds bounds, BaseTransform tx) {
+        if (backdropBoundsInvalid) {
+            EffectDirtyBoundsHelper helper = EffectDirtyBoundsHelper.getInstance();
+            helper.setInputBounds(getClippedBounds(TEMP_RECT_BOUNDS, BaseTransform.IDENTITY_TRANSFORM));
+            BaseBounds effectBounds = backdropEffect.getBounds(BaseTransform.IDENTITY_TRANSFORM, helper);
+            if (!transform.isIdentity()) {
+                effectBounds = transform.transform(effectBounds, effectBounds);
+            }
+
+            backdropBounds = backdropBounds.deriveWithNewBounds(effectBounds);
+            backdropBoundsInvalid = false;
+        }
+
+        return tx.isIdentity()
+            ? bounds.deriveWithNewBounds(backdropBounds)
+            : tx.transform(backdropBounds, bounds);
+    }
+
+    private RectBounds flattenBounds(RectBounds flatBounds, BaseBounds bounds, GeneralTransform3D tx) {
+        if (!tx.isIdentity()) {
+            bounds = tx.transform(bounds, bounds);
+        }
+
+        return bounds.flattenInto(flatBounds);
     }
 
     /***************************************************************************
@@ -966,48 +1114,52 @@ public abstract class NGNode {
      **************************************************************************/
 
     /**
-     * Accumulates and returns the dirty regions in transformed coordinates for
-     * this node. This method is designed such that a single downward traversal
-     * of the tree is sufficient to update the dirty regions.
+     * Accumulates dirty regions for this node and its subtree in transformed coordinates.
      * <p>
-     * This method only accumulates dirty regions for parts of the tree which lie
-     * inside the clip since there is no point in accumulating dirty regions which
-     * lie outside the clip. The returned dirty regions bounds  the same object
-     * as that passed into the function. The returned dirty regions bounds will
-     * always be adjusted such that they do not extend beyond the clip.
+     * Dirty region accumulation is performed in render order and is designed so that a single downward
+     * traversal of the scene graph is sufficient to determine the minimal set of regions that must be
+     * repainted. Regions are accumulated only where they intersect the supplied {@code clip}, since
+     * repainting outside the clip usually cannot affect the final image.
      * <p>
-     * The given transform is the accumulated transform up to but not including the
-     * transform of this node.
+     * Backdrop effects add an additional dependency that must be tracked during accumulation.
+     * A node with a backdrop effect samples pixels that were rendered behind it earlier in render order
+     * (its backdrop input) and uses them to produce pixels in its own output bounds. This means:
+     * <ul>
+     *     <li>A node can need to be repainted even if it is otherwise {@linkplain DirtyFlag#CLEAN clean}
+     *         if any previously recorded dirty region intersects its backdrop input bounds.
+     *     <li>Even when a clean backdrop node does not become dirty in the current pass, its backdrop bounds
+     *         are tracked as a potential dependency for backdrop nodes that come later in render order.
+     *     <li>When repainting a region that includes pixels produced by backdrop-effect nodes, the repaint
+     *         must sometimes be expanded to include additional pixels behind the region (padding), so that
+     *         the effect sees up-to-date input pixels. This padding is computed by {@link BackdropRegionContainer}.
+     * </ul>
      *
-     * @param clip must not be null, the clip in scene coordinates, supplied by the
-     *        rendering system. At most, this is usually the bounds of the window's
-     *        content area, however it might be smaller.
-     * @param dirtyRegionTemp must not be null, the dirty region in scene coordinates.
-     *        When this method is initially invoked by the rendering system, the
-     *        dirtyRegion should be marked as invalid.
-     * @param dirtyRegionContainer must not be null, the container of dirty regions in scene
-     *        coordinates.
-     * @param tx must not be null, the accumulated transform up to but not
-     *        including this node's transform. When this method concludes, it must
-     *        restore this transform if it was changed within the function.
-     * @param pvTx must not be null, it's the perspective transform of the current
-     *        perspective camera or identity transform if parallel camera is used.
-     * @return The dirty region container. If the returned value is null, then that means
-     *         the clip should be used as the dirty region. This is a special
-     *         case indicating that there is no more need to walk the tree but
-     *         we can take a shortcut. Note that returning null is *always*
-     *         safe. Returning something other than null is simply an
-     *         optimization for cases where the dirty region is substantially
-     *         smaller than the clip.
+     * The {@code tx} parameter is the accumulated transform up to (but not including) this node's own transform.
+     * If this method changes the transform instance, it must restore it before returning.
+     *
+     * @param clip clip in scene coordinates supplied by the rendering system, not {@code null}; typically this
+     *             is the window content area, but it may be smaller (e.g., due to intermediate clipping)
+     * @param dirtyRegionTemp scratch bounds used to compute dirty regions in scene coordinates, not {@code null}
+     * @param regionPool pool for temporary {@link DirtyRegionContainer} instances, not {@code null}
+     * @param dirtyRegionContainer accumulator for dirty regions in scene coordinates, not {@code null}
+     * @param backdropRegionContainer tracker for render-order backdrop dependencies used to compute the
+     *                                minimal repaint region, not {@code null}
+     * @param tx accumulated transform up to but not including this node's transform, not {@code null}
+     * @param pvTx perspective transform of the current camera, or identity for a parallel camera, not {@code null}
+     * @return A status code indicating whether accumulation can continue normally ({@link DirtyRegionContainer#DTR_OK})
+     *         or whether the dirty region has grown to cover the clip ({@link DirtyRegionContainer#DTR_CONTAINS_CLIP}),
+     *         in which case we may repaint the entire clip/window as an optimization.
+     *
      * TODO: Only made non-final for the sake of testing (see javafx-sg-prism tests) (JDK-8090845)
      */
     public /*final*/ int accumulateDirtyRegions(final RectBounds clip,
                                                 final RectBounds dirtyRegionTemp,
                                                 DirtyRegionPool regionPool,
                                                 final DirtyRegionContainer dirtyRegionContainer,
+                                                BackdropRegionPool backdropRegionPool,
+                                                final BackdropRegionContainer backdropRegionContainer,
                                                 final BaseTransform tx,
-                                                final GeneralTransform3D pvTx)
-    {
+                                                final GeneralTransform3D pvTx) {
         // This is the main entry point, make sure to check these inputs for validity
         if (clip == null || dirtyRegionTemp == null || regionPool == null || dirtyRegionContainer == null ||
                 tx == null || pvTx == null) throw new NullPointerException();
@@ -1021,24 +1173,46 @@ public abstract class NGNode {
         // treat all nodes, regardless of their opacity or visibility, as
         // though their dirty regions matter. They do.
 
-        // If this node is clean then we can simply return the dirty region as
-        // there is no need to walk any further down this branch of the tree.
-        // The node is "clean" if neither it, nor its children, are dirty.
-         if (dirty == DirtyFlag.CLEAN && !childDirty) {
-             return DirtyRegionContainer.DTR_OK;
-         }
+        // Fast path: if this node and its subtree is clean, we can usually stop traversal here.
+        // However, with backdrop effects, a clean node may still need to participate in dirty region
+        // accumulation: If this node has a backdrop effect, it must either (a) become dirty because a
+        // prior dirty region intersects its backdrop input, or (b) be tracked as a potential dependency
+        // for later backdrop nodes.
+        if (dirty == DirtyFlag.CLEAN && !childDirty && backdropEffectNodesWithin == 0) {
+            if (backdropEffect != null) {
+                accumulateBackdropDirtyRegion(dirtyRegionContainer, backdropRegionContainer, tx, pvTx);
+            }
 
-        // We simply collect this nodes dirty region if it has its dirty flag
-        // set, regardless of whether it is a group or not. However, if this
-        // node is not dirty, then we can ask the accumulateGroupDirtyRegion
-        // method to collect the dirty regions of the children.
-        if (dirty != DirtyFlag.CLEAN) {
-            return accumulateNodeDirtyRegion(clip, dirtyRegionTemp, dirtyRegionContainer, tx, pvTx);
-        } else {
-            assert childDirty; // this must be true by this point
-            return accumulateGroupDirtyRegion(clip, dirtyRegionTemp, regionPool,
-                                              dirtyRegionContainer, tx, pvTx);
+            return DirtyRegionContainer.DTR_OK;
         }
+
+        int status = -1;
+
+        // If this node is dirty itself, accumulate its dirty bounds (which may also introduce padding due to
+        // earlier backdrop dependencies). Otherwise, if it is clean but has a backdrop effect, it may still
+        // need to (a) extend an existing dirty region or (b) record its backdrop bounds for later queries.
+        if (dirty != DirtyFlag.CLEAN) {
+            status = accumulateNodeDirtyRegion(clip, dirtyRegionTemp, dirtyRegionContainer,
+                                               backdropRegionContainer, tx, pvTx);
+        } else if (backdropEffect != null) {
+            accumulateBackdropDirtyRegion(dirtyRegionContainer, backdropRegionContainer, tx, pvTx);
+        }
+
+        // Only recurse into children when needed:
+        // 1. if any child is dirty (normal dirty-region propagation)
+        // 2. if the subtree contains backdrop-effect nodes, since their regions may need to be
+        //    tracked or may be affected by dirty content recorded earlier in render order
+        if ((childDirty || backdropEffectNodesWithin > 0)) {
+            int groupStatus = accumulateGroupDirtyRegion(
+                clip, dirtyRegionTemp, regionPool, dirtyRegionContainer,
+                backdropRegionPool, backdropRegionContainer, tx, pvTx);
+
+            if (status < 0 || groupStatus == DirtyRegionContainer.DTR_OK) {
+                status = groupStatus;
+            }
+        }
+
+        return status >= 0 ? status : DirtyRegionContainer.DTR_OK;
     }
 
     /**
@@ -1048,6 +1222,7 @@ public abstract class NGNode {
     int accumulateNodeDirtyRegion(final RectBounds clip,
                                   final RectBounds dirtyRegionTemp,
                                   final DirtyRegionContainer dirtyRegionContainer,
+                                  final BackdropRegionContainer backdropRegionContainer,
                                   final BaseTransform tx,
                                   final GeneralTransform3D pvTx) {
 
@@ -1070,9 +1245,11 @@ public abstract class NGNode {
             return DirtyRegionContainer.DTR_OK;
         }
 
-        // If the clip is completely contained within the dirty region (including
-        // if they are equal) then we return DTR_CONTAINS_CLIP
-        if (dirtyRegionTemp.contains(clip)) {
+        // If the clip is completely contained within the dirty region (including if they are equal)
+        // then we return DTR_CONTAINS_CLIP, but only if neither this node nor any of its descendants
+        // has a backdrop effect as we can't be sure that a backdrop effect doesn't sample pixels
+        // outside of the clip.
+        if (backdropEffectNodesWithin == 0 && backdropEffect == null && dirtyRegionTemp.contains(clip)) {
             return DirtyRegionContainer.DTR_CONTAINS_CLIP;
         }
 
@@ -1080,8 +1257,38 @@ public abstract class NGNode {
         // if the isEmpty state. But the code is cleaner and less error prone.
         dirtyRegionTemp.intersectWith(clip);
 
-        // Add the dirty region to the container
-        dirtyRegionContainer.addDirtyRegion(dirtyRegionTemp);
+        // If the opaque region of this node completely contains the dirty region, redrawing
+        // this node within the dirty region never requires dependent backdrops to be redrawn.
+        // We can therefore skip asking the backdrop dependency tracker whether there are any
+        // backdrops under our dirty region.
+        RectBounds opaqueRegion = getOpaqueRegion();
+        if (opaqueRegion != null && opaqueRegion.contains(dirtyRegionTemp)) {
+            dirtyRegionContainer.addDirtyRegion(dirtyRegionTemp);
+            return DirtyRegionContainer.DTR_OK;
+        }
+
+        // If this node has a backdrop effect, the backdrop region is potentially larger than the
+        // dirty region. We need to keep track of this excess by adding padding to the dirty region.
+        if (backdropEffect != null) {
+            BaseBounds backdropBounds = getBackdropBounds(TEMP_RECT_BOUNDS, tx);
+            if (!pvTx.isIdentity()) {
+                backdropBounds = pvTx.transform(backdropBounds, backdropBounds);
+            }
+
+            backdropBounds.flattenInto(TEMP_RECT_BOUNDS);
+            TEMP_RECT_BOUNDS.unionWith(dirtyRegionTemp);
+        } else {
+            TEMP_RECT_BOUNDS.deriveWithNewBounds(dirtyRegionTemp);
+        }
+
+        backdropRegionContainer.computeRepaintRegion(TEMP_RECT_BOUNDS, TEMP_RECT_BOUNDS);
+
+        dirtyRegionContainer.addDirtyRegion(
+            dirtyRegionTemp,
+            dirtyRegionTemp.getMinX() - TEMP_RECT_BOUNDS.getMinX(),
+            dirtyRegionTemp.getMinY() - TEMP_RECT_BOUNDS.getMinY(),
+            TEMP_RECT_BOUNDS.getMaxX() - dirtyRegionTemp.getMaxX(),
+            TEMP_RECT_BOUNDS.getMaxY() - dirtyRegionTemp.getMaxY());
 
         return DirtyRegionContainer.DTR_OK;
     }
@@ -1095,24 +1302,25 @@ public abstract class NGNode {
      */
     int accumulateGroupDirtyRegion(final RectBounds clip,
                                    final RectBounds dirtyRegionTemp,
-                                   final DirtyRegionPool regionPool,
+                                   final DirtyRegionPool dirtyRegionPool,
                                    DirtyRegionContainer dirtyRegionContainer,
+                                   final BackdropRegionPool backdropRegionPool,
+                                   BackdropRegionContainer backdropRegionContainer,
                                    final BaseTransform tx,
                                    final GeneralTransform3D pvTx) {
-        // We should have only made it to this point if this node has a dirty
-        // child. If this node itself is dirty, this method never would get called.
-        // If this node was not dirty and had no dirty children, then this
-        // method never should have been called. So at this point, the following
-        // assertions should be correct.
-        assert childDirty;
-        assert dirty == DirtyFlag.CLEAN;
+        // If this group has exceeded the dirty children threshold, we mark the entire group as dirty
+        // instead of traversing down to the individual children of this group. However, we can only do
+        // this if neither this group nor any of its descendants has a backdrop effect, because backdrop
+        // effects can sample distant pixels, which needs to be accounted for. Since we don't know how
+        // large the extended dirty region of a backdrop effect can be, we need to visit all backdrop-
+        // effect nodes and ask them how large their potential sampling region is.
+        if (backdropEffectNodesWithin == 0 && backdropEffect == null
+                && dirtyChildrenAccumulated > DIRTY_CHILDREN_ACCUMULATED_THRESHOLD) {
+            return accumulateNodeDirtyRegion(clip, dirtyRegionTemp, dirtyRegionContainer,
+                                             backdropRegionContainer, tx, pvTx);
+        }
 
         int status = DirtyRegionContainer.DTR_OK;
-
-        if (dirtyChildrenAccumulated > DIRTY_CHILDREN_ACCUMULATED_THRESHOLD) {
-            status = accumulateNodeDirtyRegion(clip, dirtyRegionTemp, dirtyRegionContainer, tx, pvTx);
-            return status;
-        }
 
         // If we got here, then we are following a "bread crumb" trail down to
         // some child (perhaps distant) which is dirty. So we need to iterate
@@ -1154,31 +1362,52 @@ public abstract class NGNode {
         //Save current dirty region so we can fast-reset to (something like) the last state
         //and possibly save a few intersects() calls
 
-        DirtyRegionContainer originalDirtyRegion = null;
+        DirtyRegionContainer originalDirtyRegionContainer = null;
+        BackdropRegionContainer originalBackdropRegionContainer = null;
         BaseTransform originalRenderTx = null;
+
         if (effectFilter != null) {
+            BaseTransform invRenderTx = TEMP_TRANSFORM.deriveWithNewTransform(renderTx);
+
             try {
-                myClip = new RectBounds();
-                BaseBounds myClipBaseBounds = renderTx.inverseTransform(clip, TEMP_BOUNDS);
-                myClipBaseBounds.flattenInto(myClip);
+                invRenderTx.invert();
             } catch (NoninvertibleTransformException ex) {
                 return DirtyRegionContainer.DTR_OK;
             }
 
+            // Convert the current clip (scene space) into the effect-local coordinate frame.
+            myClip = new RectBounds();
+            BaseBounds myClipBaseBounds = invRenderTx.transform(clip, TEMP_BOUNDS);
+            myClipBaseBounds.flattenInto(myClip);
+
+            // Save the current traversal state and switch to effect-local traversal:
+            // renderTx becomes identity so children report bounds relative to the effect node.
             originalRenderTx = renderTx;
             renderTx = BaseTransform.IDENTITY_TRANSFORM;
-            originalDirtyRegion = dirtyRegionContainer;
-            dirtyRegionContainer = regionPool.checkOut();
-        } else if (clipNode != null) {
-            originalDirtyRegion = dirtyRegionContainer;
-            myClip = new RectBounds();
-            BaseBounds clipBounds = clipNode.getCompleteBounds(myClip, renderTx);
-            pvTx.transform(clipBounds, clipBounds);
-            clipBounds.flattenInto(myClip);
-            myClip.intersectWith(clip);
-            dirtyRegionContainer = regionPool.checkOut();
-        }
 
+            // Check out local accumulation containers for the duration of the effect-local traversal.
+            // DirtyRegionContainer:    children accumulate dirty regions in effect-local space
+            // BackdropRegionContainer: children must see backdrop dependencies that were recorded
+            //                          earlier in render order, but expressed in the same coordinate
+            //                          space as their dirty regions.
+            originalDirtyRegionContainer = dirtyRegionContainer;
+            originalBackdropRegionContainer = backdropRegionContainer;
+            dirtyRegionContainer = dirtyRegionPool.checkOut();
+
+            // Children must be able to query backdrop dependencies recorded before we entered the effect.
+            // Therefore, the local BackdropRegionContainer starts as a copy of the original BRC.
+            // Then we transform that copied BRC into effect-local coordinates, so overlap tests and
+            // dirty region expansion happen in the same coordinate frame that children will report.
+            backdropRegionContainer = backdropRegionPool.checkOut();
+            backdropRegionContainer.merge(originalBackdropRegionContainer, 0);
+            backdropRegionContainer.transform(invRenderTx, 0);
+        } else if (clipNode != null) {
+            originalDirtyRegionContainer = dirtyRegionContainer;
+            myClip = new RectBounds();
+            flattenBounds(myClip, clipNode.getCompleteBounds(myClip, renderTx), pvTx);
+            myClip.intersectWith(clip);
+            dirtyRegionContainer = dirtyRegionPool.checkOut();
+        }
 
         //Accumulate also removed children to dirty region.
         List<NGNode> removed = ((NGGroup) this).getRemovedChildren();
@@ -1187,15 +1416,18 @@ public abstract class NGNode {
             for (int i = removed.size() - 1; i >= 0; --i) {
                 removedChild = removed.get(i);
                 removedChild.dirty = DirtyFlag.DIRTY;
-                    status = removedChild.accumulateDirtyRegions(myClip,
-                            dirtyRegionTemp,regionPool, dirtyRegionContainer, renderTx, pvTx);
-                    if (status == DirtyRegionContainer.DTR_CONTAINS_CLIP) {
-                        break;
-                    }
+                int childStatus = removedChild.accumulateDirtyRegions(
+                    myClip, dirtyRegionTemp, dirtyRegionPool, dirtyRegionContainer,
+                    backdropRegionPool, backdropRegionContainer, renderTx, pvTx);
+
+                if (childStatus == DirtyRegionContainer.DTR_CONTAINS_CLIP && backdropEffectNodesWithin == 0) {
+                    status = DirtyRegionContainer.DTR_CONTAINS_CLIP;
+                    break;
+                }
             }
         }
 
-        List<NGNode> children = ((NGGroup) this).getChildren();
+        List<NGNode> children = ((NGGroup) this).getOrderedChildren();
         int num = children.size();
         for (int i=0; i<num && status == DirtyRegionContainer.DTR_OK; i++) {
             NGNode child = children.get(i);
@@ -1203,29 +1435,46 @@ public abstract class NGNode {
             // (as we used to), we are just doing the check twice. True, it might
             // mean fewer method calls, but hotspot will probably inline this all
             // anyway, and doing the check in one place is less error prone.
-            status = child.accumulateDirtyRegions(myClip, dirtyRegionTemp, regionPool,
-                                                  dirtyRegionContainer, renderTx, pvTx);
-            if (status == DirtyRegionContainer.DTR_CONTAINS_CLIP) {
+            status = child.accumulateDirtyRegions(myClip, dirtyRegionTemp, dirtyRegionPool, dirtyRegionContainer,
+                                                  backdropRegionPool, backdropRegionContainer, renderTx, pvTx);
+            if (status == DirtyRegionContainer.DTR_CONTAINS_CLIP && backdropEffectNodesWithin == 0) {
                 break;
             }
         }
 
         if (effectFilter != null && status == DirtyRegionContainer.DTR_OK) {
-            //apply effect on effect dirty regions
-            applyEffect(effectFilter, dirtyRegionContainer, regionPool);
+            applyEffect(effectFilter, dirtyRegionContainer, dirtyRegionPool);
 
             if (clipNode != null) {
                 myClip = new RectBounds();
                 BaseBounds clipBounds = clipNode.getCompleteBounds(myClip, renderTx);
-                applyClip(clipBounds, dirtyRegionContainer);
+                dirtyRegionContainer.intersectWith(clipBounds);
             }
 
-            //apply transform on effect dirty regions
-            applyTransform(originalRenderTx, dirtyRegionContainer);
-            renderTx = originalRenderTx;
+            dirtyRegionContainer.transform(originalRenderTx);
+            originalDirtyRegionContainer.merge(dirtyRegionContainer);
+            dirtyRegionPool.checkIn(dirtyRegionContainer);
 
-            originalDirtyRegion.merge(dirtyRegionContainer);
-            regionPool.checkIn(dirtyRegionContainer);
+            // During the effect-local traversal, children may have queried backdropRegionContainer
+            // (in effect-local coordinates) to compute padding, they may have consumed some entries
+            // in the local backdropRegionContainer, and may have added new backdrop entries in
+            // effect-local coordinates.
+            //
+            // We now need to bring those results back into the original BackdropRegionContainer:
+            // 1. transform the effect-local BackdropRegionContainer back to scene space
+            // 2. merge the state of the effect-local BackdropRegionContainer back into the original
+            //    BackdropRegionContainer, which may add or remove existing entries
+            //
+            // The merge protocol of BackdropRegionContainer ensures that remaining entries in the
+            // original BackdropRegionContainer (entries that were not removed in the effect-local
+            // copy) are not changed due to floating-point errors caused by the back-and-forth
+            // transformation between different coordinate spaces.
+            int baseIndex = originalBackdropRegionContainer.entryCount();
+            backdropRegionContainer.transform(originalRenderTx, baseIndex);
+            originalBackdropRegionContainer.merge(backdropRegionContainer, baseIndex);
+            backdropRegionPool.checkIn(backdropRegionContainer);
+
+            renderTx = originalRenderTx;
         }
 
         // If the process of applying the transform caused renderTx to not equal
@@ -1243,12 +1492,19 @@ public abstract class NGNode {
         // end. But the implementation of accumulateNodeDirtyRegion handles this.
         if (clipNode != null && effectFilter == null) {
             if (status == DirtyRegionContainer.DTR_CONTAINS_CLIP) {
-                status = accumulateNodeDirtyRegion(clip, dirtyRegionTemp, originalDirtyRegion, tx, pvTx);
+                status = accumulateNodeDirtyRegion(clip, dirtyRegionTemp, originalDirtyRegionContainer,
+                                                   backdropRegionContainer, tx, pvTx);
             } else {
-                originalDirtyRegion.merge(dirtyRegionContainer);
+                originalDirtyRegionContainer.merge(dirtyRegionContainer);
             }
-            regionPool.checkIn(dirtyRegionContainer);
+
+            dirtyRegionPool.checkIn(dirtyRegionContainer);
+
+            if (originalBackdropRegionContainer != null) {
+                backdropRegionPool.checkIn(originalBackdropRegionContainer);
+            }
         }
+
         return status;
     }
 
@@ -1302,6 +1558,155 @@ public abstract class NGNode {
                 region = pvTx.transform(region, region);
         }
         return region;
+    }
+
+    /**
+     * Extends an existing dirty region to account for this node's backdrop effect, and tracks this node's
+     * bounds in the {@link BackdropRegionContainer} to allow other nodes to discover backdrop dependencies
+     * on this node.
+     * <p>
+     * In the render graph, dirty regions are accumulated in render order and normally only reflect pixels
+     * that changed due to nodes repainting their own content. Backdrop effects break this assumption:
+     * a backdrop-effect node samples pixels that were rendered <em>behind</em> it earlier in render order
+     * and uses them to produce pixels in its own output area. Therefore, if any previously recorded dirty
+     * region overlaps the area that this node may sample, then the output of this node can change even when
+     * the node's own content did not.
+     * <p>
+     * This method checks whether any already-recorded dirty region intersects this node's backdrop input bounds.
+     * If so, it extends the dirty region to account for this node, ensuring that the node will be repainted
+     * in the next render pass so its backdrop output is recomputed from up-to-date pixels.
+     * <p>
+     * For backdrop effects that are not locally bounded (i.e. any input pixel can influence any output pixel),
+     * any overlap between a dirty region and this node's input bounds forces a repaint of the node's full
+     * output bounds. For locally-bounded effects (where an input pixel can only influence output pixels in
+     * its neighborhood), the dependency is spatially limited: only the neighborhood of output pixels near
+     * the dirty input needs to be repainted. In that case, this method:
+     * <ol>
+     *     <li>Computes the dirty-input sub-region that overlaps this node's backdrop input bounds.
+     *     <li>Maps that dirty-input sub-region to the minimal output sub-region that can be affected, based
+     *         on the effect's constant per-edge influence extents implied by its input-vs-output bounds.
+     *     <li>Computes the minimal conservative repaint region needed to provide correct backdrop inputs
+     *         for that output sub-region (including earlier backdrop-effect dependencies) via
+     *         {@link BackdropRegionContainer#computeRepaintRegion(RectBounds, RectBounds)}.
+     *     <li>Adds the node's dirty region with padding that captures the dependency on pixels behind it.
+     * </ol>
+     *
+     * This method must only be called for nodes that have a backdrop effect.
+     */
+    private void accumulateBackdropDirtyRegion(DirtyRegionContainer dirtyRegionContainer,
+                                               BackdropRegionContainer backdropRegionContainer,
+                                               BaseTransform tx,
+                                               GeneralTransform3D pvTx) {
+        class Vars {
+            final static RectBounds inputBounds = new RectBounds();
+            final static RectBounds outputBounds = new RectBounds();
+            final static RectBounds dirtyInputBounds = new RectBounds();
+            final static RectBounds dirtyOutputBounds = new RectBounds();
+            final static RectBounds requiredInputBounds = new RectBounds();
+            final static RectBounds repaintBounds = new RectBounds();
+        }
+
+        RectBounds inputBounds = Vars.inputBounds;
+        RectBounds outputBounds = Vars.outputBounds;
+        RectBounds dirtyInputBounds = Vars.dirtyInputBounds;
+        RectBounds dirtyOutputBounds = Vars.dirtyOutputBounds;
+        RectBounds requiredInputBounds = Vars.requiredInputBounds;
+        RectBounds repaintBounds = Vars.repaintBounds;
+        boolean locallyBounded = backdropEffect.isInputLocal();
+        boolean anyHit = false;
+
+        // Backdrop input bounds for this node (the region the backdrop effect can sample)
+        flattenBounds(inputBounds, getBackdropBounds(inputBounds, tx), pvTx);
+
+        // We'll accumulate the union of the dirty pixels in inputBounds into dirtyInputBounds.
+        // For backdrop effects that are not locally bounded, we can stop on the first intersection.
+        dirtyInputBounds.makeEmpty();
+
+        for (int i = 0, max = dirtyRegionContainer.size(); i < max; ++i) {
+            RectBounds dirtyBounds = dirtyRegionContainer.getDirtyRegion(i);
+            if (!dirtyBounds.intersects(inputBounds)) {
+                continue;
+            }
+
+            anyHit = true;
+
+            // If the backdrop effect is not locally bounded: any dirty input pixel can affect
+            // any output pixel, so repaint the whole node.
+            if (!locallyBounded) {
+                break;
+            }
+
+            // If the backdrop effect is locally bounded: union the intersection into dirtyInputBounds
+            float ix0 = Math.max(dirtyBounds.getMinX(), inputBounds.getMinX());
+            float iy0 = Math.max(dirtyBounds.getMinY(), inputBounds.getMinY());
+            float ix1 = Math.min(dirtyBounds.getMaxX(), inputBounds.getMaxX());
+            float iy1 = Math.min(dirtyBounds.getMaxY(), inputBounds.getMaxY());
+            if (ix1 >= ix0 && iy1 >= iy0) {
+                dirtyInputBounds.unionWith(ix0, iy0, ix1, iy1);
+            }
+        }
+
+        // Output bounds for this node (what it draws)
+        flattenBounds(outputBounds, getCompleteBounds(outputBounds, tx), pvTx);
+
+        // We didn't hit a dirty region, but the bounds of this backdrop might be relevant
+        // for subsequent nodes, so track it in the backdrop region container.
+        if (!anyHit) {
+            backdropRegionContainer.add(outputBounds, inputBounds, backdropEffect.isInputLocal());
+            return;
+        }
+
+        if (!locallyBounded || dirtyInputBounds.isEmpty()) {
+            // Repaint whole node output, and its full input region.
+            dirtyOutputBounds.setBounds(outputBounds);
+            requiredInputBounds.setBounds(inputBounds);
+        } else {
+            // Compute per-edge extents from outputBounds to inputBounds.
+            float left = outputBounds.getMinX() - inputBounds.getMinX();
+            float top = outputBounds.getMinY() - inputBounds.getMinY();
+            float right = inputBounds.getMaxX() - outputBounds.getMaxX();
+            float bottom = inputBounds.getMaxY() - outputBounds.getMaxY();
+
+            if (left < 0 || top < 0 || right < 0 || bottom < 0) {
+                dirtyOutputBounds.setBounds(outputBounds);
+                requiredInputBounds.setBounds(inputBounds);
+            } else {
+                // Map dirty input forward to affected output (inverse footprint).
+                dirtyOutputBounds.setBounds(
+                    Math.max(outputBounds.getMinX(), dirtyInputBounds.getMinX() - right),
+                    Math.max(outputBounds.getMinY(), dirtyInputBounds.getMinY() - bottom),
+                    Math.min(outputBounds.getMaxX(), dirtyInputBounds.getMaxX() + left),
+                    Math.min(outputBounds.getMaxY(), dirtyInputBounds.getMaxY() + top));
+
+                // Compute required input to repaint that output (forward footprint).
+                requiredInputBounds.setBounds(
+                    Math.max(inputBounds.getMinX(), dirtyOutputBounds.getMinX() - left),
+                    Math.max(inputBounds.getMinY(), dirtyOutputBounds.getMinY() - top),
+                    Math.min(inputBounds.getMaxX(), dirtyOutputBounds.getMaxX() + right),
+                    Math.min(inputBounds.getMaxY(), dirtyOutputBounds.getMaxY() + bottom));
+            }
+        }
+
+        // Compute the minimal repaint region for the required input bounds of this node.
+        backdropRegionContainer.computeRepaintRegion(requiredInputBounds, repaintBounds);
+
+        // Padding is the difference between the repaint bounds and this node's dirty output bounds:
+        // the dirty output bounds define the area this node draws, and the repaint bounds define what
+        // it needs to have up-to-date in order to do so.
+        dirtyRegionContainer.addDirtyRegion(
+            dirtyOutputBounds,
+            dirtyOutputBounds.getMinX() - repaintBounds.getMinX(),
+            dirtyOutputBounds.getMinY() - repaintBounds.getMinY(),
+            repaintBounds.getMaxX() - dirtyOutputBounds.getMaxX(),
+            repaintBounds.getMaxY() - dirtyOutputBounds.getMaxY());
+
+        // If this node's output bounds are completely contained within the dirty output, the backdrop
+        // of this node is irrelevant for subsequent queries because it will be repainted in any case.
+        // Otherwise the backdrop might still be relevant for other nodes, so track it in the backdrop
+        // region container.
+        if (!dirtyOutputBounds.contains(outputBounds)) {
+            backdropRegionContainer.add(outputBounds, inputBounds, backdropEffect.isInputLocal());
+        }
     }
 
     /**
@@ -1382,11 +1787,15 @@ public abstract class NGNode {
         cullingBits = 0;
         RectBounds region;
         int mask = 0x1; // Check only for intersections
-        for(int i = 0; i < drc.size(); i++) {
-            region = drc.getDirtyRegion(i);
+        for (int i = 0; i < drc.size(); i++) {
+            // Check for intersections with the extended dirty region, not just the core region.
+            // Even if the node is not visible within the render clip, its pixels might contribute
+            // to another node's backdrop that is.
+            region = drc.getEntry(i).getExtendedRegion();
             if (region == null || region.isEmpty()) {
                 break;
             }
+
             // For each dirty region, we will check to see if this child
             // intersects with the dirty region and whether it contains the
             // dirty region. Note however, that we only care to mark those
@@ -1931,6 +2340,39 @@ public abstract class NGNode {
      *                                                                         *
      **************************************************************************/
 
+    public final void render(Graphics g, Rectangle extendedClip) {
+        if (extendedClip == null) {
+            render(g);
+        } else {
+            BaseTransform tx = g.getTransformNoClone();
+            double mxx = tx.getMxx(), mxy = tx.getMxy(), mxz = tx.getMxz(), mxt = tx.getMxt();
+            double myx = tx.getMyx(), myy = tx.getMyy(), myz = tx.getMyz(), myt = tx.getMyt();
+            double mzx = tx.getMzx(), mzy = tx.getMzy(), mzz = tx.getMzz(), mzt = tx.getMzt();
+
+            FilterContext fctx = getFilterContext(g);
+            PrDrawable img = null;
+
+            try {
+                img = (PrDrawable)Effect.getCompatibleImage(fctx, extendedClip.width, extendedClip.height);
+                Graphics imgG = img.createGraphics();
+                imgG.translate(-extendedClip.x, -extendedClip.y);
+                imgG.transform(tx);
+                imgG.setClipRect(new Rectangle(0, 0, extendedClip.width, extendedClip.height));
+                render(imgG);
+                g.setTransform(null);
+                g.drawTexture(img.getTextureObject(),
+                              extendedClip.x, extendedClip.y,
+                              extendedClip.width, extendedClip.height);
+            } finally {
+                if (img != null) {
+                    Effect.releaseCompatibleImage(fctx, img);
+                }
+
+                g.setTransform3D(mxx, mxy, mxz, mxt, myx, myy, myz, myt, mzx, mzy, mzz, mzt);
+            }
+        }
+    }
+
     /**
      * Render the tree of nodes to the specified G (graphics) object
      * descending from this node as the root. This method is designed to avoid
@@ -2035,6 +2477,7 @@ public abstract class NGNode {
         //   opacity
         //   cache
         //   clip
+        //   backdrop effect
         //   effect
         // The clip must be below the cache filter, as this is expected in the
         // CacheFilter in order to apply scrolling optimization
@@ -2055,6 +2498,9 @@ public abstract class NGNode {
             p = true;
         } else if (!isShape3D() && getClipNode() != null) {
             renderClip(g);
+            p = true;
+        } else if (!isShape3D() && getBackdropEffect() != null && effectsSupported) {
+            renderBackdropEffect(g);
             p = true;
         } else if (!isShape3D() && getEffectFilter() != null && effectsSupported) {
             renderEffect(g);
@@ -2152,6 +2598,8 @@ public abstract class NGNode {
             renderCached(gContentImg);
         } else if (getClipNode() != null) {
             renderClip(g);
+        } else if (getBackdropEffect() != null) {
+            renderBackdropEffect(gContentImg);
         } else if (getEffectFilter() != null) {
             renderEffect(gContentImg);
         } else {
@@ -2273,7 +2721,9 @@ public abstract class NGNode {
     }
 
     void renderForClip(Graphics g) {
-        if (getEffectFilter() != null) {
+        if (getBackdropEffect() != null) {
+            renderBackdropEffect(g);
+        } else if (getEffectFilter() != null) {
             renderEffect(g);
         } else {
             renderContent(g);
@@ -2296,6 +2746,8 @@ public abstract class NGNode {
                 renderCached(g);
             } else if (getClipNode() != null) {
                 renderClip(g);
+            } else if (getBackdropEffect() != null) {
+                renderBackdropEffect(g);
             } else if (getEffectFilter() != null) {
                 renderEffect(g);
             } else {
@@ -2350,9 +2802,133 @@ public abstract class NGNode {
         getEffectFilter().render(g);
     }
 
+    protected final void renderBackdropEffect(Graphics g) {
+        if (!(g instanceof ReadbackGraphics rg) || !rg.canReadBack()) {
+            if (getEffect() != null) {
+                renderEffect(g);
+            } else {
+                renderContent(g);
+            }
+
+            return;
+        }
+
+        // Save the current transform so we can restore it later.
+        BaseTransform tx = g.getTransformNoClone();
+        double mxx = tx.getMxx(), mxy = tx.getMxy(), mxz = tx.getMxz(), mxt = tx.getMxt();
+        double myx = tx.getMyx(), myy = tx.getMyy(), myz = tx.getMyz(), myt = tx.getMyt();
+        double mzx = tx.getMzx(), mzy = tx.getMzy(), mzz = tx.getMzz(), mzt = tx.getMzt();
+
+        // Compute the axis-aligned clip rectangle of the current node when viewed under the current
+        // transform and the current graphics clip. This is the backdrop area that can potentially be
+        // visible under the node.
+        BaseBounds clippedBoundsNoTx = getClippedBounds(new RectBounds(), BaseTransform.IDENTITY_TRANSFORM);
+        Rectangle clipRectTx = new Rectangle(tx.transform(clippedBoundsNoTx, TEMP_RECT_BOUNDS));
+        clipRectTx.intersectWith(PrEffectHelper.getGraphicsClipNoClone(g));
+        if (clipRectTx.isEmpty()) {
+            return;
+        }
+
+        FilterContext fctx = getFilterContext(g);
+        PrDrawable finalImg = null;
+        PrDrawable maskImg = null;
+        PrDrawable backdropImg = null;
+        RTTexture backdropTex = null;
+
+        try {
+            // Render the node content as a white mask into an offscreen image.
+            // This mask is used to clip the node's backdrop image later.
+            maskImg = (PrDrawable)Effect.getCompatibleImage(fctx, clipRectTx.width, clipRectTx.height);
+            if (maskImg == null) {
+                return;
+            }
+
+            Graphics gMaskImg = maskImg.createGraphics();
+            gMaskImg.translate(-clipRectTx.x, -clipRectTx.y);
+            gMaskImg.transform(tx);
+            backdropMask = true;
+            if (getEffectFilter() != null) {
+                renderEffect(gMaskImg);
+            } else {
+                renderContent(gMaskImg);
+            }
+            backdropMask = false;
+
+            // Earlier, we've computed the backdrop area of the current node. We need to ask the backdrop
+            // effect how that area changes when the effect is applied. Some effects can grow or shrink the
+            // area to which they're applied; for example, a blur effect grows the area in every direction
+            // by its blur radius.
+            EffectDirtyBoundsHelper helper = EffectDirtyBoundsHelper.getInstance();
+            helper.setInputBounds(clippedBoundsNoTx);
+            BaseBounds backdropEffectBoundsNoTx = backdropEffect.getBounds(BaseTransform.IDENTITY_TRANSFORM, helper);
+            Rectangle backdropRectTx = new Rectangle(tx.transform(backdropEffectBoundsNoTx, TEMP_RECT_BOUNDS));
+            backdropImg = (PrDrawable)Effect.getCompatibleImage(fctx, backdropRectTx.width, backdropRectTx.height);
+            if (backdropImg == null) {
+                return;
+            }
+
+            // Now we need to read the region of the render target that is covered by the backdrop effect
+            // area into an off-screen image. This image contains everything that has been rendered so far
+            // under the current node.
+            Surface rt = rg.getRenderTarget();
+            TEMP_RECTANGLE.setBounds(rt.getContentX(), rt.getContentY(), rt.getContentWidth(), rt.getContentHeight());
+            TEMP_RECTANGLE.intersectWith(backdropRectTx);
+            backdropTex = rg.readBack(TEMP_RECTANGLE);
+
+            // Apply the backdrop effect to the image we read from the render target.
+            Graphics gBackdropImg = backdropImg.createGraphics();
+            TEMP_RECTANGLE.setBounds(
+                TEMP_RECTANGLE.x - backdropRectTx.x, TEMP_RECTANGLE.y - backdropRectTx.y,
+                TEMP_RECTANGLE.width, TEMP_RECTANGLE.height);
+            PrEffectHelper.render(
+                backdropEffect, gBackdropImg, 0, 0,
+                new PassThrough(PrDrawable.create(fctx, backdropTex), TEMP_RECTANGLE));
+
+            // We now have two images: the backdrop image with its effect applied, and the mask image
+            // of the node content. We use a blend effect to clip the backdrop image with the mask, and
+            // render the result back to the render target.
+            g.setTransform(null); // switch back to device space (null -> identity)
+            PrEffectHelper.render(
+                new Blend(
+                    Blend.Mode.SRC_IN,
+                    new PassThrough(maskImg, clipRectTx),
+                    new PassThrough(backdropImg, backdropRectTx)),
+                g, 0, 0, null);
+        } finally {
+            if (backdropTex != null) {
+                rg.releaseReadBackBuffer(backdropTex);
+            }
+
+            if (backdropImg != null) {
+                Effect.releaseCompatibleImage(fctx, backdropImg);
+            }
+
+            if (maskImg != null) {
+                Effect.releaseCompatibleImage(fctx, maskImg);
+            }
+
+            if (finalImg != null) {
+                Effect.releaseCompatibleImage(fctx, finalImg);
+            }
+        }
+
+        g.setTransform3D(mxx, mxy, mxz, mxt, myx, myy, myz, myt, mzx, mzy, mzz, mzt);
+
+        // After we have rendered the backdrop of the node, we render its content on top.
+        if (getEffect() != null) {
+            renderEffect(g);
+        } else {
+            renderContent(g);
+        }
+    }
+
     protected abstract void renderContent(Graphics g);
 
     protected abstract boolean hasOverlappingContents();
+
+    protected final boolean isBackdropMask() {
+        return backdropMask;
+    }
 
     /***************************************************************************
      *                                                                         *
@@ -2443,24 +3019,6 @@ public abstract class NGNode {
 
     @Override public String toString() {
         return name == null ? super.toString() : name;
-    }
-
-    public void applyTransform(final BaseTransform tx, DirtyRegionContainer drc) {
-        for (int i = 0; i < drc.size(); i++) {
-            drc.setDirtyRegion(i, (RectBounds) tx.transform(drc.getDirtyRegion(i), drc.getDirtyRegion(i)));
-            if (drc.checkAndClearRegion(i)) {
-                --i;
-            }
-        }
-    }
-
-    public void applyClip(final BaseBounds clipBounds, DirtyRegionContainer drc) {
-        for (int i = 0; i < drc.size(); i++) {
-            drc.getDirtyRegion(i).intersectWith(clipBounds);
-            if (drc.checkAndClearRegion(i)) {
-                --i;
-            }
-        }
     }
 
     public void applyEffect(final EffectFilter effectFilter, DirtyRegionContainer drc, DirtyRegionPool regionPool) {
