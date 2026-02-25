@@ -62,9 +62,8 @@ public enum SizeQueryType {
                 throw invalidValue(queryType.getFeatureName(), featureValue.getText());
             }
 
-            String text = featureValue.getText();
             return rangeExpressionSupplier.getNumberExpression(
-                queryType, CssNumberParser.parseDouble(text, 0, text.length()));
+                queryType, CssNumberParser.parseDouble(featureValue.getText()));
         } catch (NumberFormatException ignored) {
             throw invalidValue(queryType.getFeatureName(), featureValue.getText());
         }

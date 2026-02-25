@@ -602,10 +602,10 @@ final public class CssParser {
 
     private static Size sizeImpl(final Token token) {
         SizeUnits units = SizeUnits.PX;
-        // Amount to trim off the suffix, if any. Most are 2 chars.
-        int trim = 2;
-        final String sval = token.getText();
-        int start = 0, end = sval.length();
+        int trim = 2; // Amount to trim off the suffix, if any. Most are 2 chars.
+        String sval = token.getText();
+        int start = 0;
+        int end = sval.length();
 
         while (start < end && Character.isWhitespace(sval.charAt(start))) {
             start++;
@@ -699,7 +699,8 @@ final public class CssParser {
 
     private Size time(Token token) throws ParseException {
         String sval = token.getText();
-        int start = 0, end = sval.length();
+        int start = 0;
+        int end = sval.length();
 
         while (start < end && Character.isWhitespace(sval.charAt(start))) {
             start++;
@@ -1173,9 +1174,9 @@ final public class CssParser {
         double gval = 0;
         double bval = 0;
         if (argType == CssLexer.NUMBER) {
-            rval = clamp(0.0f, CssNumberParser.parseDouble(rtext, 0, rtext.length()) / 255.0f, 1.0f);
-            gval = clamp(0.0f, CssNumberParser.parseDouble(gtext, 0, gtext.length()) / 255.0f, 1.0f);
-            bval = clamp(0.0f, CssNumberParser.parseDouble(btext, 0, btext.length()) / 255.0f, 1.0f);
+            rval = clamp(0.0f, CssNumberParser.parseDouble(rtext) / 255.0f, 1.0f);
+            gval = clamp(0.0f, CssNumberParser.parseDouble(gtext) / 255.0f, 1.0f);
+            bval = clamp(0.0f, CssNumberParser.parseDouble(btext) / 255.0f, 1.0f);
         } else {
             rval = clamp(0.0f, CssNumberParser.parseDouble(rtext, 0, rtext.length() - 1) / 100.0f, 1.0f);
             gval = clamp(0.0f, CssNumberParser.parseDouble(gtext, 0, gtext.length() - 1) / 100.0f, 1.0f);
@@ -1183,7 +1184,7 @@ final public class CssParser {
         }
 
         final String atext = (atok != null) ? atok.getText() : null;
-        final double aval = (atext != null) ? clamp(0.0f, CssNumberParser.parseDouble(atext, 0, atext.length()), 1.0f) : 1.0;
+        final double aval = (atext != null) ? clamp(0.0f, CssNumberParser.parseDouble(atext), 1.0f) : 1.0;
 
         return new ParsedValueImpl<Color,Color>(Color.color(rval,gval,bval,aval), null);
 
@@ -4113,8 +4114,7 @@ final public class CssParser {
                     if (arg == null || arg.token == null || arg.token.getType() != CssLexer.NUMBER) {
                         error(arg != null ? arg : term,  "Expected \'<number>\'");
                     } else {
-                        String text = arg.token.getText();
-                        args[j] = CssNumberParser.parseDouble(text, 0, text.length());
+                        args[j] = CssNumberParser.parseDouble(arg.token.getText());
                     }
 
                     if (j % 2 == 0 && (args[j] < 0 || args[j] > 1)) {
@@ -4162,8 +4162,7 @@ final public class CssParser {
                     if (arg == null || arg.token == null || arg.token.getType() != CssLexer.NUMBER) {
                         error(arg, "Expected \'<number>\'");
                     } else {
-                        String text = arg.token.getText();
-                        outputValue = CssNumberParser.parseDouble(text, 0, text.length());
+                        outputValue = CssNumberParser.parseDouble(arg.token.getText());
                     }
 
                     // 0, 1, or 2 <percentage>s

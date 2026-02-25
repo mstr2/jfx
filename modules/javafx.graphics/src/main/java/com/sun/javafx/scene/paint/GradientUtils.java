@@ -176,11 +176,13 @@ public class GradientUtils {
             Point p = new Point();
             if (value.endsWith("%")) {
                 p.proportional = true;
-                value = value.substring(0, value.length() - 1);
+                p.value = CssNumberParser.parseDouble(value, 0, value.length() - 1);
             } else if (value.endsWith("px")) {
-                value = value.substring(0, value.length() - 2);
+                p.value = CssNumberParser.parseDouble(value, 0, value.length() - 2);
+            } else {
+                p.value = CssNumberParser.parseDouble(value);
             }
-            p.value = CssNumberParser.parseDouble(value, 0, value.length());
+
             if (p.proportional) {
                 p.value /= 100;
             }
