@@ -313,7 +313,7 @@ public class Stylesheet {
     private void readBinaryImports(int bssVersion, DataInputStream is, String[] strings) throws IOException {
         for (int i = 0, max = is.readInt(); i < max; i++) {
             int queryCount = is.readInt();
-            var importConditions = new MediaQueryList();
+            var importConditions = new MediaQueryList(queryCount);
             for (int j = 0; j < queryCount; j++) {
                 importConditions.add(MediaQuerySerializer.readBinary(is, strings));
             }
