@@ -40,10 +40,10 @@ public final class MediaQueryList extends ArrayList<MediaQuery> {
     }
 
     /**
-     * Attempts to determine the result of this media query list without a context, and returns
-     * {@link TriState#TRUE} if it matches for all possible contexts, {@link TriState#FALSE} if
-     * it matches for no possible context, or {@link TriState#UNKNOWN} if the result depends on
-     * the context or cannot be determined.
+     * Attempts to determine the result of this media query list without a {@link MediaQueryContext},
+     * and returns {@link TriState#TRUE} if it is known to always match, {@link TriState#FALSE} if it
+     * is known to never match, or {@link TriState#UNKNOWN} if the result depends on the query context
+     * or cannot be determined.
      *
      * @return {@link TriState#TRUE} if the media query list is always true, {@link TriState#FALSE}
      *         if the media query list is always false, otherwise {@link TriState#UNKNOWN}
