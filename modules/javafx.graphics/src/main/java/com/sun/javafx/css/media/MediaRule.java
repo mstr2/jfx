@@ -64,9 +64,9 @@ public final class MediaRule {
     }
 
     /**
-     * Attempts to determine the result of this media rule without a context, and returns {@link TriState#TRUE}
-     * if the rule matches for all possible contexts, {@link TriState#FALSE} if it matches for no possible
-     * context, or {@link TriState#UNKNOWN} if the result depends on the context or cannot be determined.
+     * Attempts to determine the result of this media rule without a {@link MediaQueryContext}, and returns
+     * {@link TriState#TRUE} if at least one media query is {@code TRUE}, {@link TriState#FALSE} if all media
+     * queries are {@code FALSE}, or {@link TriState#UNKNOWN} otherwise.
      *
      * @return {@link TriState#TRUE} if the rule always matches, {@link TriState#FALSE}
      *         if the rule never matches, otherwise {@link TriState#UNKNOWN}
