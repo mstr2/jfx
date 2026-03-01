@@ -83,7 +83,7 @@ public abstract class Renderer {
     }
 
     public static final String rootPkg = "com.sun.scenario.effect";
-    private static final Map<FilterContext, Renderer> rendererMap = new HashMap<>(1);
+    private static final Map<FilterContext, Renderer> rendererMap = HashMap.newHashMap(1);
 
     private static final class PeerCacheKey {
         String name;
