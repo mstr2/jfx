@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,10 +84,37 @@ public abstract class Renderer {
     }
 
     public static final String rootPkg = "com.sun.scenario.effect";
-    private static final Map<FilterContext, Renderer> rendererMap =
-        new HashMap<>(1);
-    private Map<String, EffectPeer> peerCache =
-        Collections.synchronizedMap(new HashMap<String, EffectPeer>(5));
+    private static final Map<FilterContext, Renderer> rendererMap = new HashMap<>(1);
+
+    private static final class PeerCacheKey {
+        String name;
+        int unrollCount;
+
+        PeerCacheKey(String name, int unrollCount) {
+            this.name = name;
+            this.unrollCount = unrollCount;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof PeerCacheKey other
+                && unrollCount == other.unrollCount
+                && name.equals(other.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * name.hashCode() + unrollCount;
+        }
+
+        @Override
+        public String toString() {
+            return name + unrollCount;
+        }
+    }
+
+    private final Map<PeerCacheKey, EffectPeer> peerCache = Collections.synchronizedMap(new HashMap<>(5));
+    private final PeerCacheKey peerCacheKey = new PeerCacheKey(null, -1); // reusable key to look up mappings
     private final ImagePool imagePool;
 
     protected static final boolean verbose = Boolean.getBoolean("decora.verbose");
@@ -234,36 +261,23 @@ public abstract class Renderer {
      * @param unrollCount
      * @return cached peer for this name and unroll count
      */
-    public final synchronized EffectPeer
-        getPeerInstance(FilterContext fctx, String name, int unrollCount)
-    {
-        // first look for a previously cached peer using only the base name
-        // (e.g. GaussianBlur); software peers do not (currently) have
-        // unrolled loops, so this step should locate those...
-        EffectPeer peer = peerCache.get(name);
+    public final synchronized EffectPeer getPeerInstance(FilterContext fctx, String name, int unrollCount) {
+        // The lookup key is only used to look up mappings, it is never inserted into the map.
+        peerCacheKey.name = name;
+        peerCacheKey.unrollCount = unrollCount;
+        EffectPeer<?> peer = peerCache.get(peerCacheKey);
         if (peer != null) {
             return peer;
-        }
-        // failing that, if there is a positive unrollCount, we attempt
-        // to find a previously cached hardware peer for that unrollCount
-        if (unrollCount > 0) {
-            peer = peerCache.get(name + "_" + unrollCount);
-            if (peer != null) {
-                return peer;
-            }
         }
 
         peer = createPeer(fctx, name, unrollCount);
         if (peer == null) {
-            throw new RuntimeException("Could not create peer  " + name +
-                                       " for renderer " + this);
+            throw new RuntimeException("Could not create peer  " + name + " for renderer " + this);
         }
-        // use the peer's unique name as the hashmap key
-        peerCache.put(peer.getUniqueName(), peer);
 
+        peerCache.put(new PeerCacheKey(name, unrollCount), peer);
         return peer;
     }
-
 
     /**
      * Returns this renderer's current state.
