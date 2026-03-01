@@ -37,6 +37,8 @@ import com.sun.scenario.effect.impl.Renderer;
 import com.sun.scenario.effect.impl.prism.PrFilterContext;
 import com.sun.scenario.effect.impl.state.RenderState;
 import org.junit.jupiter.api.Test;
+import test.javafx.util.ReflectionUtils;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -61,7 +63,23 @@ public class RendererTest {
         assertSame(testEffectB1, renderer.getPeerInstance(fctx, "TestEffectB", 1));
     }
 
+    @Test
+    void clearPeers_disposesEffectPeers() {
+        var renderer = new StubRenderer();
+        Map<?, ?> peerCache = ReflectionUtils.getFieldValue(renderer, "peerCache");
+        FilterContext fctx = PrFilterContext.getPrinterContext(new Object());
+        renderer.getPeerInstance(fctx, "TestEffectA", 0);
+        renderer.getPeerInstance(fctx, "TestEffectA", 1);
+        renderer.getPeerInstance(fctx, "TestEffectB", 2);
+        assertEquals(3, peerCache.size());
+        renderer._clearPeers();
+        assertEquals(0, peerCache.size());
+        assertEquals(3, renderer.disposeCalled);
+    }
+
     static class StubRenderer extends Renderer {
+        int disposeCalled = 0;
+
         @Override public Effect.AccelType getAccelType() { return null; }
         @Override public int getCompatibleWidth(int w) { return 0; }
         @Override public int getCompatibleHeight(int h) { return 0; }
@@ -82,7 +100,14 @@ public class RendererTest {
                                         Rectangle outputClip, ImageData... inputs) {
                     return null;
                 }
+
+                @Override
+                public void dispose() {
+                    disposeCalled++;
+                }
             };
         }
+
+        public void _clearPeers() { clearPeers(); }
     }
 }

@@ -26,7 +26,6 @@
 package com.sun.scenario.effect.impl;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -113,7 +112,7 @@ public abstract class Renderer {
         }
     }
 
-    private final Map<PeerCacheKey, EffectPeer> peerCache = Collections.synchronizedMap(new HashMap<>(5));
+    private final Map<PeerCacheKey, EffectPeer<?>> peerCache = HashMap.newHashMap(5);
     private final PeerCacheKey peerCacheKey = new PeerCacheKey(null, -1); // reusable key to look up mappings
     private final ImagePool imagePool;
 
@@ -258,25 +257,27 @@ public abstract class Renderer {
      *
      * @param fctx filter context - same as this renderer's context
      * @param name not-unrolled name of the peer
-     * @param unrollCount
+     * @param unrollCount the unroll count of the peer
      * @return cached peer for this name and unroll count
      */
-    public final synchronized EffectPeer getPeerInstance(FilterContext fctx, String name, int unrollCount) {
-        // The lookup key is only used to look up mappings, it is never inserted into the map.
-        peerCacheKey.name = name;
-        peerCacheKey.unrollCount = unrollCount;
-        EffectPeer<?> peer = peerCache.get(peerCacheKey);
-        if (peer != null) {
+    public final EffectPeer getPeerInstance(FilterContext fctx, String name, int unrollCount) {
+        synchronized (peerCache) {
+            // The lookup key is only used to look up mappings, it is never inserted into the map.
+            peerCacheKey.name = name;
+            peerCacheKey.unrollCount = unrollCount;
+            EffectPeer<?> peer = peerCache.get(peerCacheKey);
+            if (peer != null) {
+                return peer;
+            }
+
+            peer = createPeer(fctx, name, unrollCount);
+            if (peer == null) {
+                throw new RuntimeException("Could not create peer  " + name + " for renderer " + this);
+            }
+
+            peerCache.put(new PeerCacheKey(name, unrollCount), peer);
             return peer;
         }
-
-        peer = createPeer(fctx, name, unrollCount);
-        if (peer == null) {
-            throw new RuntimeException("Could not create peer  " + name + " for renderer " + this);
-        }
-
-        peerCache.put(new PeerCacheKey(name, unrollCount), peer);
-        return peer;
     }
 
     /**
@@ -299,10 +300,19 @@ public abstract class Renderer {
                                              String name, int unrollCount);
 
     /**
-     * Returns current cache of peers.
+     * Clears and disposes all effect peers of this renderer.
      */
-    protected Collection<EffectPeer> getPeers() {
-        return peerCache.values();
+    protected final void clearPeers() {
+        EffectPeer<?>[] peers;
+
+        synchronized (peerCache) {
+            peers = peerCache.values().toArray(EffectPeer[]::new);
+            peerCache.clear();
+        }
+
+        for (EffectPeer<?> peer : peers) {
+            peer.dispose();
+        }
     }
 
     /**
