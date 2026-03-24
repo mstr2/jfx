@@ -112,7 +112,7 @@ public class WindowStage extends GlassStage {
 
             fxStage.sceneProperty()
                 .flatMap(Scene::fillProperty)
-                .subscribe(_ -> {
+                .subscribe(_ -> { // use a value subscriber here to force invalidation
                     QuantumToolkit.getToolkit().checkFxUserThread();
                     updatePlatformWindowBackground();
                 });
