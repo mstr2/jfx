@@ -131,6 +131,7 @@ BOOL GetExtendedFrameBounds(HWND hwnd, RECT* r) {
         typedef HRESULT WINAPI FnGetProcessDpiAwareness(HANDLE, PROCESS_DPI_AWARENESS*);
         typedef DPI_AWARENESS_CONTEXT WINAPI FnSetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT);
         typedef DPI_AWARENESS_CONTEXT WINAPI FnGetThreadDpiAwarenessContext(VOID);
+        typedef BOOL WINAPI FnAreDpiAwarenessContextsEqual(DPI_AWARENESS_CONTEXT, DPI_AWARENESS_CONTEXT);
 
         impl_t() {
             HMODULE hModule = GetModuleHandleW(L"user32.dll"); // user32 is already loaded
@@ -162,12 +163,16 @@ BOOL GetExtendedFrameBounds(HWND hwnd, RECT* r) {
 
                 pGetProcessDpiAwareness = reinterpret_cast<FnGetProcessDpiAwareness*>(
                     GetProcAddress(hModule, "GetProcessDpiAwareness"));
+
+                pAreDpiAwarenessContextsEqual = reinterpret_cast<FnAreDpiAwarenessContextsEqual*>(
+                    GetProcAddress(hModule, "AreDpiAwarenessContextsEqual"));
             }
         }
 
         FnGetProcessDpiAwareness* pGetProcessDpiAwareness = NULL;
         FnGetThreadDpiAwarenessContext* pGetThreadDpiAwarenessContext = NULL;
         FnSetThreadDpiAwarenessContext* pSetThreadDpiAwarenessContext = NULL;
+        FnAreDpiAwarenessContextsEqual* pAreDpiAwarenessContextsEqual = NULL;
 
         /*
          * We can only safely skip mapping when we know the current process is per-monitor DPI aware.
@@ -176,11 +181,11 @@ BOOL GetExtendedFrameBounds(HWND hwnd, RECT* r) {
          */
         BOOL canSkipMapping() const {
             // Supported on Windows 10+
-            if (pGetThreadDpiAwarenessContext) {
+            if (pGetThreadDpiAwarenessContext && pAreDpiAwarenessContextsEqual) {
                 DPI_AWARENESS_CONTEXT currentAwareness = pGetThreadDpiAwarenessContext();
 
-                return currentAwareness == DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE ||
-                       currentAwareness == DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2;
+                return pAreDpiAwarenessContextsEqual(currentAwareness, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE) ||
+                       pAreDpiAwarenessContextsEqual(currentAwareness, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
             }
 
             // Supported on Windows 8.1+
