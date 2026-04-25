@@ -38,6 +38,7 @@ public final class ImageUtils {
     /**
      * Computes the dominant color of an image when composited onto a solid background by clustering
      * sampled pixels in CIELAB space using k-means and returning the centroid of the largest cluster.
+     * Compositing is performed in linear RGB before conversion to Lab.
      *
      * @param image the input image
      * @return the dominant color
@@ -49,6 +50,7 @@ public final class ImageUtils {
     /**
      * Computes the dominant color of an image when composited onto a solid background by clustering
      * sampled pixels in CIELAB space using k-means and returning the centroid of the largest cluster.
+     * Compositing is performed in linear RGB before conversion to Lab.
      * <p>
      * This method invokes {@link #computeDominantColor(Image, Color, int, int, long)} with arguments tuned
      * to limit the runtime cost of the clustering algorithm. It chooses {@code sampleStep} so that the
@@ -113,6 +115,7 @@ public final class ImageUtils {
     /**
      * Computes the dominant color of an image when composited onto a solid background by clustering
      * sampled pixels in CIELAB space using k-means and returning the centroid of the largest cluster.
+     * Compositing is performed in linear RGB before conversion to Lab.
      * <p>
      * Many images contain a small set of recurring colors. This method approximates that palette by
      * running k-means on pixel colors (in Lab), then selects the cluster that accounts for the greatest
@@ -143,9 +146,9 @@ public final class ImageUtils {
         double[] labs = new double[3 * maxSamples]; // interleaved L/a/b
         int n = 0;
 
-        double bgR = background.getRed();
-        double bgG = background.getGreen();
-        double bgB = background.getBlue();
+        double bgR = srgbToLinear(background.getRed());
+        double bgG = srgbToLinear(background.getGreen());
+        double bgB = srgbToLinear(background.getBlue());
 
         // Collect samples
         for (int y = 0; y < h; y += sampleStep) {
@@ -157,15 +160,15 @@ public final class ImageUtils {
                 int b8 = argb & 0xff;
 
                 double a = a8 / 255.0;
-                double sr = r8 / 255.0;
-                double sg = g8 / 255.0;
-                double sb = b8 / 255.0;
+                double sr = srgbToLinear(r8 / 255.0);
+                double sg = srgbToLinear(g8 / 255.0);
+                double sb = srgbToLinear(b8 / 255.0);
 
                 double outR = a * sr + (1.0 - a) * bgR;
                 double outG = a * sg + (1.0 - a) * bgG;
                 double outB = a * sb + (1.0 - a) * bgB;
 
-                srgbToLab(outR, outG, outB, labs, 3 * n);
+                linearRgbToLab(outR, outG, outB, labs, 3 * n);
                 n++;
             }
         }
@@ -353,11 +356,7 @@ public final class ImageUtils {
         return dL * dL + dA * dA + dBv * dBv;
     }
 
-    private static void srgbToLab(double rs, double gs, double bs, double[] result, int offset) {
-        double r = srgbToLinear(rs);
-        double g = srgbToLinear(gs);
-        double b = srgbToLinear(bs);
-
+    private static void linearRgbToLab(double r, double g, double b, double[] result, int offset) {
         double X = 0.4124564 * r + 0.3575761 * g + 0.1804375 * b;
         double Y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
         double Z = 0.0193339 * r + 0.1191920 * g + 0.9503041 * b;
