@@ -449,6 +449,43 @@ public class CssParser_mediaQuery_Test {
     }
 
     @Test
+    void missingCommaBetweenMediaQueriesEvaluatesToFalse() {
+        String stylesheetText = """
+            @media (prefers-color-scheme: dark)
+                   (prefers-reduced-motion: reduce) {
+                .foo { bar: baz; }
+            }
+            """;
+
+        Stylesheet stylesheet = new CssParserShim().parseUnmerged(stylesheetText, true);
+        var mediaRule = RuleHelper.getMediaRule(stylesheet.getRules().getFirst());
+        assertEquals(1, mediaRule.getQueries().size());
+        assertEquals(ConstantExpression.of(false), mediaRule.getQueries().getFirst());
+
+        stylesheet = new CssParser().parse(stylesheetText);
+        assertEquals(0, stylesheet.getRules().size());
+    }
+
+    @Test
+    void parserRecoversFromMissingCommaBetweenMediaQueries() {
+        Stylesheet stylesheet = new CssParser().parse("""
+            @media (prefers-color-scheme: dark)
+                   (prefers-reduced-motion: reduce),
+                   (prefers-reduced-transparency: reduce) {
+                .foo { bar: baz; }
+            }
+            """);
+
+        var mediaRule = RuleHelper.getMediaRule(stylesheet.getRules().getFirst());
+        assertEquals(
+            List.of(
+                ConstantExpression.of(false),
+                FunctionExpression.of("prefers-reduced-transparency", "reduce", _ -> null, true)
+            ),
+            mediaRule.getQueries());
+    }
+
+    @Test
     void parserRecoversWhenMediaQueryIsMalformed() {
         Stylesheet stylesheet = new CssParser().parse("""
             @media (#123foo=malformed-query), (prefers-reduced-motion: reduce) {
