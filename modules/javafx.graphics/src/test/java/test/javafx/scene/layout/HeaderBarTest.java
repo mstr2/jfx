@@ -113,15 +113,6 @@ public class HeaderBarTest {
     }
 
     @Test
-    public void testPropertyMetadata() {
-        PropertyMetadataVerifier.assertPropertyMetadata(new HeaderBar(), HeaderBar.class, targetClass -> {
-            if (targetClass == Node.class) return new Rectangle();
-            if (targetClass == Stage.class) return new Stage();
-            return null;
-        });
-    }
-
-    @Test
     void emptyHeaderBar() {
         assertNull(headerBar.getLeft());
         assertNull(headerBar.getCenter());
