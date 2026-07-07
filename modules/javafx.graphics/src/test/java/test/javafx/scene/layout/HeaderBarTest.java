@@ -57,8 +57,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import test.com.sun.javafx.pgstub.StubScene;
 import test.javafx.util.ReflectionUtils;
-import test.util.property.PropertyMetadataVerifier;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 public class HeaderBarTest {
