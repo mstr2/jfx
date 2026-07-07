@@ -79,7 +79,7 @@ public class ReadOnlyFloatWrapper extends SimpleFloatProperty {
      * @param bean the bean of this property
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
-     * @since 27
+     * @since 28
      */
     public ReadOnlyFloatWrapper(Object bean, Class<?> declaringClass, String name) {
         super(bean, declaringClass, name);
@@ -92,7 +92,7 @@ public class ReadOnlyFloatWrapper extends SimpleFloatProperty {
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
      * @param initialValue the initial value
-     * @since 27
+     * @since 28
      */
     public ReadOnlyFloatWrapper(Object bean, Class<?> declaringClass, String name, float initialValue) {
         super(bean, declaringClass, name, initialValue);

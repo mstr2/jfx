@@ -61,7 +61,7 @@ public class SimpleLongProperty extends LongPropertyBase {
     /**
      * {@inheritDoc}
      *
-     * @since 27
+     * @since 28
      */
     @Override
     public Class<?> getDeclaringClass() {
@@ -118,7 +118,7 @@ public class SimpleLongProperty extends LongPropertyBase {
      * @param bean the bean of this property
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
-     * @since 27
+     * @since 28
      */
     public SimpleLongProperty(Object bean, Class<?> declaringClass, String name) {
         this(bean, name);
@@ -132,7 +132,7 @@ public class SimpleLongProperty extends LongPropertyBase {
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
      * @param initialValue the initial value
-     * @since 27
+     * @since 28
      */
     public SimpleLongProperty(Object bean, Class<?> declaringClass, String name, long initialValue) {
         this(bean, name, initialValue);

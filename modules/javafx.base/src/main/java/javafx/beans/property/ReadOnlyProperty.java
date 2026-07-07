@@ -76,7 +76,7 @@ public interface ReadOnlyProperty<T> extends ObservableValue<T> {
      *           However, implementations are advised to override this method and return the declaring class
      *           directly, instead of relying on the reflective auto-discovery mechanism. Attached properties
      *           must always override this method.
-     * @since 27
+     * @since 28
      */
     default Class<?> getDeclaringClass() {
         Object bean = getBean();

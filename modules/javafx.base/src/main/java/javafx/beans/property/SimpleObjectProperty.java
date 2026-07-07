@@ -64,7 +64,7 @@ public class SimpleObjectProperty<T> extends ObjectPropertyBase<T> {
     /**
      * {@inheritDoc}
      *
-     * @since 27
+     * @since 28
      */
     @Override
     public Class<?> getDeclaringClass() {
@@ -121,7 +121,7 @@ public class SimpleObjectProperty<T> extends ObjectPropertyBase<T> {
      * @param bean the bean of this property
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
-     * @since 27
+     * @since 28
      */
     public SimpleObjectProperty(Object bean, Class<?> declaringClass, String name) {
         this(bean, name);
@@ -135,7 +135,7 @@ public class SimpleObjectProperty<T> extends ObjectPropertyBase<T> {
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
      * @param initialValue the initial value
-     * @since 27
+     * @since 28
      */
     public SimpleObjectProperty(Object bean, Class<?> declaringClass, String name, T initialValue) {
         this(bean, name, initialValue);

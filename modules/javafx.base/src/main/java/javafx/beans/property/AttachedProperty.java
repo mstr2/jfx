@@ -39,13 +39,13 @@ package javafx.beans.property;
  * <pre>{@code
  * class MyContainer {
  *     // Property accessor
- *     public static ObjectProperty<Insets> marginProperty(Node target);
+ *     public static ObjectProperty<Insets> marginProperty(Node target) { ... }
  *
  *     // Convenience getter, may elide property instantiation
- *     public static Insets getMargin(Node target);
+ *     public static Insets getMargin(Node target) { ... }
  *
  *     // Convenience setter, may elide property instantiation
- *     public static void setMargin(Node target, Insets value);
+ *     public static void setMargin(Node target, Insets value) { ... }
  * }
  * }</pre>
  * Calling the property accessor must instantiate the property for the target object and store it in the target
@@ -56,7 +56,7 @@ package javafx.beans.property;
  * Note that the {@code AttachedProperty} interface might not be visible in the static type of the property, so
  * a dynamic test via {@code instanceof AttachedProperty} might be required at runtime to detect its presence.
  *
- * @since 27
+ * @since 28
  */
 public interface AttachedProperty {
 

@@ -80,7 +80,7 @@ public class ReadOnlyObjectWrapper<T> extends SimpleObjectProperty<T> {
      * @param bean the bean of this property
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
-     * @since 27
+     * @since 28
      */
     public ReadOnlyObjectWrapper(Object bean, Class<?> declaringClass, String name) {
         super(bean, declaringClass, name);
@@ -93,7 +93,7 @@ public class ReadOnlyObjectWrapper<T> extends SimpleObjectProperty<T> {
      * @param declaringClass the class in which this property is declared
      * @param name the name of this property
      * @param initialValue the initial value
-     * @since 27
+     * @since 28
      */
     public ReadOnlyObjectWrapper(Object bean, Class<?> declaringClass, String name, T initialValue) {
         super(bean, declaringClass, name, initialValue);
