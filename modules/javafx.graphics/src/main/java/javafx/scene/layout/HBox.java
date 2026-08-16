@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package javafx.scene.layout;
 
+import com.sun.javafx.scene.layout.SpaceDistributor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -405,9 +406,10 @@ public class HBox extends Pane {
 
     @Override protected double computeMinWidth(double height) {
         Insets insets = getInsets();
-        return snapSpaceX(insets.getLeft()) +
-               computeContentWidth(getManagedChildren(), height, true) +
-               snapSpaceX(insets.getRight());
+        return snapSpaceX(
+            snapSpaceX(insets.getLeft()) +
+            computeContentWidth(getManagedChildren(), height, true) +
+            snapSpaceX(insets.getRight()));
     }
 
     @Override protected double computeMinHeight(double width) {
@@ -415,22 +417,26 @@ public class HBox extends Pane {
         List<Node>managed = getManagedChildren();
         double contentHeight = 0;
         if (width != -1 && getContentBias() != null) {
-            double prefWidths[][] = getAreaWidths(managed, -1, false);
+            double[][] prefWidths = getAreaWidths(managed, -1, false);
             adjustAreaWidths(managed, prefWidths, width, -1);
-            contentHeight = computeMaxMinAreaHeight(managed, marginAccessor, prefWidths[0], false, getAlignmentInternal().getVpos());
+            contentHeight = computeMaxMinAreaHeight(managed, marginAccessor, prefWidths[0], false,
+                                                    getAlignmentInternal().getVpos());
         } else {
             contentHeight = computeMaxMinAreaHeight(managed, marginAccessor, getAlignmentInternal().getVpos());
         }
-        return snapSpaceY(insets.getTop()) +
-               contentHeight +
-               snapSpaceY(insets.getBottom());
+
+        return snapSpaceY(
+            snapSpaceY(insets.getTop()) +
+            contentHeight +
+            snapSpaceY(insets.getBottom()));
     }
 
     @Override protected double computePrefWidth(double height) {
         Insets insets = getInsets();
-        return snapSpaceX(insets.getLeft()) +
-               computeContentWidth(getManagedChildren(), height, false) +
-               snapSpaceX(insets.getRight());
+        return snapSpaceX(
+            snapSpaceX(insets.getLeft()) +
+            computeContentWidth(getManagedChildren(), height, false) +
+            snapSpaceX(insets.getRight()));
     }
 
     @Override protected double computePrefHeight(double width) {
@@ -438,15 +444,17 @@ public class HBox extends Pane {
         List<Node>managed = getManagedChildren();
         double contentHeight = 0;
         if (width != -1 && getContentBias() != null) {
-            double prefWidths[][] = getAreaWidths(managed, -1, false);
+            double[][] prefWidths = getAreaWidths(managed, -1, false);
             adjustAreaWidths(managed, prefWidths, width, -1);
             contentHeight = computeMaxPrefAreaHeight(managed, marginAccessor, prefWidths[0], false, getAlignmentInternal().getVpos());
         } else {
             contentHeight = computeMaxPrefAreaHeight(managed, marginAccessor, getAlignmentInternal().getVpos());
         }
-        return snapSpaceY(insets.getTop()) +
-               contentHeight +
-               snapSpaceY(insets.getBottom());
+
+        return snapSpaceY(
+            snapSpaceY(insets.getTop()) +
+            contentHeight +
+            snapSpaceY(insets.getBottom()));
     }
 
     private double[][] getAreaWidths(List<Node>managed, double height, boolean minimum) {
@@ -459,95 +467,78 @@ public class HBox extends Pane {
             Node child = managed.get(i);
             Insets margin = getMargin(child);
             if (minimum) {
-                temp[0][i] = computeChildMinAreaWidth(child, getMinBaselineComplement(), margin, insideHeight, shouldFillHeight);
+                temp[0][i] = snapAreaWidth(computeChildMinAreaWidth(
+                    child, getMinBaselineComplement(), margin, insideHeight, shouldFillHeight));
             } else {
-                temp[0][i] = computeChildPrefAreaWidth(child, getPrefBaselineComplement(), margin, insideHeight, shouldFillHeight);
+                temp[0][i] = snapAreaWidth(computeChildPrefAreaWidth(
+                    child, getPrefBaselineComplement(), margin, insideHeight, shouldFillHeight));
             }
         }
         return temp;
     }
 
-    private double adjustAreaWidths(List<Node>managed, double areaWidths[][], double width, double height) {
+    private double adjustAreaWidths(List<Node>managed, double[][] areaWidths, double width, double height) {
+        int size = managed.size();
         Insets insets = getInsets();
         double top = snapSpaceY(insets.getTop());
         double bottom = snapSpaceY(insets.getBottom());
+        double totalSpacing = computeSpacing(size);
+        double targetWidth = snapSpaceX(width - snapSpaceX(insets.getLeft()) - snapSpaceX(insets.getRight()) - totalSpacing);
+        double currentWidth = snapSpaceX(sum(areaWidths[0], size));
+        double snapScale = isSnapToPixel() ? Region.getSnapScaleX(this) : -1;
+        double refHeight = shouldFillHeight() && height != -1 ? height - top - bottom : -1;
 
-        double contentWidth = sum(areaWidths[0], managed.size()) + (managed.size()-1)*snapSpaceX(getSpacing());
-        double extraWidth = width -
-                snapSpaceX(insets.getLeft()) - snapSpaceX(insets.getRight()) - contentWidth;
+        if (currentWidth > targetWidth) {
+            double[] minWidths = areaWidths[1];
+            for (int i = 0; i < size; i++) {
+                Node child = managed.get(i);
+                minWidths[i] = snapAreaWidth(computeChildMinAreaWidth(
+                    child, getMinBaselineComplement(), getMargin(child), refHeight, shouldFillHeight()));
+            }
 
-        if (extraWidth != 0) {
-            final double refHeight = shouldFillHeight() && height != -1? height - top - bottom : -1;
-            double remaining = growOrShrinkAreaWidths(managed, areaWidths, Priority.ALWAYS, extraWidth, refHeight);
-            remaining = growOrShrinkAreaWidths(managed, areaWidths, Priority.SOMETIMES, remaining, refHeight);
-            contentWidth += (extraWidth - remaining);
+            SpaceDistributor.distribute(targetWidth, snapScale, areaWidths[0], minWidths, size);
+        } else if (currentWidth < targetWidth) {
+            double remaining = growAreaWidths(
+                managed, areaWidths, Priority.ALWAYS, targetWidth, refHeight, snapScale);
+
+            if (remaining > 0) {
+                growAreaWidths(managed, areaWidths, Priority.SOMETIMES, targetWidth, refHeight, snapScale);
+            }
         }
-        return contentWidth;
+
+        return snapSpaceX(snapSpaceX(sum(areaWidths[0], size)) + totalSpacing);
     }
 
-    private double growOrShrinkAreaWidths(List<Node>managed, double areaWidths[][], Priority priority, double extraWidth, double height) {
-        final boolean shrinking = extraWidth < 0;
-        int adjustingNumber = 0;
-
+    private double growAreaWidths(List<Node> managed, double[][] areaWidths, Priority priority,
+                                  double targetWidth, double height, double snapScale) {
         double[] usedWidths = areaWidths[0];
-        double[] temp = areaWidths[1];
+        double[] maxWidths = areaWidths[1];
         final boolean shouldFillHeight = shouldFillHeight();
 
-        if (shrinking) {
-            adjustingNumber = managed.size();
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                final Node child = managed.get(i);
-                temp[i] = computeChildMinAreaWidth(child, getMinBaselineComplement(), getMargin(child), height, shouldFillHeight);
-            }
-        } else {
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                final Node child = managed.get(i);
-                if (getHgrow(child) == priority) {
-                    temp[i] = computeChildMaxAreaWidth(child, getMinBaselineComplement(), getMargin(child), height, shouldFillHeight);
-                    adjustingNumber++;
-                } else {
-                    temp[i] = -1;
-                }
-            }
+        for (int i = 0, size = managed.size(); i < size; i++) {
+            Node child = managed.get(i);
+            maxWidths[i] = getHgrow(child) == priority
+                ? snapAreaWidth(computeChildMaxAreaWidth(
+                    child, getMinBaselineComplement(), getMargin(child), height, shouldFillHeight))
+                : usedWidths[i];
         }
 
-        double pixelSize = isSnapToPixel() ? 1 / Region.getSnapScaleX(this) : 0.0;
-        double available = extraWidth; // will be negative in shrinking case
-        outer:while (Math.abs(available) >= pixelSize && adjustingNumber > 0) {
-            double portion = snapPortionX(available / adjustingNumber); // negative in shrinking case
-
-            if (portion == 0) {
-                if (pixelSize == 0) {
-                    break;
-                }
-
-                portion = pixelSize * Math.signum(available);
-            }
-
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                if (temp[i] == -1) {
-                    continue;
-                }
-                final double limit = temp[i] - usedWidths[i]; // negative in shrinking case
-                final double change = Math.abs(limit) <= Math.abs(portion)? limit : portion;
-                usedWidths[i] += change;
-                available -= change;
-                if (Math.abs(available) < pixelSize) {
-                    break outer;
-                }
-                if (Math.abs(change) < Math.abs(portion)) {
-                    temp[i] = -1;
-                    adjustingNumber--;
-                }
-            }
-        }
-
-        return available; // might be negative in shrinking case
+        return SpaceDistributor.distribute(targetWidth, snapScale, usedWidths, maxWidths, managed.size());
     }
 
     private double computeContentWidth(List<Node> managedChildren, double height, boolean minimum) {
-        return sum(getAreaWidths(managedChildren, height, minimum)[0], managedChildren.size())
-                + (managedChildren.size()-1)*snapSpaceX(getSpacing());
+        double areaWidth = sum(getAreaWidths(managedChildren, height, minimum)[0], managedChildren.size());
+        return snapSpaceX(snapSpaceX(areaWidth) + computeSpacing(managedChildren.size()));
+    }
+
+    private double computeSpacing(int childCount) {
+        return childCount > 1
+            ? snapSpaceX((childCount - 1) * snapSpaceX(getSpacing()))
+            : 0;
+    }
+
+    private double snapAreaWidth(double value) {
+        return value == Double.MAX_VALUE ? value : snapSpaceX(value);
     }
 
     private static double sum(double[] array, int size) {
@@ -639,9 +630,9 @@ public class HBox extends Pane {
 
         final double[][] actualAreaWidths = getAreaWidths(managed, height, false);
         double contentWidth = adjustAreaWidths(managed, actualAreaWidths, width, height);
-        double contentHeight = height - top - bottom;
+        double contentHeight = snapSpaceY(height - top - bottom);
 
-        double x = left + computeXOffset(width - left - right, contentWidth, align.getHpos());
+        double x = snapPositionX(left + computeXOffset(snapSpaceX(width - left - right), contentWidth, align.getHpos()));
         double y = top;
         double baselineOffset = -1;
         if (alignVpos == VPos.BASELINE) {
@@ -656,7 +647,7 @@ public class HBox extends Pane {
             layoutInArea(child, x, y, actualAreaWidths[0][i], contentHeight,
                     baselineOffset, margin, true, shouldFillHeight,
                     alignHpos, alignVpos);
-            x += actualAreaWidths[0][i] + space;
+            x = snapPositionX(x + actualAreaWidths[0][i] + space);
         }
     }
 

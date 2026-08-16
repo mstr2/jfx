@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package javafx.scene.layout;
 
+import com.sun.javafx.scene.layout.SpaceDistributor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -392,20 +393,22 @@ public class VBox extends Pane {
         List<Node>managed = getManagedChildren();
         double contentWidth = 0;
         if (height != -1 && getContentBias() != null) {
-            double prefHeights[][] = getAreaHeights(managed, -1, false);
+            double[][] prefHeights = getAreaHeights(managed, -1, false);
             adjustAreaHeights(managed, prefHeights, height, -1);
             contentWidth = computeMaxMinAreaWidth(managed, marginAccessor, prefHeights[0], false);
         } else {
             contentWidth = computeMaxMinAreaWidth(managed, marginAccessor);
         }
-        return snapSpaceX(insets.getLeft()) + contentWidth + snapSpaceX(insets.getRight());
+
+        return snapSpaceX(snapSpaceX(insets.getLeft()) + contentWidth + snapSpaceX(insets.getRight()));
     }
 
     @Override protected double computeMinHeight(double width) {
         Insets insets = getInsets();
-        return snapSpaceY(insets.getTop()) +
-               computeContentHeight(getManagedChildren(), width, true) +
-               snapSpaceY(insets.getBottom());
+        return snapSpaceY(
+            snapSpaceY(insets.getTop()) +
+            computeContentHeight(getManagedChildren(), width, true) +
+            snapSpaceY(insets.getBottom()));
     }
 
     @Override protected double computePrefWidth(double height) {
@@ -413,21 +416,22 @@ public class VBox extends Pane {
         List<Node>managed = getManagedChildren();
         double contentWidth = 0;
         if (height != -1 && getContentBias() != null) {
-            double prefHeights[][] = getAreaHeights(managed, -1, false);
+            double[][] prefHeights = getAreaHeights(managed, -1, false);
             adjustAreaHeights(managed, prefHeights, height, -1);
             contentWidth = computeMaxPrefAreaWidth(managed, marginAccessor, prefHeights[0], false);
         } else {
             contentWidth = computeMaxPrefAreaWidth(managed, marginAccessor);
         }
-        return snapSpaceX(insets.getLeft()) + contentWidth + snapSpaceX(insets.getRight());
+
+        return snapSpaceX(snapSpaceX(insets.getLeft()) + contentWidth + snapSpaceX(insets.getRight()));
     }
 
     @Override protected double computePrefHeight(double width) {
         Insets insets = getInsets();
-        double d = snapSpaceY(insets.getTop()) +
-               computeContentHeight(getManagedChildren(), width, false) +
-               snapSpaceY(insets.getBottom());
-        return d;
+        return snapSpaceY(
+            snapSpaceY(insets.getTop()) +
+            computeContentHeight(getManagedChildren(), width, false) +
+            snapSpaceY(insets.getBottom()));
     }
 
 
@@ -441,96 +445,76 @@ public class VBox extends Pane {
             Node child = managed.get(i);
             Insets margin = getMargin(child);
             if (minimum) {
-                temp[0][i] = computeChildMinAreaHeight(child, -1, margin, insideWidth, isFillWidth);
+                temp[0][i] = snapAreaHeight(computeChildMinAreaHeight(child, -1, margin, insideWidth, isFillWidth));
             } else {
-                temp[0][i] = computeChildPrefAreaHeight(child, -1, margin, insideWidth, isFillWidth);
+                temp[0][i] = snapAreaHeight(computeChildPrefAreaHeight(child, -1, margin, insideWidth, isFillWidth));
             }
         }
         return temp;
     }
 
-    private double adjustAreaHeights(List<Node>managed, double areaHeights[][], double height, double width) {
+    private double adjustAreaHeights(List<Node>managed, double[][] areaHeights, double height, double width) {
+        int size = managed.size();
         Insets insets = getInsets();
         double left = snapSpaceX(insets.getLeft());
         double right = snapSpaceX(insets.getRight());
+        double totalSpacing = computeSpacing(size);
+        double targetHeight = snapSpaceY(height - snapSpaceY(insets.getTop()) - snapSpaceY(insets.getBottom()) - totalSpacing);
+        double currentHeight = snapSpaceY(sum(areaHeights[0], size));
+        double snapScale = isSnapToPixel() ? Region.getSnapScaleY(this) : -1;
+        double refWidth = isFillWidth() && width != -1 ? width - left - right : -1;
 
-        double contentHeight = sum(areaHeights[0], managed.size()) + (managed.size()-1)*snapSpaceY(getSpacing());
-        double extraHeight = height -
-                snapSpaceY(insets.getTop()) - snapSpaceY(insets.getBottom()) - contentHeight;
+        if (currentHeight > targetHeight) {
+            double[] minHeights = areaHeights[1];
 
-        if (extraHeight != 0) {
-            final double refWidth = isFillWidth()&& width != -1? width - left - right : -1;
-            double remaining = growOrShrinkAreaHeights(managed, areaHeights, Priority.ALWAYS, extraHeight, refWidth);
-            remaining = growOrShrinkAreaHeights(managed, areaHeights, Priority.SOMETIMES, remaining, refWidth);
-            contentHeight += (extraHeight - remaining);
+            for (int i = 0; i < size; i++) {
+                Node child = managed.get(i);
+                minHeights[i] = snapAreaHeight(computeChildMinAreaHeight(
+                    child, -1, getMargin(child), refWidth, isFillWidth()));
+            }
+
+            SpaceDistributor.distribute(targetHeight, snapScale, areaHeights[0], minHeights, size);
+        } else if (currentHeight < targetHeight) {
+            double remaining = growAreaHeights(
+                managed, areaHeights, Priority.ALWAYS, targetHeight, refWidth, snapScale);
+
+            if (remaining > 0) {
+                growAreaHeights(managed, areaHeights, Priority.SOMETIMES, targetHeight, refWidth, snapScale);
+            }
         }
 
-        return contentHeight;
+        return snapSpaceY(snapSpaceY(sum(areaHeights[0], size)) + totalSpacing);
     }
 
-    private double growOrShrinkAreaHeights(List<Node>managed, double areaHeights[][], Priority priority, double extraHeight, double width) {
-        final boolean shrinking = extraHeight < 0;
-        int adjustingNumber = 0;
-
+    private double growAreaHeights(List<Node> managed, double[][] areaHeights, Priority priority,
+                                   double targetHeight, double width, double snapScale) {
         double[] usedHeights = areaHeights[0];
-        double[] temp = areaHeights[1];
+        double[] maxHeights = areaHeights[1];
         final boolean isFillWidth = isFillWidth();
 
-        if (shrinking) {
-            adjustingNumber = managed.size();
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                final Node child = managed.get(i);
-                temp[i] = computeChildMinAreaHeight(child, -1, getMargin(child), width, isFillWidth);
-            }
-        } else {
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                final Node child = managed.get(i);
-                if (getVgrow(child) == priority) {
-                    temp[i] = computeChildMaxAreaHeight(child, -1, getMargin(child), width, isFillWidth);
-                    adjustingNumber++;
-                } else {
-                    temp[i] = -1;
-                }
-            }
+        for (int i = 0, size = managed.size(); i < size; i++) {
+            Node child = managed.get(i);
+            maxHeights[i] = getVgrow(child) == priority
+                ? snapAreaHeight(computeChildMaxAreaHeight(child, -1, getMargin(child), width, isFillWidth))
+                : usedHeights[i];
         }
 
-        double pixelSize = isSnapToPixel() ? 1 / Region.getSnapScaleY(this) : 0.0;
-        double available = extraHeight; // will be negative in shrinking case
-        outer: while (Math.abs(available) >= pixelSize && adjustingNumber > 0) {
-            double portion = snapPortionY(available / adjustingNumber); // negative in shrinking case
-
-            if (portion == 0) {
-                if (pixelSize == 0) {
-                    break;
-                }
-
-                portion = pixelSize * Math.signum(available);
-            }
-
-            for (int i = 0, size = managed.size(); i < size; i++) {
-                if (temp[i] == -1) {
-                    continue;
-                }
-                final double limit = temp[i] - usedHeights[i]; // negative in shrinking case
-                final double change = Math.abs(limit) <= Math.abs(portion)? limit : portion;
-                usedHeights[i] += change;
-                available -= change;
-                if (Math.abs(available) < pixelSize) {
-                    break outer;
-                }
-                if (Math.abs(change) < Math.abs(portion)) {
-                    temp[i] = -1;
-                    adjustingNumber--;
-                }
-            }
-        }
-
-        return available; // might be negative in shrinking case
+        return SpaceDistributor.distribute(targetHeight, snapScale, usedHeights, maxHeights, managed.size());
     }
 
     private double computeContentHeight(List<Node> managedChildren, double width, boolean minimum) {
-        return sum(getAreaHeights(managedChildren, width, minimum)[0], managedChildren.size())
-                + (managedChildren.size()-1)*snapSpaceY(getSpacing());
+        double areaHeight = sum(getAreaHeights(managedChildren, width, minimum)[0], managedChildren.size());
+        return snapSpaceY(snapSpaceY(areaHeight) + computeSpacing(managedChildren.size()));
+    }
+
+    private double computeSpacing(int childCount) {
+        return childCount > 1
+            ? snapSpaceY((childCount - 1) * snapSpaceY(getSpacing()))
+            : 0;
+    }
+
+    private double snapAreaHeight(double value) {
+        return value == Double.MAX_VALUE ? value : snapSpaceY(value);
     }
 
     private static double sum(double[] array, int size) {
@@ -563,11 +547,11 @@ public class VBox extends Pane {
         boolean isFillWidth = isFillWidth();
 
         double[][] actualAreaHeights = getAreaHeights(managed, width, false);
-        double contentWidth = width - left - right;
+        double contentWidth = snapSpaceX(width - left - right);
         double contentHeight = adjustAreaHeights(managed, actualAreaHeights, height, width);
 
         double x = left;
-        double y = top + computeYOffset(height - top - bottom, contentHeight, vpos);
+        double y = snapPositionY(top + computeYOffset(snapSpaceY(height - top - bottom), contentHeight, vpos));
 
         for (int i = 0, size = managed.size(); i < size; i++) {
             Node child = managed.get(i);
@@ -575,7 +559,7 @@ public class VBox extends Pane {
                        /* baseline shouldn't matter */actualAreaHeights[0][i],
                        getMargin(child), isFillWidth, true,
                        hpos, vpos);
-            y += actualAreaHeights[0][i] + space;
+            y = snapPositionY(y + actualAreaHeights[0][i] + space);
         }
     }
 
