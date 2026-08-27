@@ -46,8 +46,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BorderPaneTest {
 
-    private static final double EPSILON = 1e-10;
-
     BorderPane borderpane;
     private Stage stage;
 
@@ -1073,12 +1071,12 @@ public class BorderPaneTest {
         showAtScale(1.25, 1.75);
 
         // X: 1 inset pixel + 13 child pixels + 1 inset pixel.
-        assertEquals(15 / 1.25, borderpane.minWidth(-1), EPSILON);
-        assertEquals(15 / 1.25, borderpane.prefWidth(-1), EPSILON);
+        assertEquals(15 / 1.25, borderpane.minWidth(-1));
+        assertEquals(15 / 1.25, borderpane.prefWidth(-1));
 
         // Y: 1 inset pixel + 36 child pixels + 1 inset pixel.
-        assertEquals(38 / 1.75, borderpane.minHeight(-1), EPSILON);
-        assertEquals(38 / 1.75, borderpane.prefHeight(-1), EPSILON);
+        assertEquals(38 / 1.75, borderpane.minHeight(-1));
+        assertEquals(38 / 1.75, borderpane.prefHeight(-1));
     }
 
     @Test
@@ -1107,30 +1105,30 @@ public class BorderPaneTest {
 
         // The snapped pane span is 63 x 105 physical pixels. Padding consumes
         // one pixel on every side; each edge margin also consumes one pixel.
-        assertEquals(2 / 1.25, top.getLayoutX(), EPSILON);
-        assertEquals(2 / 1.75, top.getLayoutY(), EPSILON);
-        assertEquals(59 / 1.25, top.getWidth(), EPSILON);
-        assertEquals(18 / 1.75, top.getHeight(), EPSILON);
+        assertEquals(2 / 1.25, top.getLayoutX());
+        assertEquals(2 / 1.75, top.getLayoutY());
+        assertEquals(59 / 1.25, top.getWidth());
+        assertEquals(18 / 1.75, top.getHeight());
 
-        assertEquals(2 / 1.25, bottom.getLayoutX(), EPSILON);
-        assertEquals(88 / 1.75, bottom.getLayoutY(), EPSILON);
-        assertEquals(59 / 1.25, bottom.getWidth(), EPSILON);
-        assertEquals(15 / 1.75, bottom.getHeight(), EPSILON);
+        assertEquals(2 / 1.25, bottom.getLayoutX());
+        assertEquals(88 / 1.75, bottom.getLayoutY());
+        assertEquals(59 / 1.25, bottom.getWidth());
+        assertEquals(15 / 1.75, bottom.getHeight());
 
-        assertEquals(2 / 1.25, left.getLayoutX(), EPSILON);
-        assertEquals(22 / 1.75, left.getLayoutY(), EPSILON);
-        assertEquals(9 / 1.25, left.getWidth(), EPSILON);
-        assertEquals(64 / 1.75, left.getHeight(), EPSILON);
+        assertEquals(2 / 1.25, left.getLayoutX());
+        assertEquals(22 / 1.75, left.getLayoutY());
+        assertEquals(9 / 1.25, left.getWidth());
+        assertEquals(64 / 1.75, left.getHeight());
 
-        assertEquals(53 / 1.25, right.getLayoutX(), EPSILON);
-        assertEquals(22 / 1.75, right.getLayoutY(), EPSILON);
-        assertEquals(8 / 1.25, right.getWidth(), EPSILON);
-        assertEquals(64 / 1.75, right.getHeight(), EPSILON);
+        assertEquals(53 / 1.25, right.getLayoutX());
+        assertEquals(22 / 1.75, right.getLayoutY());
+        assertEquals(8 / 1.25, right.getWidth());
+        assertEquals(64 / 1.75, right.getHeight());
 
-        assertEquals(12 / 1.25, center.getLayoutX(), EPSILON);
-        assertEquals(21 / 1.75, center.getLayoutY(), EPSILON);
-        assertEquals(40 / 1.25, center.getWidth(), EPSILON);
-        assertEquals(66 / 1.75, center.getHeight(), EPSILON);
+        assertEquals(12 / 1.25, center.getLayoutX());
+        assertEquals(21 / 1.75, center.getLayoutY());
+        assertEquals(40 / 1.25, center.getWidth());
+        assertEquals(66 / 1.75, center.getHeight());
     }
 
     @Test
@@ -1144,15 +1142,15 @@ public class BorderPaneTest {
         // The 100.6-unit constraint becomes a 126-pixel pane width. After two
         // one-pixel insets, the child receives exactly 124 pixels. Its dependent
         // height is then ceiled to 177 pixels, plus two vertical inset pixels.
-        assertEquals(179 / 1.75, borderpane.prefHeight(100.6), EPSILON);
+        assertEquals(179 / 1.75, borderpane.prefHeight(100.6));
 
         borderpane.resize(100.6, 150);
         borderpane.layout();
 
-        assertEquals(1 / 1.25, top.getLayoutX(), EPSILON);
-        assertEquals(1 / 1.75, top.getLayoutY(), EPSILON);
-        assertEquals(124 / 1.25, top.getWidth(), EPSILON);
-        assertEquals(177 / 1.75, top.getHeight(), EPSILON);
+        assertEquals(1 / 1.25, top.getLayoutX());
+        assertEquals(1 / 1.75, top.getLayoutY());
+        assertEquals(124 / 1.25, top.getWidth());
+        assertEquals(177 / 1.75, top.getHeight());
     }
 
     @Test
@@ -1166,16 +1164,16 @@ public class BorderPaneTest {
         // The 200.6-unit constraint becomes 351 physical pixels. Insets leave
         // 349 pixels for the vertically-filled center, which requires 126 X pixels.
         // Adding the two horizontal inset pixels gives a 128-pixel pane width.
-        assertEquals(128 / 1.25, borderpane.minWidth(200.6), EPSILON);
-        assertEquals(128 / 1.25, borderpane.prefWidth(200.6), EPSILON);
+        assertEquals(128 / 1.25, borderpane.minWidth(200.6));
+        assertEquals(128 / 1.25, borderpane.prefWidth(200.6));
 
         borderpane.resize(128 / 1.25, 200.6);
         borderpane.layout();
 
-        assertEquals(1 / 1.25, center.getLayoutX(), EPSILON);
-        assertEquals(1 / 1.75, center.getLayoutY(), EPSILON);
-        assertEquals(126 / 1.25, center.getWidth(), EPSILON);
-        assertEquals(349 / 1.75, center.getHeight(), EPSILON);
+        assertEquals(1 / 1.25, center.getLayoutX());
+        assertEquals(1 / 1.75, center.getLayoutY());
+        assertEquals(126 / 1.25, center.getWidth());
+        assertEquals(349 / 1.75, center.getHeight());
     }
 
     @Test
