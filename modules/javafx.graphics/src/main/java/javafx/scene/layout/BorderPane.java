@@ -562,8 +562,9 @@ public class BorderPane extends Pane {
             bottomHeight = result.y;
             b.resize(result.x, bottomHeight);
             bottomHeight = snapSpaceY(snapSpaceY(bottomMargin.getBottom()) + bottomHeight + snapSpaceY(bottomMargin.getTop()));
+            double bottomY = snapPositionY(insideY + insideHeight - bottomHeight);
             Pos alignment = getAlignment(b);
-            positionInArea(b, insideX, snapPositionY(insideY + insideHeight - bottomHeight),
+            positionInArea(b, insideX, bottomY,
                     insideWidth, bottomHeight, 0/*ignore baseline*/,
                     bottomMargin,
                     alignment != null? alignment.getHpos() : HPos.LEFT,
@@ -602,8 +603,9 @@ public class BorderPane extends Pane {
             rightWidth = result.x;
             r.resize(rightWidth, result.y);
             rightWidth = snapSpaceX(snapSpaceX(rightMargin.getLeft()) + rightWidth + snapSpaceX(rightMargin.getRight()));
+            double rightX = snapPositionX(insideX + insideWidth - rightWidth);
             Pos alignment = getAlignment(r);
-            positionInArea(r, snapPositionX(insideX + insideWidth - rightWidth), middleY,
+            positionInArea(r, rightX, middleY,
                     rightWidth, middleHeight, 0/*ignore baseline*/,
                     rightMargin,
                     alignment != null? alignment.getHpos() : HPos.RIGHT,
@@ -611,9 +613,11 @@ public class BorderPane extends Pane {
         }
 
         if (c != null && c.isManaged()) {
+            double middleX = snapPositionX(insideX + leftWidth);
+            double middleWidth = snapSpaceX(insideWidth - leftWidth - rightWidth);
             Pos alignment = getAlignment(c);
-            layoutInArea(c, snapPositionX(insideX + leftWidth), middleY,
-                    snapSpaceX(insideWidth - leftWidth - rightWidth),
+            layoutInArea(c, middleX, middleY,
+                    middleWidth,
                     middleHeight, 0/*ignore baseline*/,
                     getNodeMargin(c),
                     alignment != null? alignment.getHpos() : HPos.CENTER,
