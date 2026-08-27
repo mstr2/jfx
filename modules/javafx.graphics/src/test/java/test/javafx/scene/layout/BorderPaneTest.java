@@ -32,6 +32,7 @@ import javafx.scene.ParentShim;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 
 import org.junit.jupiter.api.AfterEach;
@@ -1178,6 +1179,66 @@ public class BorderPaneTest {
     }
 
     @Test
+    public void testWidthConstraintBelowSnappedInsetSumIsClampedToZero() {
+        var top = new ConstraintSensitiveRegion(Orientation.HORIZONTAL);
+        var center = new ConstraintSensitiveRegion(Orientation.HORIZONTAL);
+
+        borderpane.setPadding(new Insets(0.75));
+        borderpane.setTop(top);
+        borderpane.setCenter(center);
+
+        showAtScale(2, 2);
+
+        // At scale 2, each horizontal inset snaps from 0.75 to 1.0.
+        double snappedInsets = borderpane.snappedLeftInset() + borderpane.snappedRightInset();
+
+        assertEquals(2, snappedInsets);
+
+        // Verify the two intermediate values exercised below.
+        // In particular, the second one is exactly the -1  sentinel.
+        assertEquals(-2, borderpane.snapSpaceX(0 - snappedInsets));
+        assertEquals(-1, borderpane.snapSpaceX(1 - snappedInsets));
+
+        // After clamping, both the top and center receive a dependent width of
+        // zero and report a height of 10:
+        //     1 top inset + 10 top + 10 center + 1 bottom inset = 22.
+        for (double width : new double[] { 0, 1 }) {
+            assertEquals(22, borderpane.minHeight(width));
+            assertEquals(22, borderpane.prefHeight(width));
+        }
+    }
+
+    @Test
+    public void testHeightConstraintBelowSnappedInsetSumIsClampedToZero() {
+        var left = new ConstraintSensitiveRegion(Orientation.VERTICAL);
+        var center = new ConstraintSensitiveRegion(Orientation.VERTICAL);
+
+        borderpane.setPadding(new Insets(0.75));
+        borderpane.setLeft(left);
+        borderpane.setCenter(center);
+
+        showAtScale(2, 2);
+
+        // At scale 2, each vertical inset snaps from 0.75 to 1.0.
+        double snappedInsets = borderpane.snappedTopInset() + borderpane.snappedBottomInset();
+
+        assertEquals(2, snappedInsets);
+
+        // Verify the two intermediate values exercised below.
+        // In particular, the second one is exactly the -1  sentinel.
+        assertEquals(-2, borderpane.snapSpaceY(0 - snappedInsets));
+        assertEquals(-1, borderpane.snapSpaceY(1 - snappedInsets));
+
+        // After clamping, both the left and center receive a dependent height
+        // of zero and report a width of 10:
+        //     1 left inset + 10 left + 10 center + 1 right inset = 22.
+        for (double height : new double[] { 0, 1 }) {
+            assertEquals(22, borderpane.minWidth(height));
+            assertEquals(22, borderpane.prefWidth(height));
+        }
+    }
+
+    @Test
     public void testResizeBelowMinimum() {
         MockResizable left = new MockResizable(10,10,100,100,150,150);
         MockResizable center = new MockResizable(30,30,100,100,200,200);
@@ -1206,5 +1267,47 @@ public class BorderPaneTest {
         stage.renderScaleYProperty().bind(new SimpleDoubleProperty(scaleY));
         stage.setScene(new Scene(root, 300, 300));
         stage.show();
+    }
+
+    private static final class ConstraintSensitiveRegion extends Region {
+        private static final double CONSTRAINED_SIZE = 10;
+        private static final double NEGATIVE_CONSTRAINT_SIZE = 100;
+
+        private final Orientation bias;
+
+        private ConstraintSensitiveRegion(Orientation bias) {
+            this.bias = bias;
+        }
+
+        @Override
+        public Orientation getContentBias() {
+            return bias;
+        }
+
+        @Override
+        protected double computeMinWidth(double height) {
+            return bias == Orientation.VERTICAL ? sizeForConstraint(height) : 0;
+        }
+
+        @Override
+        protected double computePrefWidth(double height) {
+            return bias == Orientation.VERTICAL ? sizeForConstraint(height) : 0;
+        }
+
+        @Override
+        protected double computeMinHeight(double width) {
+            return bias == Orientation.HORIZONTAL ? sizeForConstraint(width) : 0;
+        }
+
+        @Override
+        protected double computePrefHeight(double width) {
+            return bias == Orientation.HORIZONTAL ? sizeForConstraint(width) : 0;
+        }
+
+        private static double sizeForConstraint(double constraint) {
+            // A negative value means that the constrained measurement was
+            // incorrectly exposed as either negative space or the -1 sentinel.
+            return constraint < 0 ? NEGATIVE_CONSTRAINT_SIZE : CONSTRAINED_SIZE;
+        }
     }
 }

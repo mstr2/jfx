@@ -378,7 +378,10 @@ public class BorderPane extends Pane {
     @Override protected double computeMinWidth(double height) {
         final double leftInset = snappedLeftInset();
         final double rightInset = snappedRightInset();
-        final double insideHeight = height < 0 ? -1 : snapSpaceY(height - snappedTopInset() - snappedBottomInset());
+        final double insideHeight = height < 0
+            ? -1
+            : Math.max(0, snapSpaceY(height - snappedTopInset() - snappedBottomInset()));
+
         double topMinWidth = getAreaWidth(getTop(), -1, true);
         double bottomMinWidth = getAreaWidth(getBottom(), -1, true);
 
@@ -410,7 +413,9 @@ public class BorderPane extends Pane {
     @Override protected double computeMinHeight(double width) {
         final double topInset = snappedTopInset();
         final double bottomInset = snappedBottomInset();
-        final double insideWidth = width < 0 ? -1 : snapSpaceX(width - snappedLeftInset() - snappedRightInset());
+        final double insideWidth = width < 0
+            ? -1
+            : Math.max(0, snapSpaceX(width - snappedLeftInset() - snappedRightInset()));
 
         // Bottom and top are always at their pref height
         double topPrefHeight = getAreaHeight(getTop(), insideWidth, false);
@@ -437,7 +442,10 @@ public class BorderPane extends Pane {
     @Override protected double computePrefWidth(double height) {
         final double leftInset = snappedLeftInset();
         final double rightInset = snappedRightInset();
-        final double insideHeight = height < 0 ? -1 : snapSpaceY(height - snappedTopInset() - snappedBottomInset());
+        final double insideHeight = height < 0
+            ? -1
+            : Math.max(0, snapSpaceY(height - snappedTopInset() - snappedBottomInset()));
+
         double topPrefWidth = getAreaWidth(getTop(), -1, false);
         double bottomPrefWidth = getAreaWidth(getBottom(), -1, false);
 
@@ -469,7 +477,9 @@ public class BorderPane extends Pane {
     @Override protected double computePrefHeight(double width) {
         final double topInset = snappedTopInset();
         final double bottomInset = snappedBottomInset();
-        final double insideWidth = width < 0 ? -1 : snapSpaceX(width - snappedLeftInset() - snappedRightInset());
+        final double insideWidth = width < 0
+            ? -1
+            : Math.max(0, snapSpaceX(width - snappedLeftInset() - snappedRightInset()));
 
         double topPrefHeight = getAreaHeight(getTop(), insideWidth, false);
         double bottomPrefHeight = getAreaHeight(getBottom(), insideWidth, false);
