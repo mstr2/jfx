@@ -435,7 +435,6 @@ public class BorderPane extends Pane {
         }
 
         double middleAreaMinHeight = Math.max(centerMinHeight, Math.max(rightMinHeight, leftMinHeight));
-
         return snapSpaceY(topInset + topPrefHeight + middleAreaMinHeight + bottomPrefHeight + bottomInset);
     }
 
@@ -497,7 +496,6 @@ public class BorderPane extends Pane {
         }
 
         double middleAreaPrefHeight = Math.max(centerPrefHeight, Math.max(rightPrefHeight, leftPrefHeight));
-
         return snapSpaceY(topInset + topPrefHeight + middleAreaPrefHeight + bottomPrefHeight + bottomInset);
     }
 
