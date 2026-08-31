@@ -2528,7 +2528,9 @@ public class RegionTest {
             Arguments.of(1.5, 1.5),
             Arguments.of(2.5, 2.5),
             Arguments.of(1.25, 1.5),
-            Arguments.of(1.5, 1.25)
+            Arguments.of(1.5, 1.25),
+            Arguments.of(1.75, 2.0),
+            Arguments.of(2.25, 2.25)
         );
     }
 
