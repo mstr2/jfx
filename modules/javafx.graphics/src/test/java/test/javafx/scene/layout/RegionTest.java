@@ -2336,7 +2336,7 @@ public class RegionTest {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = { 1, 1.25, 1.5, 2.5 })
+    @ValueSource(doubles = { 1, 1.25, 1.5, 1.75, 2.0, 2.25 })
     public void layoutInAreaNormalizesHeightRemainingAboveBaselineComplement(double scaleY) {
         Pane root = new Pane();
         Region child = new Region();
@@ -2526,11 +2526,12 @@ public class RegionTest {
             Arguments.of(1.0, 1.0),
             Arguments.of(1.25, 1.25),
             Arguments.of(1.5, 1.5),
-            Arguments.of(2.5, 2.5),
+            Arguments.of(1.75, 1.75),
+            Arguments.of(2.0, 2.0),
+            Arguments.of(2.25, 2.25),
             Arguments.of(1.25, 1.5),
-            Arguments.of(1.5, 1.25),
-            Arguments.of(1.75, 2.0),
-            Arguments.of(2.25, 2.25)
+            Arguments.of(1.75, 2.25),
+            Arguments.of(2.25, 1.25)
         );
     }
 
