@@ -45,7 +45,7 @@ public interface ReadOnlyProperty<T> extends ObservableValue<T> {
      * <p>
      * For instance properties, this is the object that contains the property.
      * For {@linkplain AttachedProperty attached properties}, it is the object to which the property is attached.
-     * Is this property is not associated with an object, {@code null} is returned.
+     * If this property is not associated with an object, {@code null} is returned.
      *
      * @return the associated {@code Object} or {@code null}
      */
