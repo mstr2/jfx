@@ -276,7 +276,7 @@ public class Region extends Parent {
      * This method deliberately does not snap {@code height} or the returned value. It performs only the
      * margin adjustment and does not choose a fitting policy for a potentially unsnapped input height.
      * A caller that chooses to consume the result as a pixel-aligned allocated content span is responsible
-     * for applying the appropriate snapping operation, usually {@link #snapSpaceY(double)}.
+     * for applying the appropriate snapping operation.
      * <p>
      * A {@code null} or empty margin is equivalent to zero margins and leaves {@code height} unchanged;
      * in particular, it does not cause {@code height} to be normalized.
@@ -2209,8 +2209,8 @@ public class Region extends Parent {
         boolean snap = isSnapToPixel();
         double scaleX = getSnapScaleX();
         double scaleY = getSnapScaleY();
-        double snappedLeft = margin != null ? snapSpaceX(margin.getLeft(), snap) : 0;
-        double snappedRight = margin != null ? snapSpaceX(margin.getRight(), snap) : 0;
+        double snappedLeft = margin != null ? snapSpace(margin.getLeft(), snap, scaleX) : 0;
+        double snappedRight = margin != null ? snapSpace(margin.getRight(), snap, scaleX) : 0;
         double alt = -1;
 
         if (availableHeight != -1 && child.isResizable() && child.getContentBias() == Orientation.VERTICAL) { // width depends on height
@@ -2631,7 +2631,7 @@ public class Region extends Parent {
                 snapSpace(childMargin.getRight(), isSnapToPixel, snapScaleX),
                 snapSpace(childMargin.getBottom(), isSnapToPixel, snapScaleY),
                 snapSpace(childMargin.getLeft(), isSnapToPixel, snapScaleX),
-                halignment, valignment, isSnapToPixel);
+                halignment, valignment, isSnapToPixel, snapScaleX, snapScaleY);
     }
 
     /**
@@ -2902,7 +2902,7 @@ public class Region extends Parent {
 
         position(child, areaX, areaY, areaWidth, areaHeight, areaBaselineOffset,
                  snappedTop, snappedRight, snappedBottom, snappedLeft,
-                 halignment, valignment, isSnapToPixel);
+                 halignment, valignment, isSnapToPixel, snapScaleX, snapScaleY);
     }
 
     private static void position(Node child,
@@ -2912,7 +2912,8 @@ public class Region extends Parent {
                                  double snappedTopMargin, double snappedRightMargin,
                                  double snappedBottomMargin, double snappedLeftMargin,
                                  HPos hpos, VPos vpos,
-                                 boolean isSnapToPixel) {
+                                 boolean isSnapToPixel,
+                                 double snapScaleX, double snapScaleY) {
         final double rawXOffset = snappedLeftMargin + computeXOffset(
             rawAreaWidth - snappedLeftMargin - snappedRightMargin,
             child.getLayoutBounds().getWidth(), hpos);
@@ -2934,15 +2935,8 @@ public class Region extends Parent {
 
         double rawX = rawAreaX + rawXOffset;
         double rawY = rawAreaY + rawYOffset;
-        double snappedX, snappedY;
-
-        if (isSnapToPixel) {
-            snappedX = snapPosition(rawX, true, getSnapScaleX(child));
-            snappedY = snapPosition(rawY, true, getSnapScaleY(child));
-        } else {
-            snappedX = rawX;
-            snappedY = rawY;
-        }
+        double snappedX = snapPosition(rawX, isSnapToPixel, snapScaleX);
+        double snappedY = snapPosition(rawY, isSnapToPixel, snapScaleY);
 
         child.relocate(snappedX, snappedY);
     }
