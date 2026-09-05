@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,11 +51,12 @@ public class SimpleStyleableObjectProperty<T> extends StyleableObjectProperty<T>
     private final Object bean;
     private final String name;
     private final CssMetaData<? extends Styleable, T> cssMetaData;
+    private Class<?> declaringClass;
 
     /**
      * The constructor of the {@code SimpleStyleableObjectProperty}.
-     * @param cssMetaData
-     *            the CssMetaData associated with this {@code StyleableProperty}
+     *
+     * @param cssMetaData the {@code CssMetaData} associated with this property
      */
     public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData) {
         this(cssMetaData, DEFAULT_BEAN, DEFAULT_NAME);
@@ -64,26 +65,24 @@ public class SimpleStyleableObjectProperty<T> extends StyleableObjectProperty<T>
     /**
      * The constructor of the {@code SimpleStyleableObjectProperty}.
      *
-     * @param cssMetaData
-     *            the CssMetaData associated with this {@code StyleableProperty}
-     * @param initialValue
-     *            the initial value of the wrapped {@code Object}
+     * @param cssMetaData the {@code CssMetaData} associated with this property
+     * @param initialValue the initial value
      */
-    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData, @NamedArg("initialValue") T initialValue) {
+    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData,
+                                         @NamedArg("initialValue") T initialValue) {
         this(cssMetaData, DEFAULT_BEAN, DEFAULT_NAME, initialValue);
     }
 
     /**
      * The constructor of the {@code SimpleStyleableObjectProperty}.
      *
-     * @param cssMetaData
-     *            the CssMetaData associated with this {@code StyleableProperty}
-     * @param bean
-     *            the bean of this {@code ObjectProperty}
-     * @param name
-     *            the name of this {@code ObjectProperty}
+     * @param cssMetaData the {@code CssMetaData} associated with this property
+     * @param bean the bean of this property
+     * @param name the name of this property
      */
-    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData, @NamedArg("bean") Object bean, @NamedArg("name") String name) {
+    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData,
+                                         @NamedArg("bean") Object bean,
+                                         @NamedArg("name") String name) {
         this.bean = bean;
         this.name = (name == null) ? DEFAULT_NAME : name;
         this.cssMetaData = cssMetaData;
@@ -92,20 +91,55 @@ public class SimpleStyleableObjectProperty<T> extends StyleableObjectProperty<T>
     /**
      * The constructor of the {@code SimpleStyleableObjectProperty}.
      *
-     * @param cssMetaData
-     *            the CssMetaData associated with this {@code StyleableProperty}
-     * @param bean
-     *            the bean of this {@code ObjectProperty}
-     * @param name
-     *            the name of this {@code ObjectProperty}
-     * @param initialValue
-     *            the initial value of the wrapped {@code Object}
+     * @param cssMetaData the {@code CssMetaData} associated with this property
+     * @param bean the bean of this property
+     * @param name the name of this property
+     * @param initialValue the initial value
      */
-    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData, @NamedArg("bean") Object bean, @NamedArg("name") String name, @NamedArg("initialValue") T initialValue) {
+    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData,
+                                         @NamedArg("bean") Object bean,
+                                         @NamedArg("name") String name,
+                                         @NamedArg("initialValue") T initialValue) {
         super(initialValue);
         this.bean = bean;
         this.name = (name == null) ? DEFAULT_NAME : name;
         this.cssMetaData = cssMetaData;
+    }
+
+    /**
+     * The constructor of the {@code SimpleStyleableObjectProperty}.
+     *
+     * @param cssMetaData the {@code CssMetaData} associated with this property
+     * @param bean the bean of this property
+     * @param declaringClass the class in which this property is declared
+     * @param name the name of this property
+     * @since 28
+     */
+    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData,
+                                         @NamedArg("bean") Object bean,
+                                         @NamedArg("declaringClass") Class<?> declaringClass,
+                                         @NamedArg("name") String name) {
+        this(cssMetaData, bean, name);
+        this.declaringClass = declaringClass;
+    }
+
+    /**
+     * The constructor of the {@code SimpleStyleableObjectProperty}.
+     *
+     * @param cssMetaData the {@code CssMetaData} associated with this property
+     * @param bean the bean of this property
+     * @param declaringClass the class in which this property is declared
+     * @param name the name of this property
+     * @param initialValue the initial value
+     * @since 28
+     */
+    public SimpleStyleableObjectProperty(@NamedArg("cssMetaData") CssMetaData<? extends Styleable, T> cssMetaData,
+                                         @NamedArg("bean") Object bean,
+                                         @NamedArg("declaringClass") Class<?> declaringClass,
+                                         @NamedArg("name") String name,
+                                         @NamedArg("initialValue") T initialValue) {
+        this(cssMetaData, bean, name, initialValue);
+        this.declaringClass = declaringClass;
     }
 
     /**
@@ -130,4 +164,17 @@ public class SimpleStyleableObjectProperty<T> extends StyleableObjectProperty<T>
         return cssMetaData;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 28
+     */
+    @Override
+    public Class<?> getDeclaringClass() {
+        if (declaringClass != null) {
+            return declaringClass;
+        }
+
+        return declaringClass = super.getDeclaringClass();
+    }
 }
