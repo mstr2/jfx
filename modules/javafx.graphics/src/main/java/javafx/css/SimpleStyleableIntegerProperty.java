@@ -44,6 +44,8 @@ import javafx.beans.property.SimpleIntegerProperty;
  */
 public class SimpleStyleableIntegerProperty extends StyleableIntegerProperty {
 
+    /** Sentinel value that indicates that a property was not declared in another class. */
+    private static final Class<?> NO_DECLARING_CLASS = SimpleStyleableIntegerProperty.class;
     private static final Object DEFAULT_BEAN = null;
     private static final String DEFAULT_NAME = "";
 
@@ -171,9 +173,11 @@ public class SimpleStyleableIntegerProperty extends StyleableIntegerProperty {
     @Override
     public Class<?> getDeclaringClass() {
         if (declaringClass != null) {
-            return declaringClass;
+            return declaringClass != NO_DECLARING_CLASS ? declaringClass : null;
         }
 
-        return declaringClass = super.getDeclaringClass();
+        Class<?> declaringClass = super.getDeclaringClass();
+        this.declaringClass = declaringClass != null ? declaringClass : NO_DECLARING_CLASS;
+        return declaringClass;
     }
 }

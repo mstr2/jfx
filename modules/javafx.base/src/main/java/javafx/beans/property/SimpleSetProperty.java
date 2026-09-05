@@ -38,6 +38,8 @@ import javafx.collections.ObservableSet;
  */
 public class SimpleSetProperty<E> extends SetPropertyBase<E> {
 
+    /** Sentinel value that indicates that a property was not declared in another class. */
+    private static final Class<?> NO_DECLARING_CLASS = SimpleSetProperty.class;
     private static final Object DEFAULT_BEAN = null;
     private static final String DEFAULT_NAME = "";
 
@@ -69,10 +71,12 @@ public class SimpleSetProperty<E> extends SetPropertyBase<E> {
     @Override
     public Class<?> getDeclaringClass() {
         if (declaringClass != null) {
-            return declaringClass;
+            return declaringClass != NO_DECLARING_CLASS ? declaringClass : null;
         }
 
-        return declaringClass = super.getDeclaringClass();
+        Class<?> declaringClass = super.getDeclaringClass();
+        this.declaringClass = declaringClass != null ? declaringClass : NO_DECLARING_CLASS;
+        return declaringClass;
     }
 
     /**
